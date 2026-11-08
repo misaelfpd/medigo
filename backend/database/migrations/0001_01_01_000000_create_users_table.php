@@ -17,7 +17,6 @@ return new class extends Migration {
             $table->string('email_user', 150)->unique();
             $table->string('password_user');
             $table->string('role_user', 50)->default('user');
-            // timestamps dimatikan sesuai kodingan lu
         });
 
         // 2. Biarkan dua tabel bawaan ini biar sistem core Laravel tetep aman
