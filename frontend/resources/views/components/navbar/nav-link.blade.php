@@ -1,0 +1,5 @@
+@props(['active' => false, 'href'])
+
+<li class="nav-item {{ $active ? 'active' : '' }}">
+    <a class="nav-link" href="{{ $href }}">{{ $slot }}</a>
+</li>
