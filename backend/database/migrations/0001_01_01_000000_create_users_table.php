@@ -10,17 +10,17 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->enum('role', ['admin', 'user'])->default('user');
-            $table->rememberToken();
-            $table->timestamps();
+        // 1. Ini tabel user custom buatan lu persis
+        Schema::create('user', function (Blueprint $table) {
+            $table->id('id_user');
+            $table->string('nama_user', 150);
+            $table->string('email_user', 150)->unique();
+            $table->string('password_user');
+            $table->string('role_user', 50)->default('user');
+            // timestamps dimatikan sesuai kodingan lu
         });
 
+        // 2. Biarkan dua tabel bawaan ini biar sistem core Laravel tetep aman
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
@@ -42,7 +42,7 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('user'); // Udah disesuaikan jadi 'user'
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }
