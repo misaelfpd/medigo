@@ -84,6 +84,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/discussions/{id}/report', [DiscussionReportController::class, 'store']);
     Route::post('/faskes-comments/{id}/report', [FaskesCommentController::class, 'report']);
 
+    // GEMINI AI
+    Route::post('/chat-ai', [App\Http\Controllers\GeminiController::class, 'chat']);
+
     // Rute Admin Dashboard Log (Wajib Login + Wajib Admin)
     Route::middleware(AdminMiddleware::class)->group(function () {
         Route::get('/admin/logs', [ActivityLogController::class, 'index']);
