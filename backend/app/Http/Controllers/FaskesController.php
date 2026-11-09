@@ -21,6 +21,7 @@ class FaskesController extends Controller
         } elseif (str_contains($tipeLower, 'klinik') || str_contains($tipeLower, 'dokter') || str_contains($tipeLower, 'apotek')) {
             return 'clinic';
         }
+
         return 'other';
     }
 
@@ -28,9 +29,10 @@ class FaskesController extends Controller
     {
         $name = trim($name ?? '');
         $isPuskesmas = ($typeSlug === 'puskesmas') || str_contains(strtolower($jenis_faskes ?? ''), 'puskesmas') || str_contains(strtolower($name), 'puskesmas');
-        if ($isPuskesmas && !preg_match('/^(puskesmas|pkm)\b/i', $name)) {
-            return 'Puskesmas ' . $name;
+        if ($isPuskesmas && ! preg_match('/^(puskesmas|pkm)\b/i', $name)) {
+            return 'Puskesmas '.$name;
         }
+
         return $name;
     }
 
@@ -148,9 +150,9 @@ class FaskesController extends Controller
             $faskes = $query->limit($limitCount)->get();
 
             $faskesIds = $faskes->pluck('id_faskes')->toArray();
-            $comments = DB::table('feedback_faskes')
+            $comments = DB::table('komentar')
                 ->whereIn('id_faskes', $faskesIds)
-                ->select('id_faskes', DB::raw('0 as avg_rating'), DB::raw('COUNT(id_feedback_faskes) as total_reviews'))
+                ->select('id_faskes', DB::raw('ROUND(AVG(rating), 1) as avg_rating'), DB::raw('COUNT(id_komentar) as total_reviews'))
                 ->groupBy('id_faskes')
                 ->get()
                 ->keyBy('id_faskes');
@@ -161,10 +163,11 @@ class FaskesController extends Controller
                 $hasComment = isset($comments[$item->id_faskes]) && $comments[$item->id_faskes]->total_reviews > 0;
                 $item->avg_rating = $hasComment ? (string) $comments[$item->id_faskes]->avg_rating : null;
                 $item->total_reviews = $hasComment ? (int) $comments[$item->id_faskes]->total_reviews : 0;
-                $hasSpecific = !empty($item->link_maps) && !in_array($item->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($item->link_maps, 'http') && (str_contains($item->link_maps, '@') || str_contains($item->link_maps, 'place') || str_contains($item->link_maps, 'maps.app.goo.gl') || str_contains($item->link_maps, 'dir'));
-                if (!$hasSpecific) {
+                $hasSpecific = ! empty($item->link_maps) && ! in_array($item->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($item->link_maps, 'http') && (str_contains($item->link_maps, '@') || str_contains($item->link_maps, 'place') || str_contains($item->link_maps, 'maps.app.goo.gl') || str_contains($item->link_maps, 'dir'));
+                if (! $hasSpecific) {
                     $item->link_maps = $this->getGoogleMapsUrl($item->nama_faskes, $item->latitude ?? null, $item->longitude ?? null, $item->kota_kabupaten ?? '', $item->alamat_faskes ?? '');
                 }
+
                 return $item;
             });
 
@@ -172,16 +175,16 @@ class FaskesController extends Controller
                 'status' => 'success',
                 'message' => 'Berhasil mengambil data faskes',
                 'total' => $faskes->count(),
-                'data' => $faskes
+                'data' => $faskes,
             ]);
         }
 
         $paginated = $query->paginate($limitCount);
 
         $faskesIds = $paginated->getCollection()->pluck('id_faskes')->toArray();
-        $comments = DB::table('feedback_faskes')
+        $comments = DB::table('komentar')
             ->whereIn('id_faskes', $faskesIds)
-            ->select('id_faskes', DB::raw('0 as avg_rating'), DB::raw('COUNT(id_feedback_faskes) as total_reviews'))
+            ->select('id_faskes', DB::raw('ROUND(AVG(rating), 1) as avg_rating'), DB::raw('COUNT(id_komentar) as total_reviews'))
             ->groupBy('id_faskes')
             ->get()
             ->keyBy('id_faskes');
@@ -192,58 +195,66 @@ class FaskesController extends Controller
             $hasComment = isset($comments[$item->id_faskes]) && $comments[$item->id_faskes]->total_reviews > 0;
             $item->avg_rating = $hasComment ? (string) $comments[$item->id_faskes]->avg_rating : null;
             $item->total_reviews = $hasComment ? (int) $comments[$item->id_faskes]->total_reviews : 0;
-            $hasSpecific = !empty($item->link_maps) && !in_array($item->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($item->link_maps, 'http') && (str_contains($item->link_maps, '@') || str_contains($item->link_maps, 'place') || str_contains($item->link_maps, 'maps.app.goo.gl') || str_contains($item->link_maps, 'dir'));
-            if (!$hasSpecific) {
+            $hasSpecific = ! empty($item->link_maps) && ! in_array($item->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($item->link_maps, 'http') && (str_contains($item->link_maps, '@') || str_contains($item->link_maps, 'place') || str_contains($item->link_maps, 'maps.app.goo.gl') || str_contains($item->link_maps, 'dir'));
+            if (! $hasSpecific) {
                 $item->link_maps = $this->getGoogleMapsUrl($item->nama_faskes, $item->latitude ?? null, $item->longitude ?? null, $item->kota_kabupaten ?? '', $item->alamat_faskes ?? '');
             }
+
             return $item;
         });
 
         return response()->json([
             'status' => 'success',
             'message' => 'Berhasil mengambil data faskes',
-            'data' => $paginated
+            'data' => $paginated,
         ]);
     }
 
     // 2. Ambil detail spesifik satu Faskes (buat halaman detail)
     public function show($id)
     {
-        // 1. Ambil data utama faskesnya beserta agregasi feedback
+        // 1. Ambil data utama faskesnya
         $faskes = DB::table('faskes')
-            ->leftJoin('feedback_faskes', 'faskes.id_faskes', '=', 'feedback_faskes.id_faskes')
-            ->where('faskes.id_faskes', $id)
-            ->select(
-                'faskes.*',
-                DB::raw('0 as avg_rating'),
-                DB::raw('COUNT(feedback_faskes.id_feedback_faskes) as total_reviews')
-            )
-            ->groupBy('faskes.id_faskes')
+            ->where('id_faskes', $id)
             ->first();
 
-        if (!$faskes) {
+        if (! $faskes) {
             return response()->json(['message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
         }
 
+        // Hitung agregasi ulasan dari tabel komentar
+        $ratingStats = DB::table('komentar')
+            ->where('id_faskes', $id)
+            ->select(
+                DB::raw('ROUND(AVG(rating), 1) as avg_rating'),
+                DB::raw('COUNT(id_komentar) as total_reviews')
+            )
+            ->first();
+
+        $totalReviews = (int) ($ratingStats->total_reviews ?? 0);
+        $avgRating = $totalReviews > 0 ? (string) $ratingStats->avg_rating : null;
+
+        $faskes->total_reviews = $totalReviews;
+        $faskes->avg_rating = $avgRating;
+
         $faskes->type_slug = $this->getTypeSlug($faskes->jenis_faskes);
         $faskes->nama_faskes = $this->formatFaskesName($faskes->nama_faskes, $faskes->type_slug, $faskes->jenis_faskes);
-        if ($faskes->total_reviews == 0) {
-            $faskes->avg_rating = null;
-        } else {
-            $faskes->avg_rating = (string) $faskes->avg_rating;
-        }
 
-        $hasSpecific = !empty($faskes->link_maps) && !in_array($faskes->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($faskes->link_maps, 'http') && (str_contains($faskes->link_maps, '@') || str_contains($faskes->link_maps, 'place') || str_contains($faskes->link_maps, 'maps.app.goo.gl') || str_contains($faskes->link_maps, 'dir'));
-        if (!$hasSpecific) {
+        $hasSpecific = ! empty($faskes->link_maps) && ! in_array($faskes->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($faskes->link_maps, 'http') && (str_contains($faskes->link_maps, '@') || str_contains($faskes->link_maps, 'place') || str_contains($faskes->link_maps, 'maps.app.goo.gl') || str_contains($faskes->link_maps, 'dir'));
+        if (! $hasSpecific) {
             $faskes->link_maps = $this->getGoogleMapsUrl($faskes->nama_faskes, $faskes->latitude ?? null, $faskes->longitude ?? null, $faskes->kota_kabupaten ?? '', $faskes->alamat_faskes ?? '');
         }
 
-        // 2. Ambil semua ulasan yang terhubung ke faskes ini
-        $reviews = DB::table('feedback_faskes')
-            ->join('user', 'feedback_faskes.id_user', '=', 'user.id_user')
-            ->where('feedback_faskes.id_faskes', $id)
-            ->select('feedback_faskes.*', 'user.nama_user as reviewer_name', 'user.email_user as reviewer_email')
-            ->orderBy('feedback_faskes.id_feedback_faskes', 'desc')
+        // 2. Ambil semua ulasan yang terhubung ke faskes ini dari tabel komentar
+        $reviews = DB::table('komentar')
+            ->join('user', 'komentar.id_user', '=', 'user.id_user')
+            ->where('komentar.id_faskes', $id)
+            ->select(
+                'komentar.*',
+                'user.nama_user as reviewer_name',
+                'user.email_user as reviewer_email'
+            )
+            ->orderBy('komentar.created_at', 'desc')
             ->get();
 
         return response()->json([
@@ -251,8 +262,8 @@ class FaskesController extends Controller
             'message' => 'Berhasil mengambil detail faskes',
             'data' => [
                 'faskes' => $faskes,
-                'reviews' => $reviews
-            ]
+                'reviews' => $reviews,
+            ],
         ]);
     }
 
@@ -290,7 +301,7 @@ class FaskesController extends Controller
         $linkMaps = trim($request->input('link_maps', '') ?? '');
 
         // Smart link & coordinate extraction
-        if (!empty($linkMaps) && $linkMaps !== '-' && $linkMaps !== 'TRUE' && $linkMaps !== 'FALSE') {
+        if (! empty($linkMaps) && $linkMaps !== '-' && $linkMaps !== 'TRUE' && $linkMaps !== 'FALSE') {
             if ($lat === null || $lng === null) {
                 if (preg_match('/[?&](?:q|destination)=([-+]?\d{1,3}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)/i', $linkMaps, $m)) {
                     $lat = (float) $m[1];
@@ -304,7 +315,7 @@ class FaskesController extends Controller
             if ($lat !== null && $lng !== null) {
                 $linkMaps = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
             } else {
-                $linkMaps = "https://www.google.com/maps/search/?api=1&query=" . urlencode($namaFaskes . ' ' . $kotaKab);
+                $linkMaps = 'https://www.google.com/maps/search/?api=1&query='.urlencode($namaFaskes.' '.$kotaKab);
             }
         }
 
@@ -325,7 +336,7 @@ class FaskesController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Fasilitas kesehatan berhasil ditambahkan',
-            'data' => ['id' => $id]
+            'data' => ['id' => $id],
         ], 201);
     }
 
@@ -333,7 +344,7 @@ class FaskesController extends Controller
     public function update(Request $request, $id)
     {
         $faskes = DB::table('faskes')->where('id_faskes', $id)->first();
-        if (!$faskes) {
+        if (! $faskes) {
             return response()->json(['message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
         }
 
@@ -352,10 +363,12 @@ class FaskesController extends Controller
 
         $updateData = [];
 
-        if ($request->has('nama_faskes'))
+        if ($request->has('nama_faskes')) {
             $updateData['nama_faskes'] = $request->nama_faskes;
-        if ($request->has('jenis_faskes'))
+        }
+        if ($request->has('jenis_faskes')) {
             $updateData['jenis_faskes'] = $request->jenis_faskes;
+        }
         if ($request->has('kelas')) {
             $kelasVal = $request->kelas;
             if ($kelasVal === '' || $kelasVal === 'unknown' || $kelasVal === 'Tidak Diketahui') {
@@ -364,20 +377,23 @@ class FaskesController extends Controller
                 $updateData['kelas'] = $kelasVal;
             }
         }
-        if ($request->has('provinsi'))
+        if ($request->has('provinsi')) {
             $updateData['provinsi'] = $request->provinsi;
-        if ($request->has('kota_kabupaten'))
+        }
+        if ($request->has('kota_kabupaten')) {
             $updateData['kota_kabupaten'] = $request->kota_kabupaten;
-        if ($request->has('alamat_faskes'))
+        }
+        if ($request->has('alamat_faskes')) {
             $updateData['alamat_faskes'] = $request->alamat_faskes;
+        }
 
         $targetLat = $request->has('latitude') && $request->filled('latitude') ? (float) $request->latitude : ($faskes->latitude !== null ? (float) $faskes->latitude : null);
         $targetLng = $request->has('longitude') && $request->filled('longitude') ? (float) $request->longitude : ($faskes->longitude !== null ? (float) $faskes->longitude : null);
 
         if ($request->has('link_maps')) {
             $linkMaps = trim($request->input('link_maps', '') ?? '');
-            if (!empty($linkMaps) && $linkMaps !== '-' && $linkMaps !== 'TRUE' && $linkMaps !== 'FALSE') {
-                if (!$request->filled('latitude') || !$request->filled('longitude')) {
+            if (! empty($linkMaps) && $linkMaps !== '-' && $linkMaps !== 'TRUE' && $linkMaps !== 'FALSE') {
+                if (! $request->filled('latitude') || ! $request->filled('longitude')) {
                     if (preg_match('/[?&](?:q|destination)=([-+]?\d{1,3}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)/i', $linkMaps, $m)) {
                         $targetLat = (float) $m[1];
                         $targetLng = (float) $m[2];
@@ -397,15 +413,17 @@ class FaskesController extends Controller
                 } else {
                     $namaFaskes = $request->nama_faskes ?? $faskes->nama_faskes;
                     $kota = $request->kota_kabupaten ?? $faskes->kota_kabupaten;
-                    $updateData['link_maps'] = "https://www.google.com/maps/search/?api=1&query=" . urlencode($namaFaskes . ' ' . $kota);
+                    $updateData['link_maps'] = 'https://www.google.com/maps/search/?api=1&query='.urlencode($namaFaskes.' '.$kota);
                 }
             }
         }
 
-        if ($request->has('latitude'))
+        if ($request->has('latitude')) {
             $updateData['latitude'] = $request->filled('latitude') ? (float) $request->latitude : null;
-        if ($request->has('longitude'))
+        }
+        if ($request->has('longitude')) {
             $updateData['longitude'] = $request->filled('longitude') ? (float) $request->longitude : null;
+        }
 
         if ($request->has('_support_bpjs')) {
             $bpjsVal = $request->_support_bpjs;
@@ -420,7 +438,7 @@ class FaskesController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Fasilitas kesehatan berhasil diperbarui'
+            'message' => 'Fasilitas kesehatan berhasil diperbarui',
         ]);
     }
 
@@ -428,7 +446,7 @@ class FaskesController extends Controller
     public function destroy($id)
     {
         $faskes = DB::table('faskes')->where('id_faskes', $id)->first();
-        if (!$faskes) {
+        if (! $faskes) {
             return response()->json(['message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
         }
 
@@ -436,7 +454,7 @@ class FaskesController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Fasilitas kesehatan berhasil dihapus'
+            'message' => 'Fasilitas kesehatan berhasil dihapus',
         ]);
     }
 
@@ -454,22 +472,22 @@ class FaskesController extends Controller
                 'type' => 'forum',
                 'icon' => 'bi-chat-left-text',
                 'title' => "Topik baru: 'Tips Menjaga Kesehatan Jantung' diposting di Forum Kesehatan.",
-                'time' => '3 jam yang lalu'
+                'time' => '3 jam yang lalu',
             ],
             [
                 'id' => 2,
                 'type' => 'user',
                 'icon' => 'bi-person-plus',
-                'title' => "Pengguna baru @budi_santoso telah bergabung dengan Medigo.",
-                'time' => 'Kemarin'
+                'title' => 'Pengguna baru @budi_santoso telah bergabung dengan Medigo.',
+                'time' => 'Kemarin',
             ],
             [
                 'id' => 3,
                 'type' => 'forum',
                 'icon' => 'bi-chat-left-text',
                 'title' => "Topik baru: 'Tips Menjaga Kesehatan Anak' diposting di Forum Kesehatan.",
-                'time' => '3 jam yang lalu'
-            ]
+                'time' => '3 jam yang lalu',
+            ],
         ];
 
         return response()->json([
@@ -478,8 +496,8 @@ class FaskesController extends Controller
                 'total_users' => $totalUsers > 0 ? $totalUsers : 12450,
                 'total_faskes' => $totalFaskes > 0 ? $totalFaskes : 84,
                 'total_discussions' => $totalDiscussions > 0 ? $totalDiscussions : 1200,
-                'activities' => $activities
-            ]
+                'activities' => $activities,
+            ],
         ]);
     }
 }
