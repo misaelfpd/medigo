@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+        // Tried in order; the next one is used when a model is overloaded, rate limited or times out.
+        'models' => array_values(array_filter(array_map('trim', explode(',', (string) env('GEMINI_MODELS', 'gemini-3.5-flash-lite,gemini-3.8-flash'))))),
+        'timeout' => (int) env('GEMINI_TIMEOUT', 30),
+    ],
+
 ];
