@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class FaskesCommentController extends Controller
 {
@@ -14,7 +16,7 @@ class FaskesCommentController extends Controller
     public function index(Request $request, $faskes_id)
     {
         $faskes = DB::table('faskes')->where('id_faskes', $faskes_id)->first();
-        if (!$faskes) {
+        if (! $faskes) {
             return response()->json(['message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
         }
 
@@ -25,7 +27,7 @@ class FaskesCommentController extends Controller
             $currentUserId = $request->user()->id_user ?? $request->user()->id;
             $currentUserEmail = $request->user()->email_user ?? $request->user()->email;
         } elseif ($bearer = $request->bearerToken()) {
-            $tokenObj = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+            $tokenObj = PersonalAccessToken::findToken($bearer);
             if ($tokenObj && $tokenObj->tokenable) {
                 $currentUserId = $tokenObj->tokenable->id_user ?? $tokenObj->tokenable->id;
                 $currentUserEmail = $tokenObj->tokenable->email_user ?? $tokenObj->tokenable->email;
@@ -35,7 +37,7 @@ class FaskesCommentController extends Controller
         }
 
         // If user ID is still null but user email is provided, lookup in users table
-        if (!$currentUserId && $currentUserEmail) {
+        if (! $currentUserId && $currentUserEmail) {
             $matchedUser = DB::table('user')->where('email_user', $currentUserEmail)->first();
             if ($matchedUser) {
                 $currentUserId = $matchedUser->id_user;
@@ -71,7 +73,7 @@ class FaskesCommentController extends Controller
                     'is_my_comment' => true,
                     'created_at' => $myRaw->created_at,
                     'updated_at' => $myRaw->updated_at,
-                    'created_at_human' => \Carbon\Carbon::parse($myRaw->created_at)->diffForHumans(),
+                    'created_at_human' => Carbon::parse($myRaw->created_at)->diffForHumans(),
                 ];
             }
         }
@@ -118,7 +120,7 @@ class FaskesCommentController extends Controller
                 'is_my_comment' => false,
                 'created_at' => $item->created_at,
                 'updated_at' => $item->updated_at,
-                'created_at_human' => \Carbon\Carbon::parse($item->created_at)->diffForHumans(),
+                'created_at_human' => Carbon::parse($item->created_at)->diffForHumans(),
             ];
         }
 
@@ -139,7 +141,7 @@ class FaskesCommentController extends Controller
                 'total_reviews' => $breakdownStats['total_reviews'],
                 'rating_breakdown' => $breakdownStats['rating_breakdown'],
                 'rating_percentages' => $breakdownStats['rating_percentages'],
-            ]
+            ],
         ]);
     }
 
@@ -154,7 +156,7 @@ class FaskesCommentController extends Controller
         ]);
 
         $faskesExists = DB::table('faskes')->where('id_faskes', $faskes_id)->exists();
-        if (!$faskesExists) {
+        if (! $faskesExists) {
             return response()->json(['message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
         }
 
@@ -192,10 +194,10 @@ class FaskesCommentController extends Controller
         }
 
         // Log activity
-        DB::table('activity_logs')->insert([
+        DB::table('log_aktivitas')->insert([
             'id_user' => $user_id,
             'tipe_aksi' => 'Beri Ulasan Faskes',
-            'deskripsi' => 'Memberikan rating ' . $request->input('rating') . ' bintang untuk faskes ID ' . $faskes_id,
+            'deskripsi' => 'Memberikan rating '.$request->input('rating').' bintang untuk faskes ID '.$faskes_id,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -215,7 +217,7 @@ class FaskesCommentController extends Controller
                 'total_reviews' => $breakdownStats['total_reviews'],
                 'rating_breakdown' => $breakdownStats['rating_breakdown'],
                 'rating_percentages' => $breakdownStats['rating_percentages'],
-            ]
+            ],
         ], 201);
     }
 
@@ -230,7 +232,7 @@ class FaskesCommentController extends Controller
         ]);
 
         $comment = DB::table('komentar')->where('id_komentar', $id)->first();
-        if (!$comment) {
+        if (! $comment) {
             return response()->json(['message' => 'Ulasan tidak ditemukan'], 404);
         }
 
@@ -262,7 +264,7 @@ class FaskesCommentController extends Controller
                 'total_reviews' => $breakdownStats['total_reviews'],
                 'rating_breakdown' => $breakdownStats['rating_breakdown'],
                 'rating_percentages' => $breakdownStats['rating_percentages'],
-            ]
+            ],
         ]);
     }
 
@@ -272,7 +274,7 @@ class FaskesCommentController extends Controller
     public function destroy(Request $request, $id)
     {
         $comment = DB::table('komentar')->where('id_komentar', $id)->first();
-        if (!$comment) {
+        if (! $comment) {
             return response()->json(['message' => 'Ulasan tidak ditemukan'], 404);
         }
 
@@ -298,7 +300,7 @@ class FaskesCommentController extends Controller
                 'total_reviews' => $breakdownStats['total_reviews'],
                 'rating_breakdown' => $breakdownStats['rating_breakdown'],
                 'rating_percentages' => $breakdownStats['rating_percentages'],
-            ]
+            ],
         ]);
     }
 
@@ -379,8 +381,8 @@ class FaskesCommentController extends Controller
             }
 
             $nama = trim($item->nama_faskes ?? '');
-            if ($typeSlug === 'puskesmas' && !preg_match('/^(puskesmas|pkm)\b/i', $nama)) {
-                $nama = 'Puskesmas ' . $nama;
+            if ($typeSlug === 'puskesmas' && ! preg_match('/^(puskesmas|pkm)\b/i', $nama)) {
+                $nama = 'Puskesmas '.$nama;
             }
 
             return [
@@ -391,8 +393,8 @@ class FaskesCommentController extends Controller
                 'rating' => (int) $item->rating,
                 'body' => $item->isi_komentar,
                 'created_at' => $item->created_at,
-                'created_at_human' => \Carbon\Carbon::parse($item->created_at)->diffForHumans(),
-                'faskes_url' => url('/faskes/' . $item->id_faskes),
+                'created_at_human' => Carbon::parse($item->created_at)->diffForHumans(),
+                'faskes_url' => url('/faskes/'.$item->id_faskes),
             ];
         });
 
@@ -406,7 +408,7 @@ class FaskesCommentController extends Controller
                 'per_page' => $perPage,
                 'total_reviews' => $totalReviews,
                 'has_more' => $hasMore,
-            ]
+            ],
         ]);
     }
 
@@ -421,19 +423,19 @@ class FaskesCommentController extends Controller
         ]);
 
         $comment = DB::table('komentar')->where('id_komentar', $id)->first();
-        if (!$comment) {
+        if (! $comment) {
             return response()->json(['status' => 'error', 'message' => 'Ulasan tidak ditemukan.'], 404);
         }
 
         $currentUser = $request->user();
-        if (!$currentUser && ($bearer = $request->bearerToken())) {
-            $tokenObj = \Laravel\Sanctum\PersonalAccessToken::findToken($bearer);
+        if (! $currentUser && ($bearer = $request->bearerToken())) {
+            $tokenObj = PersonalAccessToken::findToken($bearer);
             if ($tokenObj && $tokenObj->tokenable) {
                 $currentUser = $tokenObj->tokenable;
             }
         }
 
-        if (!$currentUser) {
+        if (! $currentUser) {
             return response()->json(['status' => 'error', 'message' => 'Silakan masuk terlebih dahulu untuk melaporkan ulasan.'], 401);
         }
 
@@ -453,7 +455,7 @@ class FaskesCommentController extends Controller
         if ($alreadyReported) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Anda sudah pernah melaporkan ulasan ini sebelumnya. Laporan Anda sedang dalam antrean peninjauan admin.'
+                'message' => 'Anda sudah pernah melaporkan ulasan ini sebelumnya. Laporan Anda sedang dalam antrean peninjauan admin.',
             ]);
         }
 
@@ -469,7 +471,7 @@ class FaskesCommentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Laporan berhasil dikirim. Terima kasih atas bantuan Anda menjaga komunitas MediGO tetap aman dan sopan.'
+            'message' => 'Laporan berhasil dikirim. Terima kasih atas bantuan Anda menjaga komunitas MediGO tetap aman dan sopan.',
         ], 201);
     }
 
@@ -500,7 +502,7 @@ class FaskesCommentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $reports
+            'data' => $reports,
         ]);
     }
 
@@ -510,7 +512,7 @@ class FaskesCommentController extends Controller
     public function takedownReportAdmin(Request $request, $id)
     {
         $report = DB::table('laporan_komentar')->where('id_laporan_komentar', $id)->first();
-        if (!$report) {
+        if (! $report) {
             return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
         }
 
@@ -531,10 +533,10 @@ class FaskesCommentController extends Controller
 
         // Optional activity log
         try {
-            DB::table('activity_logs')->insert([
+            DB::table('log_aktivitas')->insert([
                 'id_user' => $request->user() ? ($request->user()->id_user ?? $request->user()->id) : $report->id_user,
                 'tipe_aksi' => 'Takedown Komentar Faskes',
-                'deskripsi' => 'Admin menghapus komentar ulasan faskes ID: ' . $report->id_komentar . ' karena laporan pengguna.',
+                'deskripsi' => 'Admin menghapus komentar ulasan faskes ID: '.$report->id_komentar.' karena laporan pengguna.',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -543,7 +545,7 @@ class FaskesCommentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Komentar berhasil di-takedown dan dihapus dari fasilitas kesehatan.'
+            'message' => 'Komentar berhasil di-takedown dan dihapus dari fasilitas kesehatan.',
         ]);
     }
 
@@ -553,7 +555,7 @@ class FaskesCommentController extends Controller
     public function dismissReportAdmin(Request $request, $id)
     {
         $report = DB::table('laporan_komentar')->where('id_laporan_komentar', $id)->first();
-        if (!$report) {
+        if (! $report) {
             return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
         }
 
@@ -564,7 +566,7 @@ class FaskesCommentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Laporan berhasil diabaikan/ditandai tidak melanggar aturan.'
+            'message' => 'Laporan berhasil diabaikan/ditandai tidak melanggar aturan.',
         ]);
     }
 }
