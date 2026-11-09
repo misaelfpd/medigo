@@ -10,7 +10,7 @@ class DiscussionReportController extends Controller
     public function store(Request $request, $discussionId)
     {
         $request->validate([
-            'reason' => 'required|string|max:500'
+            'reason' => 'required|string|max:500',
         ]);
 
         // Pastikan diskusi ada dan belum di takedown
@@ -19,7 +19,7 @@ class DiscussionReportController extends Controller
             ->where('status_diskusi', 'active')
             ->first();
 
-        if (!$discussion) {
+        if (! $discussion) {
             return response()->json(['message' => 'Diskusi tidak ditemukan atau sudah dihapus'], 404);
         }
 
@@ -31,7 +31,7 @@ class DiscussionReportController extends Controller
             'alasan_laporan' => $request->reason,
             'status' => 'pending',
             'created_at' => now(),
-            'updated_at' => now()
+            'updated_at' => now(),
         ]);
 
         return response()->json(['message' => 'Laporan berhasil dikirim'], 201);
@@ -54,7 +54,7 @@ class DiscussionReportController extends Controller
 
         return response()->json([
             'message' => 'Berhasil mengambil daftar laporan',
-            'data' => $reports
+            'data' => $reports,
         ]);
     }
 
@@ -64,7 +64,7 @@ class DiscussionReportController extends Controller
             ->where('id_diskusi', $discussionId)
             ->first();
 
-        if (!$discussion) {
+        if (! $discussion) {
             return response()->json(['message' => 'Diskusi tidak ditemukan'], 404);
         }
 
@@ -73,7 +73,15 @@ class DiscussionReportController extends Controller
             ->where('id_diskusi', $discussionId)
             ->update([
                 'status_diskusi' => 'deleted',
-                'updated_at' => now()
+                'updated_at' => now(),
+            ]);
+
+        // Tandai semua laporan terkait diskusi ini sebagai 'resolved'
+        DB::table('laporan_diskusi')
+            ->where('id_diskusi', $discussionId)
+            ->update([
+                'status' => 'resolved',
+                'updated_at' => now(),
             ]);
 
         $adminId = $request->user()->id_user ?? $request->user()->id;
@@ -82,7 +90,7 @@ class DiscussionReportController extends Controller
         DB::table('log_aktivitas')->insert([
             'id_user' => $adminId,
             'tipe_aksi' => 'Takedown Diskusi',
-            'deskripsi' => 'Admin menghapus (takedown) diskusi dengan ID: ' . $discussionId,
+            'deskripsi' => 'Admin menghapus (takedown) diskusi dengan ID: '.$discussionId,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

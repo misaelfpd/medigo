@@ -24,7 +24,7 @@ class DiscussionController extends Controller
             ->orderBy('diskusi.created_at', 'desc');
 
         // 2. Cek apakah ada request filter kategori
-        if ($request->has('category') && !empty($request->query('category'))) {
+        if ($request->has('category') && ! empty($request->query('category'))) {
             $cat = $request->query('category');
             if ($cat === 'BPJS') {
                 $query->whereIn('diskusi.kategori', ['BPJS', 'BPJS & Asuransi', 'Tanya BPJS']);
@@ -42,7 +42,7 @@ class DiscussionController extends Controller
 
         return response()->json([
             'message' => 'Berhasil mengambil daftar diskusi',
-            'data' => $discussions
+            'data' => $discussions,
         ]);
     }
 
@@ -65,19 +65,19 @@ class DiscussionController extends Controller
             foreach ($request->file('images') as $file) {
                 if ($file && $file->isValid()) {
                     $path = $file->store('discussions', 'public');
-                    $imageUrls[] = url('storage/' . $path);
+                    $imageUrls[] = url('storage/'.$path);
                 }
             }
         } elseif ($request->hasFile('image')) {
             $file = $request->file('image');
             if ($file && $file->isValid()) {
                 $path = $file->store('discussions', 'public');
-                $imageUrls[] = url('storage/' . $path);
+                $imageUrls[] = url('storage/'.$path);
             }
         }
 
-        $firstImage = !empty($imageUrls) ? $imageUrls[0] : null;
-        $imagesJson = !empty($imageUrls) ? json_encode($imageUrls) : null;
+        $firstImage = ! empty($imageUrls) ? $imageUrls[0] : null;
+        $imagesJson = ! empty($imageUrls) ? json_encode($imageUrls) : null;
 
         $discussionId = DB::table('diskusi')->insertGetId([
             'id_user' => $user_id,
@@ -95,14 +95,14 @@ class DiscussionController extends Controller
         DB::table('log_aktivitas')->insert([
             'id_user' => $user_id,
             'tipe_aksi' => 'Buat Diskusi',
-            'deskripsi' => 'Membuat diskusi baru dengan judul: ' . $request->input('title'),
+            'deskripsi' => 'Membuat diskusi baru dengan judul: '.$request->input('title'),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         return response()->json([
             'message' => 'Diskusi berhasil dibuat',
-            'discussion_id' => $discussionId
+            'discussion_id' => $discussionId,
         ], 201);
     }
 
@@ -114,6 +114,7 @@ class DiscussionController extends Controller
         $discussion = DB::table('diskusi')
             ->join('user', 'diskusi.id_user', '=', 'user.id_user')
             ->where('diskusi.id_diskusi', $id)
+            ->where('diskusi.status_diskusi', 'active')
             ->select(
                 'diskusi.id_diskusi as id',
                 'diskusi.id_user as user_id',
@@ -129,19 +130,19 @@ class DiscussionController extends Controller
             )
             ->first();
 
-        if (!$discussion) {
-            return response()->json(['message' => 'Diskusi tidak ditemukan'], 404);
+        if (! $discussion) {
+            return response()->json(['message' => 'Diskusi tidak ditemukan atau telah dihapus'], 404);
         }
 
         // Sediakan daftar array gambar untuk kenyamanan rendering di frontend
         $imagesList = [];
-        if (!empty($discussion->images)) {
+        if (! empty($discussion->images)) {
             $decoded = json_decode($discussion->images, true);
             if (is_array($decoded)) {
                 $imagesList = $decoded;
             }
         }
-        if (empty($imagesList) && !empty($discussion->image_path)) {
+        if (empty($imagesList) && ! empty($discussion->image_path)) {
             $imagesList = [$discussion->image_path];
         }
         $discussion->images_list = $imagesList;
@@ -155,7 +156,7 @@ class DiscussionController extends Controller
             'tanggapan_diskusi.isi_tanggapan as body',
             'tanggapan_diskusi.gambar_tanggapan as image_path',
             'user.nama_user as commentator_name',
-            'user.email_user as commentator_email'
+            'user.email_user as commentator_email',
         ];
         if ($hasCreatedAt) {
             $commentSelect[] = 'tanggapan_diskusi.created_at';
@@ -175,8 +176,8 @@ class DiscussionController extends Controller
             'data' => [
                 'discussion' => $discussion,
                 'comments' => $comments,
-                'logged_in_user_id' => $currentUserId
-            ]
+                'logged_in_user_id' => $currentUserId,
+            ],
         ]);
     }
 
@@ -185,13 +186,13 @@ class DiscussionController extends Controller
     {
         // Validasi alasan pelaporan
         $request->validate([
-            'reason' => 'required|string|max:1000'
+            'reason' => 'required|string|max:1000',
         ]);
 
         // Cek apakah diskusinya ada
         $discussionExists = DB::table('diskusi')->where('id_diskusi', $id)->exists();
 
-        if (!$discussionExists) {
+        if (! $discussionExists) {
             return response()->json(['message' => 'Diskusi tidak ditemukan'], 404);
         }
 
@@ -208,7 +209,7 @@ class DiscussionController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Laporan berhasil dikirim dan akan segera ditinjau oleh tim kami.'
+            'message' => 'Laporan berhasil dikirim dan akan segera ditinjau oleh tim kami.',
         ], 201);
     }
 
@@ -226,7 +227,7 @@ class DiscussionController extends Controller
 
         return response()->json([
             'message' => 'Berhasil mengambil daftar diskusi saya',
-            'data' => $discussions
+            'data' => $discussions,
         ]);
     }
 
@@ -248,7 +249,7 @@ class DiscussionController extends Controller
 
         return response()->json([
             'message' => 'Berhasil mengambil daftar tanggapan saya',
-            'data' => $comments
+            'data' => $comments,
         ]);
     }
 
@@ -259,7 +260,7 @@ class DiscussionController extends Controller
 
         $discussion = DB::table('diskusi')->where('id_diskusi', $id)->first();
 
-        if (!$discussion) {
+        if (! $discussion) {
             return response()->json(['status' => 'error', 'message' => 'Diskusi tidak ditemukan'], 404);
         }
 
@@ -267,7 +268,7 @@ class DiscussionController extends Controller
         $isAdmin = method_exists($request->user(), 'isAdmin') ? $request->user()->isAdmin() : ($userRole === 'admin');
 
         // Gunakan casting (int) untuk pencegahan mismatch tipe data
-        if ((int) $discussion->id_user !== (int) $userId && !$isAdmin) {
+        if ((int) $discussion->id_user !== (int) $userId && ! $isAdmin) {
             return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki izin untuk menghapus diskusi ini'], 403);
         }
 

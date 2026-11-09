@@ -114,5 +114,13 @@ class DiscussionReportTest extends TestCase
             'id_diskusi' => $discussion->id_diskusi,
             'status_diskusi' => 'deleted',
         ]);
+
+        $this->assertDatabaseHas('laporan_diskusi', [
+            'id_diskusi' => $discussion->id_diskusi,
+            'status' => 'resolved',
+        ]);
+
+        // Diskusi yang sudah dihapus tidak bisa dibuka di detail
+        $this->getJson("/api/discussions/{$discussion->id_diskusi}")->assertNotFound();
     }
 }
