@@ -40,6 +40,14 @@ class User extends Authenticatable
         return $this->password_user;
     }
 
+    /**
+     * Cek apakah user ini punya role admin (kolom 'role_user').
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role_user === 'admin';
+    }
+
     // 7. Casts bawaan Laravel lu yang udah disesuaikan
     protected function casts(): array
     {

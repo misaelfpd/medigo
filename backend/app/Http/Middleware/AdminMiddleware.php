@@ -13,15 +13,16 @@ class AdminMiddleware
      *
      * @param  Closure(Request): (Response)  $next
      */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        // Cek apakah user yang login punya role 'admin'
-        if ($request->user() && $request->user()->role === 'admin') {
+        // Cek apakah user yang login punya role 'admin' (kolom 'role_user')
+        if ($request->user() && $request->user()->isAdmin()) {
             return $next($request); // Silakan masuk
         }
 
         // Kalau bukan admin, tendang keluar pakai error 403
         return response()->json([
-            'message' => 'Akses ditolak. Rute ini khusus Admin Medigo.'
+            'message' => 'Akses ditolak. Rute ini khusus Admin Medigo.',
         ], 403);
-    }}
+    }
+}
