@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Faskes;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -85,5 +86,29 @@ class FaskesManagementTest extends TestCase
 
         Sanctum::actingAs($this->makeUser('user'));
         $this->getJson('/api/admin/stats')->assertForbidden();
+    }
+
+    public function test_admin_stats_returns_real_counts_and_recent_activities(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->makeFaskes();
+
+        DB::table('log_aktivitas')->insert([
+            'id_user' => $admin->id_user,
+            'tipe_aksi' => 'Buat Diskusi',
+            'deskripsi' => 'Topik kesehatan jantung',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+        $res = $this->getJson('/api/admin/stats');
+
+        $res->assertOk()
+            ->assertJsonPath('data.total_users', 1)
+            ->assertJsonPath('data.total_faskes', 1)
+            ->assertJsonPath('data.total_discussions', 0)
+            ->assertJsonPath('data.activities.0.title', 'Topik kesehatan jantung')
+            ->assertJsonPath('data.activities.0.type', 'forum');
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faskes;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -465,37 +466,46 @@ class FaskesController extends Controller
         $totalFaskes = DB::table('faskes')->count();
         $totalDiscussions = DB::table('diskusi')->count();
 
-        // Sample recent activity logs
-        $activities = [
-            [
-                'id' => 1,
-                'type' => 'forum',
-                'icon' => 'bi-chat-left-text',
-                'title' => "Topik baru: 'Tips Menjaga Kesehatan Jantung' diposting di Forum Kesehatan.",
-                'time' => '3 jam yang lalu',
-            ],
-            [
-                'id' => 2,
-                'type' => 'user',
-                'icon' => 'bi-person-plus',
-                'title' => 'Pengguna baru @budi_santoso telah bergabung dengan Medigo.',
-                'time' => 'Kemarin',
-            ],
-            [
-                'id' => 3,
-                'type' => 'forum',
-                'icon' => 'bi-chat-left-text',
-                'title' => "Topik baru: 'Tips Menjaga Kesehatan Anak' diposting di Forum Kesehatan.",
-                'time' => '3 jam yang lalu',
-            ],
-        ];
+        // Ambil 5 aktivitas terbaru dari tabel log_aktivitas
+        $recentLogs = DB::table('log_aktivitas')
+            ->leftJoin('user', 'log_aktivitas.id_user', '=', 'user.id_user')
+            ->select('log_aktivitas.*', 'user.nama_user')
+            ->orderBy('log_aktivitas.created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        $activities = $recentLogs->map(function ($log) {
+            $type = 'general';
+            $icon = 'bi-activity';
+            $lowerAction = strtolower($log->tipe_aksi ?? '');
+
+            if (str_contains($lowerAction, 'diskusi') || str_contains($lowerAction, 'forum')) {
+                $type = 'forum';
+                $icon = 'bi-chat-left-text';
+            } elseif (str_contains($lowerAction, 'ulasan') || str_contains($lowerAction, 'faskes') || str_contains($lowerAction, 'komentar')) {
+                $type = 'faskes';
+                $icon = 'bi-hospital';
+            } elseif (str_contains($lowerAction, 'user') || str_contains($lowerAction, 'daftar') || str_contains($lowerAction, 'login')) {
+                $type = 'user';
+                $icon = 'bi-person';
+            }
+
+            return [
+                'id' => $log->id_log,
+                'type' => $type,
+                'icon' => $icon,
+                'title' => $log->deskripsi,
+                'user' => $log->nama_user ?? 'Sistem',
+                'time' => $log->created_at ? Carbon::parse($log->created_at)->diffForHumans() : '-',
+            ];
+        });
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'total_users' => $totalUsers > 0 ? $totalUsers : 12450,
-                'total_faskes' => $totalFaskes > 0 ? $totalFaskes : 84,
-                'total_discussions' => $totalDiscussions > 0 ? $totalDiscussions : 1200,
+                'total_users' => $totalUsers,
+                'total_faskes' => $totalFaskes,
+                'total_discussions' => $totalDiscussions,
                 'activities' => $activities,
             ],
         ]);
