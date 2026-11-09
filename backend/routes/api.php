@@ -16,28 +16,9 @@ use App\Http\Middleware\AdminMiddleware;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::post('/auth/token-by-email', function (Request $request) {
-    $email = $request->input('email');
-    if (!$email) {
-        return response()->json(['message' => 'Email required'], 400);
-    }
-
-    $user = \App\Models\User::where('email_user', $email)->first();
-    if (!$user) {
-        $user = \App\Models\User::create([
-            'nama_user' => $request->input('name', explode('@', $email)[0]),
-            'email_user' => $email,
-            'password_user' => \Illuminate\Support\Facades\Hash::make('password123'),
-            'role_user' => 'user',
-        ]);
-    }
-
-    $token = $user->createToken('medigo_token')->plainTextToken;
-    return response()->json([
-        'access_token' => $token,
-        'user' => $user
-    ]);
-});
+// Server-to-server only: the frontend exchanges a logged-in user's email for a
+// token. Requires the shared X-Service-Key header (see AuthController).
+Route::post('/auth/token-by-email', [AuthController::class, 'tokenByEmail']);
 
 Route::get('/faskes', [FaskesController::class, 'index']);
 Route::get('/faskes/{id}', [FaskesController::class, 'show']);

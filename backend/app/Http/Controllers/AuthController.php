@@ -72,4 +72,41 @@ class AuthController extends Controller
             'message' => 'Logout berhasil, token dihapus!'
         ]);
     }
+
+    // 4. Token untuk server frontend (server-to-server, bukan untuk browser)
+    // Frontend memanggil ini kalau session-nya belum punya token backend.
+    // Wajib header X-Service-Key yang sama dengan MEDIGO_SERVICE_KEY.
+    public function tokenByEmail(Request $request)
+    {
+        $expectedKey = (string) config('services.frontend.service_key');
+        $providedKey = (string) $request->header('X-Service-Key', '');
+
+        // Fail closed: tanpa key yang dikonfigurasi, rute ini mati total.
+        if ($expectedKey === '' || ! hash_equals($expectedKey, $providedKey)) {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::where('email_user', $request->email)->first();
+
+        // Jangan pernah bikin user baru di sini; daftar lewat /api/register.
+        if (! $user) {
+            return response()->json(['message' => 'User tidak ditemukan.'], 404);
+        }
+
+        // Akun admin wajib login pakai password lewat /api/login.
+        if ($user->role_user !== 'user') {
+            return response()->json(['message' => 'Akses ditolak.'], 403);
+        }
+
+        $token = $user->createToken('medigo_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'user' => $user,
+        ]);
+    }
 }
