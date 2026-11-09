@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
@@ -24,6 +25,17 @@ class DatabaseSeederTest extends TestCase
             'email_user' => 'admin@medigo.test',
             'role_user' => 'admin',
         ]);
+
+        $this->assertDatabaseHas('faskes', [
+            'nama_faskes' => 'PUSKESMAS TEBET',
+            'kota_kabupaten' => 'Jakarta Selatan',
+        ]);
+
+        $this->assertGreaterThan(700, DB::table('faskes')->count());
+        $this->assertGreaterThan(700, DB::table('fasilitas')->count());
+        $this->assertGreaterThan(100, DB::table('spesialisasi')->count());
+        $this->assertGreaterThan(1000, DB::table('fasilitas_faskes')->count());
+        $this->assertGreaterThan(1000, DB::table('spesialisasi_faskes')->count());
 
         $generated = User::factory()->count(3)->create();
         $this->assertCount(3, $generated);

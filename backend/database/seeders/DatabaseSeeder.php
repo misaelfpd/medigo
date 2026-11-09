@@ -25,5 +25,7 @@ class DatabaseSeeder extends Seeder
             'nama_user' => 'Admin Medigo',
             'email_user' => 'admin@medigo.test',
         ]);
+
+        $this->call(FaskesSeeder::class);
     }
 }
