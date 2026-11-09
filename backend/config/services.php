@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Shared secret the frontend server sends as X-Service-Key to
+    // POST /api/auth/token-by-email. Leave empty to disable that route.
+    'frontend' => [
+        'service_key' => env('MEDIGO_SERVICE_KEY'),
+    ],
+
 ];
