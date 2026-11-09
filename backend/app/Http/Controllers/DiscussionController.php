@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class DiscussionController extends Controller
 {
@@ -147,7 +146,6 @@ class DiscussionController extends Controller
         }
         $discussion->images_list = $imagesList;
 
-        $hasCreatedAt = Schema::hasColumn('tanggapan_diskusi', 'created_at');
         $commentSelect = [
             'tanggapan_diskusi.id_tanggapan as id',
             'tanggapan_diskusi.id_user as user_id',
@@ -155,20 +153,16 @@ class DiscussionController extends Controller
             'tanggapan_diskusi.id_parent as parent_id',
             'tanggapan_diskusi.isi_tanggapan as body',
             'tanggapan_diskusi.gambar_tanggapan as image_path',
+            'tanggapan_diskusi.created_at',
             'user.nama_user as commentator_name',
             'user.email_user as commentator_email',
         ];
-        if ($hasCreatedAt) {
-            $commentSelect[] = 'tanggapan_diskusi.created_at';
-        } else {
-            $commentSelect[] = DB::raw('NULL as created_at');
-        }
 
         $comments = DB::table('tanggapan_diskusi')
             ->join('user', 'tanggapan_diskusi.id_user', '=', 'user.id_user')
             ->where('tanggapan_diskusi.id_diskusi', $id)
             ->select($commentSelect)
-            ->orderBy($hasCreatedAt ? 'tanggapan_diskusi.created_at' : 'tanggapan_diskusi.id_tanggapan', 'asc')
+            ->orderBy('tanggapan_diskusi.created_at', 'asc')
             ->get();
 
         return response()->json([
@@ -181,39 +175,7 @@ class DiscussionController extends Controller
         ]);
     }
 
-    // 4. Laporkan diskusi (Report)
-    public function report(Request $request, $id)
-    {
-        // Validasi alasan pelaporan
-        $request->validate([
-            'reason' => 'required|string|max:1000',
-        ]);
-
-        // Cek apakah diskusinya ada
-        $discussionExists = DB::table('diskusi')->where('id_diskusi', $id)->exists();
-
-        if (! $discussionExists) {
-            return response()->json(['message' => 'Diskusi tidak ditemukan'], 404);
-        }
-
-        $user_id = $request->user()->id_user ?? $request->user()->id;
-
-        // Simpan laporan ke database
-        DB::table('laporan_diskusi')->insert([
-            'id_diskusi' => $id,
-            'id_user' => $user_id, // Asumsi pakai auth sanctum
-            'alasan_laporan' => $request->input('reason'),
-            'status' => 'pending', // Status awal: menunggu tinjauan admin
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return response()->json([
-            'message' => 'Laporan berhasil dikirim dan akan segera ditinjau oleh tim kami.',
-        ], 201);
-    }
-
-    // 5. Mengambil riwayat diskusi milik user yang sedang login
+    // 4. Mengambil riwayat diskusi milik user yang sedang login
     public function myDiscussions(Request $request)
     {
         $userId = $request->user()->id_user ?? $request->user()->id;
@@ -236,7 +198,6 @@ class DiscussionController extends Controller
     {
         $userId = $request->user()->id_user ?? $request->user()->id;
 
-        $hasCreatedAt = Schema::hasColumn('tanggapan_diskusi', 'created_at');
         $comments = DB::table('tanggapan_diskusi')
             ->join('diskusi', 'tanggapan_diskusi.id_diskusi', '=', 'diskusi.id_diskusi')
             ->where('tanggapan_diskusi.id_user', $userId)
@@ -244,7 +205,7 @@ class DiscussionController extends Controller
                 'tanggapan_diskusi.*',
                 'diskusi.judul_diskusi as discussion_title'
             )
-            ->orderBy($hasCreatedAt ? 'tanggapan_diskusi.created_at' : 'tanggapan_diskusi.id_tanggapan', 'desc')
+            ->orderBy('tanggapan_diskusi.created_at', 'desc')
             ->get();
 
         return response()->json([

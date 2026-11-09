@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\TanggapanDiskusi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class DiscussionCommentController extends Controller
@@ -41,12 +40,9 @@ class DiscussionCommentController extends Controller
             'isi_tanggapan' => $request->input('body'),
             'gambar_tanggapan' => $imageUrl,
             'id_parent' => $request->input('parent_id'),
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
-
-        if (Schema::hasColumn('tanggapan_diskusi', 'created_at')) {
-            $commentData['created_at'] = now();
-            $commentData['updated_at'] = now();
-        }
 
         $commentId = DB::table('tanggapan_diskusi')->insertGetId($commentData);
 
