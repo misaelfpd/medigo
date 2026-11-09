@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminFaskesController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\DiscussionController;
 use App\Http\Controllers\FaskesDetailController;
@@ -37,6 +38,13 @@ Route::post('/discussions/{id}/comments', [DiscussionController::class, 'reply']
 Route::delete('/discussion-comments/{id}', [DiscussionController::class, 'destroyComment'])->name('discussion-comments.destroy');
 Route::delete('/discussions/{id}', [DiscussionController::class, 'destroyDiscussion'])->name('discussions.destroy');
 Route::post('/forum/report/{type}/{id}', [DiscussionController::class, 'report'])->name('forum.report');
+
+// User Authentication Routes
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
+Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 
 
 // Admin Auth Routes
