@@ -43,24 +43,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/discussions', [DiscussionController::class, 'myDiscussions']);
     Route::get('/user/comments', [DiscussionController::class, 'myComments']);
 
-    // Rute Kasih Rating & Review ke Faskes (CRUD)
-    Route::post('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'store']);
-    Route::put('/comments/{id}', [FaskesCommentController::class, 'update']);
-    Route::delete('/comments/{id}', [FaskesCommentController::class, 'destroy']);
-    Route::get('/user/reviews', [FaskesCommentController::class, 'getUserReviews']);
+    // ==========================================
+    // 1. RUTE ULASAN FASILITAS KESEHATAN (TABEL `komentar`)
+    // ==========================================
+    Route::post('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'store']); // Tambah ulasan baru / rating ke faskes
+    Route::put('/comments/{id}', [FaskesCommentController::class, 'update']);                // Ubah ulasan faskes milik sendiri
+    Route::delete('/comments/{id}', [FaskesCommentController::class, 'destroy']);            // Hapus ulasan faskes milik sendiri / admin
+    Route::get('/user/reviews', [FaskesCommentController::class, 'getUserReviews']);         // Ambil daftar ulasan faskes milik user yang login
+    Route::post('/faskes-comments/{id}/report', [FaskesCommentController::class, 'report']); // Laporkan ulasan faskes yang melanggar aturan
 
-    // Rute Forum Diskusi (Protected)
-    Route::post('/discussions', [DiscussionController::class, 'store']); // Bikin diskusi baru
-    Route::delete('/discussions/{id}', [DiscussionController::class, 'destroy']); // Hapus diskusi sendiri
-
-    // Rute Tambah Komentar di Diskusi
-    Route::post('/discussions/{discussion_id}/comments', [DiscussionCommentController::class, 'store']);
-    // Route untuk melaporkan komentar
+    // ==========================================
+    // 2. RUTE FORUM DISKUSI & BALASAN DISKUSI
+    // ==========================================
+    Route::post('/discussions', [DiscussionController::class, 'store']);                                   // Buat topik diskusi baru
+    Route::delete('/discussions/{id}', [DiscussionController::class, 'destroy']);                          // Hapus (soft delete) diskusi sendiri / admin
+    Route::post('/discussions/{id}/report', [DiscussionReportController::class, 'store']);                 // Laporkan topik diskusi yang melanggar aturan
+    Route::post('/discussions/{discussion_id}/comments', [DiscussionCommentController::class, 'store']);   // Tambah balasan/komentar di topik diskusi
+    Route::delete('/discussion-comments/{id}', [DiscussionCommentController::class, 'destroy']);          // Hapus balasan diskusi sendiri / admin
+    // Catatan integrasi frontend: '/comments/{id}/report' digunakan untuk melaporkan balasan DISKUSI (tabel tanggapan_diskusi)
     Route::post('/comments/{id}/report', [DiscussionCommentController::class, 'report']);
-    Route::delete('/discussion-comments/{id}', [DiscussionCommentController::class, 'destroy']);
-    // Rute Report Diskusi & Komentar Faskes
-    Route::post('/discussions/{id}/report', [DiscussionReportController::class, 'store']);
-    Route::post('/faskes-comments/{id}/report', [FaskesCommentController::class, 'report']);
 
     // GEMINI AI
     Route::post('/chat-ai', [GeminiController::class, 'chat']);
