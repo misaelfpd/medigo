@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TanggapanDiskusi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use App\Models\TanggapanDiskusi;
 
 class DiscussionCommentController extends Controller
 {
@@ -23,14 +23,14 @@ class DiscussionCommentController extends Controller
             ->where('status_diskusi', 'active') // Asumsi pakai 'status_diskusi' di tabel baru
             ->exists();
 
-        if (!$discussionExists) {
+        if (! $discussionExists) {
             return response()->json(['message' => 'Diskusi tidak ditemukan atau telah ditutup'], 404);
         }
 
         $imageUrl = null;
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('comments', 'public');
-            $imageUrl = url('storage/' . $path);
+            $imageUrl = url('storage/'.$path);
         }
 
         $currentUserId = $request->user()->id_user ?? $request->user()->id;
@@ -52,23 +52,42 @@ class DiscussionCommentController extends Controller
 
         return response()->json([
             'message' => 'Komentar berhasil ditambahkan',
-            'comment_id' => $commentId
+            'comment_id' => $commentId,
         ], 201);
     }
 
     public function report(Request $request, $id)
     {
         $request->validate([
-            'reason' => 'required|string|max:1000'
+            'reason' => 'required|string|max:1000',
         ]);
 
-        $commentExists = DB::table('tanggapan_diskusi')->where('id_tanggapan', $id)->exists();
+        $comment = DB::table('tanggapan_diskusi')->where('id_tanggapan', $id)->first();
 
-        if (!$commentExists) {
+        if (! $comment) {
             return response()->json(['message' => 'Komentar tidak ditemukan'], 404);
         }
 
         $currentUserId = $request->user()->id_user ?? $request->user()->id;
+
+        if ((int) $comment->id_user === (int) $currentUserId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda tidak dapat melaporkan komentar Anda sendiri.',
+            ], 422);
+        }
+
+        $alreadyReported = DB::table('laporan_tanggapan')
+            ->where('id_tanggapan', $id)
+            ->where('id_user', $currentUserId)
+            ->exists();
+
+        if ($alreadyReported) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Anda sudah pernah melaporkan komentar ini sebelumnya. Laporan Anda sedang dalam antrean peninjauan.',
+            ]);
+        }
 
         DB::table('laporan_tanggapan')->insert([
             'id_tanggapan' => $id,
@@ -80,14 +99,15 @@ class DiscussionCommentController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Laporan komentar berhasil dikirim dan akan segera ditinjau.'
+            'status' => 'success',
+            'message' => 'Laporan komentar berhasil dikirim dan akan segera ditinjau.',
         ], 201);
     }
 
     public function destroy(Request $request, $id)
     {
         $comment = TanggapanDiskusi::find($id); // Modelnya wajib disesuaikan dengan tabel tanggapan_diskusi
-        if (!$comment) {
+        if (! $comment) {
             return response()->json(['status' => 'error', 'message' => 'Komentar tidak ditemukan'], 404);
         }
 
@@ -96,7 +116,7 @@ class DiscussionCommentController extends Controller
 
         $currentUserId = $currentUser->id_user ?? $currentUser->id;
 
-        if ((int) $comment->id_user !== (int) $currentUserId && !$isAdmin) {
+        if ((int) $comment->id_user !== (int) $currentUserId && ! $isAdmin) {
             return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki izin untuk menghapus komentar ini'], 403);
         }
 
@@ -106,6 +126,7 @@ class DiscussionCommentController extends Controller
         }
 
         $comment->delete();
+
         return response()->json(['status' => 'success', 'message' => 'Balasan berhasil dihapus']);
     }
 }

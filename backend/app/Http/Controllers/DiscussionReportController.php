@@ -25,6 +25,25 @@ class DiscussionReportController extends Controller
 
         $userId = $request->user()->id_user ?? $request->user()->id;
 
+        if ((int) $discussion->id_user === (int) $userId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda tidak dapat melaporkan diskusi Anda sendiri.',
+            ], 422);
+        }
+
+        $alreadyReported = DB::table('laporan_diskusi')
+            ->where('id_diskusi', $discussionId)
+            ->where('id_user', $userId)
+            ->exists();
+
+        if ($alreadyReported) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Anda sudah pernah melaporkan diskusi ini sebelumnya. Laporan Anda sedang dalam antrean peninjauan.',
+            ]);
+        }
+
         DB::table('laporan_diskusi')->insert([
             'id_diskusi' => $discussionId,
             'id_user' => $userId,

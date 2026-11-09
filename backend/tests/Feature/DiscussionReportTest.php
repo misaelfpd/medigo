@@ -50,6 +50,18 @@ class DiscussionReportTest extends TestCase
             'status' => 'pending',
             'alasan_laporan' => 'Konten spam terlarang',
         ]);
+
+        // Tidak bisa melapor dua kali
+        $dupResponse = $this->postJson("/api/discussions/{$discussion->id_diskusi}/report", [
+            'reason' => 'Laporan lagi',
+        ]);
+        $dupResponse->assertOk()
+            ->assertJsonPath('status', 'success');
+
+        // Author tidak bisa melapor diskusinya sendiri
+        Sanctum::actingAs($author);
+        $this->postJson("/api/discussions/{$discussion->id_diskusi}/report", ['reason' => 'Tes'])
+            ->assertStatus(422);
     }
 
     public function test_user_can_report_discussion_comment(): void
@@ -83,6 +95,17 @@ class DiscussionReportTest extends TestCase
             'id_user' => $reporter->id_user,
             'status' => 'pending',
         ]);
+
+        // Tidak bisa melapor komentar dua kali
+        $dupCommentReport = $this->postJson("/api/comments/{$comment->id_tanggapan}/report", [
+            'reason' => 'Lapor lagi',
+        ]);
+        $dupCommentReport->assertOk();
+
+        // Author tidak bisa melapor komentarnya sendiri
+        Sanctum::actingAs($author);
+        $this->postJson("/api/comments/{$comment->id_tanggapan}/report", ['reason' => 'Tes'])
+            ->assertStatus(422);
     }
 
     public function test_admin_can_view_discussion_reports_and_takedown(): void
