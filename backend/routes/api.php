@@ -1,16 +1,18 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DiscussionCommentController;
+use App\Http\Controllers\DiscussionController;
+use App\Http\Controllers\DiscussionReportController;
+use App\Http\Controllers\FaskesCommentController;
+use App\Http\Controllers\FaskesController;
+use App\Http\Controllers\FaskesFeedbackController;
+use App\Http\Controllers\GeminiController;
+use App\Http\Middleware\AdminMiddleware;
+use App\Services\GeminiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\FaskesController;
-use App\Http\Controllers\DiscussionController;
-use App\Http\Controllers\DiscussionCommentController;
-use App\Http\Controllers\FaskesCommentController;
-use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\DiscussionReportController;
-use App\Http\Controllers\FaskesFeedbackController;
-use App\Http\Middleware\AdminMiddleware;
 
 // Rute Publik
 Route::post('/register', [AuthController::class, 'register']);
@@ -23,10 +25,6 @@ Route::post('/auth/token-by-email', [AuthController::class, 'tokenByEmail']);
 Route::get('/faskes', [FaskesController::class, 'index']);
 Route::get('/faskes/{id}', [FaskesController::class, 'show']);
 Route::get('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'index']);
-Route::post('/faskes', [FaskesController::class, 'store']);
-Route::put('/faskes/{id}', [FaskesController::class, 'update']);
-Route::delete('/faskes/{id}', [FaskesController::class, 'destroy']);
-Route::get('/admin/stats', [FaskesController::class, 'getAdminStats']);
 Route::post('/faskes/{faskes_id}/feedback', [FaskesFeedbackController::class, 'store']);
 
 // Rute Forum Diskusi (Public)
@@ -66,11 +64,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/faskes-comments/{id}/report', [FaskesCommentController::class, 'report']);
 
     // GEMINI AI
-    Route::post('/chat-ai', [App\Http\Controllers\GeminiController::class, 'chat']);
+    Route::post('/chat-ai', [GeminiController::class, 'chat']);
 
     // Rute Admin Dashboard Log (Wajib Login + Wajib Admin)
     Route::middleware(AdminMiddleware::class)->group(function () {
         Route::get('/admin/logs', [ActivityLogController::class, 'index']);
+        Route::get('/admin/stats', [FaskesController::class, 'getAdminStats']);
+
+        // Admin CRUD Faskes
+        Route::post('/faskes', [FaskesController::class, 'store']);
+        Route::put('/faskes/{id}', [FaskesController::class, 'update']);
+        Route::delete('/faskes/{id}', [FaskesController::class, 'destroy']);
+
         Route::get('/admin/discussion-reports', [DiscussionReportController::class, 'indexAdmin']);
         Route::post('/admin/discussions/{id}/takedown', [DiscussionReportController::class, 'takedown']);
 
@@ -83,8 +88,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-Route::post('/tes-ai', function (Request $request, App\Services\GeminiClient $gemini) {
-    if (!$gemini->isConfigured()) {
+Route::post('/tes-ai', function (Request $request, GeminiClient $gemini) {
+    if (! $gemini->isConfigured()) {
         return response()->json(['status' => 'Belum dikonfigurasi', 'message' => 'Set GEMINI_API_KEY di .env lalu php artisan config:clear'], 503);
     }
 
@@ -100,7 +105,7 @@ Route::post('/tes-ai', function (Request $request, App\Services\GeminiClient $ge
                 [
                     'role' => 'user',
                     'parts' => [['text' => $request->query('prompt', $request->input('prompt'))]],
-                ]
+                ],
             ],
         ]);
     } catch (RuntimeException $e) {
@@ -116,7 +121,7 @@ Route::post('/tes-ai', function (Request $request, App\Services\GeminiClient $ge
         'model' => $model,
         'latency_ms' => (int) round((microtime(true) - $started) * 1000),
         'reply' => collect($data['candidates'][0]['content']['parts'] ?? [])
-            ->reject(fn($part) => $part['thought'] ?? false)
+            ->reject(fn ($part) => $part['thought'] ?? false)
             ->pluck('text')->filter()->implode(''),
         'finish_reason' => $data['candidates'][0]['finishReason'] ?? null,
     ]);
