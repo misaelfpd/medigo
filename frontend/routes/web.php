@@ -4,8 +4,10 @@ use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminFaskesController;
 use App\Http\Controllers\BerandaController;
+use App\Http\Controllers\DiscussionController;
 use App\Http\Controllers\FaskesDetailController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -22,6 +24,20 @@ Route::post('/faskes/{id}/comments/{commentId}/report', [FaskesDetailController:
 Route::post('/faskes/{id}/feedback', [FaskesDetailController::class, 'storeFeedback'])->name('faskes.feedback.store');
 Route::delete('/reviews/{commentId}', [FaskesDetailController::class, 'destroyReview'])->name('reviews.destroy');
 Route::get('/map', [MapController::class, 'index'])->name('map.index');
+
+// User Profile & Community Routes
+Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+Route::get('/profile/comments', [ProfileController::class, 'getComments'])->name('profile.comments');
+Route::get('/discussions', [DiscussionController::class, 'index'])->name('discussions');
+Route::get('/discussions/create', [DiscussionController::class, 'create'])->name('discussions.create');
+Route::post('/discussions', [DiscussionController::class, 'store'])->name('discussions.store');
+Route::get('/discussions/{id}', [DiscussionController::class, 'show'])->name('discussions.show');
+Route::post('/discussions/{id}/comments', [DiscussionController::class, 'reply'])->name('discussions.reply');
+Route::delete('/discussion-comments/{id}', [DiscussionController::class, 'destroyComment'])->name('discussion-comments.destroy');
+Route::delete('/discussions/{id}', [DiscussionController::class, 'destroyDiscussion'])->name('discussions.destroy');
+Route::post('/forum/report/{type}/{id}', [DiscussionController::class, 'report'])->name('forum.report');
+
 
 // Admin Auth Routes
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
