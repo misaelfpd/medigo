@@ -10,7 +10,6 @@ use App\Http\Controllers\FaskesController;
 use App\Http\Controllers\FaskesFeedbackController;
 use App\Http\Controllers\GeminiController;
 use App\Http\Middleware\AdminMiddleware;
-use App\Services\GeminiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -86,43 +85,4 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/faskes-comment-reports/{id}/takedown', [FaskesCommentController::class, 'takedownReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/dismiss', [FaskesCommentController::class, 'dismissReportAdmin']);
     });
-});
-
-Route::post('/tes-ai', function (Request $request, GeminiClient $gemini) {
-    if (! $gemini->isConfigured()) {
-        return response()->json(['status' => 'Belum dikonfigurasi', 'message' => 'Set GEMINI_API_KEY di .env lalu php artisan config:clear'], 503);
-    }
-
-    $request->validate([
-        'prompt' => 'required|string|max:1000',
-    ]);
-
-    $started = microtime(true);
-
-    try {
-        [$model, $data] = $gemini->generate([
-            'contents' => [
-                [
-                    'role' => 'user',
-                    'parts' => [['text' => $request->query('prompt', $request->input('prompt'))]],
-                ],
-            ],
-        ]);
-    } catch (RuntimeException $e) {
-        return response()->json([
-            'status' => 'Gagal Nembus Google',
-            'models_tried' => config('services.gemini.models'),
-            'error_detail' => $e->getMessage(),
-        ], 502);
-    }
-
-    return response()->json([
-        'status' => 'Sukses',
-        'model' => $model,
-        'latency_ms' => (int) round((microtime(true) - $started) * 1000),
-        'reply' => collect($data['candidates'][0]['content']['parts'] ?? [])
-            ->reject(fn ($part) => $part['thought'] ?? false)
-            ->pluck('text')->filter()->implode(''),
-        'finish_reason' => $data['candidates'][0]['finishReason'] ?? null,
-    ]);
 });
