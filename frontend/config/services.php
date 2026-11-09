@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Shared secret sent as X-Service-Key when asking the backend for a
+    // user's API token (POST /api/auth/token-by-email). Must match the
+    // backend's MEDIGO_SERVICE_KEY.
+    'medigo' => [
+        'service_key' => env('MEDIGO_SERVICE_KEY'),
+    ],
+
 ];

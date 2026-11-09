@@ -71,10 +71,11 @@ class DiscussionController extends Controller
             $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
             $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
-            $response = Http::timeout(5)->post("{$backendUrl}/api/auth/token-by-email", [
-                'email' => Auth::user()->email,
-                'name'  => Auth::user()->name,
-            ]);
+            $response = Http::timeout(5)
+                ->withHeaders(['X-Service-Key' => (string) config('services.medigo.service_key')])
+                ->post("{$backendUrl}/api/auth/token-by-email", [
+                    'email' => Auth::user()->email,
+                ]);
 
             if ($response->successful()) {
                 $token = $response->json('access_token');
