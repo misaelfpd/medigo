@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminDiscussionReportController;
 use App\Http\Controllers\Admin\AdminFaskesController;
+use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\DiscussionController;
@@ -11,8 +13,9 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
+// Public User Routes
 Route::get('/', function () {
-    return view('welcome');
+    return view('landing');
 });
 Route::get('/faskes', [BerandaController::class, 'index'])->name('faskes.index');
 Route::get('/faskes/load-more', [BerandaController::class, 'loadMore'])->name('faskes.loadMore');
@@ -61,4 +64,17 @@ Route::prefix('admin')->group(function () {
     Route::post('/faskes', [AdminFaskesController::class, 'store'])->name('admin.faskes.store');
     Route::put('/faskes/{id}', [AdminFaskesController::class, 'update'])->name('admin.faskes.update');
     Route::delete('/faskes/{id}', [AdminFaskesController::class, 'destroy'])->name('admin.faskes.destroy');
+    
+    Route::get('/discussion-reports', [AdminDiscussionReportController::class, 'index'])->name('admin.discussion-reports');
+    Route::post('/discussions/{id}/takedown', [AdminDiscussionReportController::class, 'takedown'])->name('admin.discussions.takedown');
+    // Rute menghapus komentar diskusi
+    Route::delete('/discussion-comments/{id}', [App\Http\Controllers\DiscussionController::class, 'destroyComment']);
+
+    // Rute Laporan Komentar & Masukan Data Faskes
+    Route::get('/comment-reports', [AdminReportController::class, 'indexCommentReports'])->name('admin.comment-reports');
+    Route::post('/comment-reports/{id}/takedown', [AdminReportController::class, 'takedownComment'])->name('admin.comment-reports.takedown');
+    Route::post('/comment-reports/{id}/dismiss', [AdminReportController::class, 'dismissCommentReport'])->name('admin.comment-reports.dismiss');
+    
+    Route::get('/feedback-faskes', [AdminReportController::class, 'indexFeedbacks'])->name('admin.faskes-feedbacks');
+    Route::put('/feedback-faskes/{id}/status', [AdminReportController::class, 'updateFeedbackStatus'])->name('admin.faskes-feedbacks.status');
 });
