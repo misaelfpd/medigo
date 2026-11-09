@@ -37,13 +37,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         reviews.forEach(review => {
                             if (container) {
+                                const revId = review.id || review.id_komentar;
+                                const faskesId = review.faskes_id || review.id_faskes || 1;
+                                const revBody = review.body || review.isi_komentar || '';
                                 const card = document.createElement('div');
                                 card.className = 'card border rounded-4 bg-white shadow-2xs p-3 profile-review-item mb-3 position-relative';
-                                card.id = `user-review-${review.id}`;
+                                card.id = `user-review-${revId}`;
                                 card.innerHTML = `
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
-                                    <h6 class="fw-bold text-dark mb-0"><a href="${review.faskes_url || '/faskes/' + review.faskes_id}" class="text-dark text-decoration-none">${review.nama_faskes || 'Fasilitas Kesehatan'}</a></h6>
+                                    <h6 class="fw-bold text-dark mb-0"><a href="${review.faskes_url || '/faskes/' + faskesId}" class="text-dark text-decoration-none">${review.nama_faskes || 'Fasilitas Kesehatan'}</a></h6>
                                     <span class="text-muted" style="font-size: 0.76rem;">${review.created_at_human || 'Baru saja'}</span>
                                 </div>
                                 <div class="d-flex align-items-center gap-1">
@@ -51,14 +54,14 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <span class="ms-1 fw-bold text-dark small">${review.rating}.0</span>
                                 </div>
                             </div>
-                            <p class="${review.body ? 'text-dark' : 'text-muted fst-italic'} mb-2 mt-1" style="font-size: 0.88rem;">
-                                ${review.body ? review.body : '(Tidak menyertakan komentar)'}
+                            <p class="${revBody ? 'text-dark' : 'text-muted fst-italic'} mb-2 mt-1" style="font-size: 0.88rem;">
+                                ${revBody ? revBody : '(Tidak menyertakan komentar)'}
                             </p>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <a href="/faskes/${review.faskes_id || 1}" class="btn btn-sm btn-light rounded-pill px-3 text-medigo-primary fw-semibold" style="font-size: 0.74rem;">
+                                <a href="/faskes/${faskesId}" class="btn btn-sm btn-light rounded-pill px-3 text-medigo-primary fw-semibold" style="font-size: 0.74rem;">
                                     Lihat Faskes <i class="bi bi-chevron-right ms-1"></i>
                                 </a>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-faskes-review" data-id="${review.id}" style="font-size: 0.72rem;" title="Hapus Ulasan">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-faskes-review" data-id="${revId}" style="font-size: 0.72rem;" title="Hapus Ulasan">
                                     <i class="bi bi-trash"></i> Hapus
                                 </button>
                             </div>

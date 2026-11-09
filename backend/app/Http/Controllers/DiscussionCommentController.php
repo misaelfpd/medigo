@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use App\Models\TanggapanDiskusi;
 
@@ -34,15 +35,20 @@ class DiscussionCommentController extends Controller
 
         $currentUserId = $request->user()->id_user ?? $request->user()->id;
 
-        $commentId = DB::table('tanggapan_diskusi')->insertGetId([
+        $commentData = [
             'id_diskusi' => $discussion_id,
             'id_user' => $currentUserId,
             'isi_tanggapan' => $request->input('body'),
-            'gambar_tanggapan' => $imageUrl, // Asumsi nama kolomnya 'gambar_tanggapan'
-            'id_parent' => $request->input('parent_id'), // Asumsi nama kolomnya 'id_parent' buat reply
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            'gambar_tanggapan' => $imageUrl,
+            'id_parent' => $request->input('parent_id'),
+        ];
+
+        if (Schema::hasColumn('tanggapan_diskusi', 'created_at')) {
+            $commentData['created_at'] = now();
+            $commentData['updated_at'] = now();
+        }
+
+        $commentId = DB::table('tanggapan_diskusi')->insertGetId($commentData);
 
         return response()->json([
             'message' => 'Komentar berhasil ditambahkan',

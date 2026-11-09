@@ -1,8 +1,11 @@
 @php
     $beUrl = rtrim(str_replace('localhost', '127.0.0.1', config('services.medigo.url', 'http://127.0.0.1:8005')), '/');
     
-    // Ambil email dari data komentar yang dikirim backend
-    $commenterEmail = $comment['commentator_email'] ?? ($comment['email'] ?? null);
+    $commentId = $comment['id_tanggapan'] ?? ($comment['id'] ?? null);
+    $commenterName = $comment['nama_user'] ?? ($comment['commentator_name'] ?? 'Pengguna');
+    $commenterEmail = $comment['email_user'] ?? ($comment['commentator_email'] ?? ($comment['email'] ?? null));
+    $commentBody = $comment['isi_tanggapan'] ?? ($comment['body'] ?? ($comment['content'] ?? ''));
+    $commentImage = $comment['gambar_tanggapan'] ?? ($comment['image_path'] ?? null);
     
     // CEK KEPEMILIKAN BERDASARKAN EMAIL (Aman dari perbedaan ID database FE & BE)
     $isOwner = Auth::check() && $commenterEmail && (Auth::user()->email === $commenterEmail);
@@ -10,16 +13,16 @@
     // Bisa report jika sudah login DAN BUKAN pemilik komentar sendiri
     $canReport = Auth::check() && !$isOwner;
 @endphp
-<div class="card border-0 border-bottom rounded-0 pb-3 bg-transparent comment-item {{ $index >= $limit ? 'd-none hidden-comment' : '' }}" id="comment-item-{{ $comment['id'] }}">
+<div class="card border-0 border-bottom rounded-0 pb-3 bg-transparent comment-item {{ $index >= $limit ? 'd-none hidden-comment' : '' }}" id="comment-item-{{ $commentId }}">
     <div class="card-body p-0">
         
         <!-- Info Komentar Utama -->
         <div class="d-flex justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2">
                 <div class="avatar-circle-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
-                    {{ strtoupper(substr($comment['commentator_name'] ?? 'U', 0, 1)) }}
+                    {{ strtoupper(substr($commenterName, 0, 1)) }}
                 </div>
-                <div class="fw-semibold text-dark">{{ $comment['commentator_name'] ?? 'Pengguna' }}</div>
+                <div class="fw-semibold text-dark">{{ $commenterName }}</div>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="text-muted small">{{ \Carbon\Carbon::parse($comment['created_at'] ?? now())->diffForHumans() }}</span>
@@ -29,8 +32,8 @@
                     <button 
                         type="button" 
                         class="btn btn-link text-danger p-0 text-decoration-none small btn-delete-forum-comment" 
-                        data-id="{{ $comment['id'] }}"
-                        data-target="comment-item-{{ $comment['id'] }}"
+                        data-id="{{ $commentId }}"
+                        data-target="comment-item-{{ $commentId }}"
                         title="Hapus Komentar">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -38,18 +41,18 @@
 
                 <!-- Tombol Report Komentar (hanya tampil untuk bukan pemilik) -->
                 @if($canReport)
-                    <button class="btn btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#dynamicReportModal" data-report-type="comment" data-report-id="{{ $comment['id'] }}" title="Laporkan Komentar">
+                    <button class="btn btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#dynamicReportModal" data-report-type="comment" data-report-id="{{ $commentId }}" title="Laporkan Komentar">
                         <i class="bi bi-flag"></i>
                     </button>
                 @endif
             </div>
         </div>
-        <div class="ps-5 text-secondary">{!! nl2br(e($comment['body'] ?? '')) !!}</div>
+        <div class="ps-5 text-secondary">{!! nl2br(e($commentBody)) !!}</div>
         
         <!-- GAMBAR KOMENTAR UTAMA -->
-        @if(!empty($comment['image_path']))
+        @if(!empty($commentImage))
             @php
-                $imgUrl = str_starts_with($comment['image_path'], 'http') ? str_replace('http://localhost', $beUrl, $comment['image_path']) : $beUrl . '/storage/' . ltrim($comment['image_path'], '/');
+                $imgUrl = str_starts_with($commentImage, 'http') ? str_replace('http://localhost', $beUrl, $commentImage) : $beUrl . '/storage/' . ltrim($commentImage, '/');
             @endphp
             <div class="ps-5 mt-2">
                 <img src="{{ $imgUrl }}" alt="Lampiran" class="img-fluid rounded border shadow-sm cursor-pointer clickable-image" style="max-height: 200px; object-fit: cover;" onclick="openImageViewer('{{ $imgUrl }}')">
@@ -57,7 +60,7 @@
         @endif
         
         <div class="ps-5 mt-2">
-            <button class="btn btn-link fw-semibold text-medigo-primary p-0 text-decoration-none" onclick="setReplyTarget('{{ $comment['id'] }}', '{{ $comment['commentator_name'] ?? 'Pengguna' }}')">Balas</button>
+            <button class="btn btn-link fw-semibold text-medigo-primary p-0 text-decoration-none" onclick="setReplyTarget('{{ $commentId }}', '{{ $commenterName }}')">Balas</button>
         </div>
 
         <!-- NESTED REPLIES LOOP -->

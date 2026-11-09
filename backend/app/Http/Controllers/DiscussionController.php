@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DiscussionController extends Controller
 {
@@ -145,21 +146,28 @@ class DiscussionController extends Controller
         }
         $discussion->images_list = $imagesList;
 
+        $hasCreatedAt = Schema::hasColumn('tanggapan_diskusi', 'created_at');
+        $commentSelect = [
+            'tanggapan_diskusi.id_tanggapan as id',
+            'tanggapan_diskusi.id_user as user_id',
+            'tanggapan_diskusi.id_diskusi as discussion_id',
+            'tanggapan_diskusi.id_parent as parent_id',
+            'tanggapan_diskusi.isi_tanggapan as body',
+            'tanggapan_diskusi.gambar_tanggapan as image_path',
+            'user.nama_user as commentator_name',
+            'user.email_user as commentator_email'
+        ];
+        if ($hasCreatedAt) {
+            $commentSelect[] = 'tanggapan_diskusi.created_at';
+        } else {
+            $commentSelect[] = DB::raw('NULL as created_at');
+        }
+
         $comments = DB::table('tanggapan_diskusi')
             ->join('user', 'tanggapan_diskusi.id_user', '=', 'user.id_user')
             ->where('tanggapan_diskusi.id_diskusi', $id)
-            ->select(
-                'tanggapan_diskusi.id_tanggapan as id',
-                'tanggapan_diskusi.id_user as user_id',
-                'tanggapan_diskusi.id_diskusi as discussion_id',
-                'tanggapan_diskusi.id_parent as parent_id',
-                'tanggapan_diskusi.isi_tanggapan as body',
-                'tanggapan_diskusi.gambar_tanggapan as image_path',
-                'tanggapan_diskusi.created_at',
-                'user.nama_user as commentator_name',
-                'user.email_user as commentator_email'
-            )
-            ->orderBy('tanggapan_diskusi.created_at', 'asc')
+            ->select($commentSelect)
+            ->orderBy($hasCreatedAt ? 'tanggapan_diskusi.created_at' : 'tanggapan_diskusi.id_tanggapan', 'asc')
             ->get();
 
         return response()->json([
@@ -227,6 +235,7 @@ class DiscussionController extends Controller
     {
         $userId = $request->user()->id_user ?? $request->user()->id;
 
+        $hasCreatedAt = Schema::hasColumn('tanggapan_diskusi', 'created_at');
         $comments = DB::table('tanggapan_diskusi')
             ->join('diskusi', 'tanggapan_diskusi.id_diskusi', '=', 'diskusi.id_diskusi')
             ->where('tanggapan_diskusi.id_user', $userId)
@@ -234,7 +243,7 @@ class DiscussionController extends Controller
                 'tanggapan_diskusi.*',
                 'diskusi.judul_diskusi as discussion_title'
             )
-            ->orderBy('tanggapan_diskusi.created_at', 'desc')
+            ->orderBy($hasCreatedAt ? 'tanggapan_diskusi.created_at' : 'tanggapan_diskusi.id_tanggapan', 'desc')
             ->get();
 
         return response()->json([

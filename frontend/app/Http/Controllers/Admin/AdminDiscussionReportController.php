@@ -25,7 +25,24 @@ class AdminDiscussionReportController extends Controller
             $response = Http::timeout(5)->withToken($token)->get("{$backendUrl}/api/admin/discussion-reports");
             
             if ($response->successful()) {
-                $reports = $response->json()['data'] ?? [];
+                $rawReports = $response->json()['data'] ?? [];
+                $reports = collect($rawReports)->map(function ($r) {
+                    $r = (array) $r;
+                    $id = $r['id_laporan_diskusi'] ?? ($r['id'] ?? null);
+                    $discId = $r['id_diskusi'] ?? ($r['discussion_id'] ?? null);
+                    $reason = $r['alasan_laporan'] ?? ($r['reason'] ?? '');
+                    $status = $r['discussion_status'] ?? ($r['status_diskusi'] ?? 'active');
+
+                    return array_merge($r, [
+                        'id' => $id,
+                        'id_laporan_diskusi' => $id,
+                        'discussion_id' => $discId,
+                        'id_diskusi' => $discId,
+                        'reason' => $reason,
+                        'alasan_laporan' => $reason,
+                        'discussion_status' => $status,
+                    ]);
+                })->all();
             }
         } catch (\Exception $e) {
             Log::error('Failed to fetch discussion reports: ' . $e->getMessage());

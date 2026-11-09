@@ -25,21 +25,28 @@
                 </thead>
                 <tbody>
                     @forelse($reports as $report)
+                    @php
+                        $repId = $report['id_laporan_diskusi'] ?? ($report['id'] ?? null);
+                        $discId = $report['id_diskusi'] ?? ($report['discussion_id'] ?? null);
+                        $reason = $report['alasan_laporan'] ?? ($report['reason'] ?? '');
+                        $status = $report['discussion_status'] ?? ($report['status_diskusi'] ?? 'active');
+                        $isTakedown = in_array($status, ['takedown', 'deleted']);
+                    @endphp
                     <tr>
-                        <td class="px-4 text-muted">#{{ $report['id'] }}</td>
-                        <td class="fw-medium text-dark">{{ $report['discussion_title'] }}</td>
-                        <td>{{ $report['reporter_name'] }}</td>
-                        <td class="text-secondary small">{{ $report['reason'] }}</td>
+                        <td class="px-4 text-muted">#{{ $repId }}</td>
+                        <td class="fw-medium text-dark">{{ $report['discussion_title'] ?? 'Diskusi' }}</td>
+                        <td>{{ $report['reporter_name'] ?? 'Pelapor' }}</td>
+                        <td class="text-secondary small">{{ $reason }}</td>
                         <td>
-                            @if(isset($report['discussion_status']) && $report['discussion_status'] === 'takedown')
+                            @if($isTakedown)
                                 <span class="badge bg-danger">Takedown</span>
                             @else
                                 <span class="badge bg-success">Aktif</span>
                             @endif
                         </td>
                         <td class="text-center">
-                            @if(isset($report['discussion_status']) && $report['discussion_status'] !== 'takedown')
-                                <form action="{{ route('admin.discussions.takedown', $report['discussion_id']) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin men-takedown diskusi ini?');">
+                            @if(!$isTakedown)
+                                <form action="{{ route('admin.discussions.takedown', $discId) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin men-takedown diskusi ini?');">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="bi bi-trash"></i> Takedown

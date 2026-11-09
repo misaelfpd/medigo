@@ -80,7 +80,8 @@ class AdminFaskesController extends Controller
                 $paginationData['per_page'] = $paginated['per_page'] ?? $perPage;
 
                 foreach ($rawItems as $item) {
-                    $idNum = $item['id'];
+                    $item = (array) $item;
+                    $idNum = $item['id_faskes'] ?? ($item['id'] ?? 0);
                     $codeId = 'HOS-' . str_pad($idNum, 3, '0', STR_PAD_LEFT);
                     $kelas = $item['kelas'] ?? null;
                     if ($kelas === '' || $kelas === 'unknown') {
@@ -88,7 +89,9 @@ class AdminFaskesController extends Controller
                     }
 
                     $isBpjs = null;
-                    if (isset($item['is_support_bpjs']) && $item['is_support_bpjs'] !== null && $item['is_support_bpjs'] !== '') {
+                    if (isset($item['_support_bpjs']) && $item['_support_bpjs'] !== null && $item['_support_bpjs'] !== '') {
+                        $isBpjs = (int)$item['_support_bpjs'];
+                    } elseif (isset($item['is_support_bpjs']) && $item['is_support_bpjs'] !== null && $item['is_support_bpjs'] !== '') {
                         $isBpjs = (int)$item['is_support_bpjs'];
                     }
 
@@ -100,16 +103,24 @@ class AdminFaskesController extends Controller
                         ? \Carbon\Carbon::parse($item['updated_at'])->translatedFormat('d M Y')
                         : null;
 
+                    $tipe = $item['jenis_faskes'] ?? ($item['tipe'] ?? '');
+                    $alamat = $item['alamat_faskes'] ?? ($item['alamat'] ?? '');
+
                     $faskesList[] = [
                         'id'                  => $idNum,
+                        'id_faskes'           => $idNum,
                         'code_id'             => $codeId,
                         'nama_faskes'         => $item['nama_faskes'] ?? '',
-                        'tipe'                => $item['tipe'] ?? '',
+                        'tipe'                => $tipe,
+                        'jenis_faskes'        => $tipe,
                         'kelas'               => $kelas,
                         'is_support_bpjs'     => $isBpjs,
+                        '_support_bpjs'       => $isBpjs,
                         'lokasi'              => $item['kota_kabupaten'] ?? '',
+                        'kota_kabupaten'      => $item['kota_kabupaten'] ?? '',
                         'provinsi'            => $item['provinsi'] ?? '',
-                        'alamat'              => $item['alamat'] ?? '',
+                        'alamat'              => $alamat,
+                        'alamat_faskes'       => $alamat,
                         'kontak'              => $item['kontak'] ?? ($item['telepon'] ?? null),
                         'rating'              => $rating,
                         'updated_at_formatted'=> $updatedAt,
@@ -196,11 +207,14 @@ class AdminFaskesController extends Controller
         try {
             Http::timeout(6)->post("{$backendUrl}/api/faskes", [
                 'nama_faskes'    => $request->nama_faskes,
-                'tipe'           => $request->tipe,
+                'jenis_faskes'   => $request->tipe ?? $request->jenis_faskes,
+                'tipe'           => $request->tipe ?? $request->jenis_faskes,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
                 'provinsi'       => $request->provinsi,
-                'alamat'         => $request->alamat,
+                'alamat_faskes'  => $request->alamat ?? $request->alamat_faskes,
+                'alamat'         => $request->alamat ?? $request->alamat_faskes,
+                '_support_bpjs'  => $isBpjs,
                 'is_support_bpjs'=> $isBpjs,
                 'link_maps'      => $request->link_maps,
                 'latitude'       => $request->latitude,
@@ -243,11 +257,14 @@ class AdminFaskesController extends Controller
         try {
             Http::timeout(6)->put("{$backendUrl}/api/faskes/{$id}", [
                 'nama_faskes'    => $request->nama_faskes,
-                'tipe'           => $request->tipe,
+                'jenis_faskes'   => $request->tipe ?? $request->jenis_faskes,
+                'tipe'           => $request->tipe ?? $request->jenis_faskes,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
                 'provinsi'       => $request->provinsi,
-                'alamat'         => $request->alamat,
+                'alamat_faskes'  => $request->alamat ?? $request->alamat_faskes,
+                'alamat'         => $request->alamat ?? $request->alamat_faskes,
+                '_support_bpjs'  => $isBpjs,
                 'is_support_bpjs'=> $isBpjs,
                 'link_maps'      => $request->link_maps,
                 'latitude'       => $request->latitude,

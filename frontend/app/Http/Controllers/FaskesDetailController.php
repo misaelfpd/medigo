@@ -118,7 +118,7 @@ class FaskesDetailController extends Controller
         $user = Auth::user();
         $token = $this->getBackendToken();
         $backendUser = session('user_backend_data');
-        $backendUserId = $backendUser['id'] ?? null;
+        $backendUserId = $backendUser['id_user'] ?? $backendUser['id'] ?? null;
 
         try {
             // 1. Fetch Faskes Data
@@ -272,7 +272,7 @@ class FaskesDetailController extends Controller
         $token = $this->getBackendToken();
         $user = Auth::user();
         $backendUser = session('user_backend_data');
-        $backendUserId = $backendUser['id'] ?? null;
+        $backendUserId = $backendUser['id_user'] ?? $backendUser['id'] ?? null;
 
         $http = Http::timeout(8);
         if ($token) {

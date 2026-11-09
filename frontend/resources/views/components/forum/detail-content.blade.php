@@ -9,13 +9,18 @@
         if (is_array($decoded)) {
             $discImages = $decoded;
         }
+    } elseif (!empty($discussion['gambar_diskusi'])) {
+        $discImages = [$discussion['gambar_diskusi']];
     } elseif (!empty($discussion['image_path'])) {
         $discImages = [$discussion['image_path']];
     }
+
+    $title = $discussion['judul_diskusi'] ?? ($discussion['title'] ?? '');
+    $body = $discussion['isi_diskusi'] ?? ($discussion['body'] ?? ($discussion['content'] ?? ''));
 @endphp
 
-<h4 class="fw-bold mb-3">{{ $discussion['title'] }}</h4>
-<div class="text-secondary mb-4" style="line-height: 1.7; font-size: 0.98rem;">{!! nl2br(e($discussion['body'] ?? $discussion['content'] ?? '')) !!}</div>
+<h4 class="fw-bold mb-3">{{ $title }}</h4>
+<div class="text-secondary mb-4" style="line-height: 1.7; font-size: 0.98rem;">{!! nl2br(e($body)) !!}</div>
 
 @if(!empty($discImages))
     <div class="mb-4">

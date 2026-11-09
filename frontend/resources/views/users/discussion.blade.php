@@ -62,14 +62,29 @@
     <!-- Discussions List -->
     <div class="row g-3">
         @forelse($discussions as $discussion)
+            @php
+                $discId = $discussion['id_diskusi'] ?? $discussion['id'] ?? null;
+                $discTitle = $discussion['judul_diskusi'] ?? $discussion['title'] ?? 'Diskusi';
+                $discBody = $discussion['isi_diskusi'] ?? $discussion['body'] ?? ($discussion['content'] ?? '');
+                $discCategory = $discussion['kategori'] ?? $discussion['category'] ?? 'Umum';
+                $discImage = $discussion['gambar_diskusi'] ?? $discussion['image_path'] ?? null;
+                $discUserId = $discussion['id_user'] ?? $discussion['user_id'] ?? 0;
+                $discAuthor = $discussion['author_name'] ?? $discussion['nama_user'] ?? 'Pengguna MediGO';
+                $discCommentsCount = $discussion['comments_count'] ?? 0;
+
+                $isMyDisc = Auth::check() && (
+                    (!empty($discussion['author_email']) && Auth::user()->email === $discussion['author_email']) ||
+                    (Auth::id() == $discUserId)
+                );
+            @endphp
             <div class="col-12">
                 <div class="card border rounded-4 shadow-2xs hover-lift p-3 p-lg-4 bg-white">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge rounded-pill bg-light text-medigo-primary border px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
-                                {{ $discussion['category'] ?? 'Umum' }}
+                                {{ $discCategory }}
                             </span>
-                            @if(!empty($discussion['image_path']) || !empty($discussion['images']))
+                            @if(!empty($discImage) || !empty($discussion['images']))
                                 <span class="badge rounded-pill bg-light text-secondary border px-2 py-1 fw-semibold" style="font-size: 0.72rem;">
                                     <i class="bi bi-image me-1 text-medigo-primary"></i> Foto
                                 </span>
@@ -80,12 +95,6 @@
                                 <i class="bi bi-clock me-1"></i>
                                 {{ !empty($discussion['created_at']) ? \Carbon\Carbon::parse($discussion['created_at'])->diffForHumans() : 'Baru saja' }}
                             </span>
-                            @php
-                                $isMyDisc = Auth::check() && (
-                                    (!empty($discussion['author_email']) && Auth::user()->email === $discussion['author_email']) ||
-                                    (Auth::id() == ($discussion['user_id'] ?? 0))
-                                );
-                            @endphp
                             @if(Auth::check() && !$isMyDisc)
                                 <div class="dropdown">
                                     <button class="btn btn-link text-muted p-0 m-0 text-decoration-none" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -93,7 +102,7 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                                         <li>
-                                            <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#reportDiscussionModal" data-discussion-id="{{ $discussion['id'] }}">
+                                            <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#reportDiscussionModal" data-discussion-id="{{ $discId }}">
                                                 <i class="bi bi-flag me-2"></i> Laporkan Diskusi
                                             </button>
                                         </li>
@@ -104,29 +113,29 @@
                     </div>
 
                     <h5 class="fw-bold text-dark mb-2" style="font-size: 1.05rem;">
-                        <a href="{{ route('discussions.show', $discussion['id']) }}" class="text-dark text-decoration-none hover-primary">
-                            {{ $discussion['title'] }}
+                        <a href="{{ route('discussions.show', $discId) }}" class="text-dark text-decoration-none hover-primary">
+                            {{ $discTitle }}
                         </a>
                     </h5>
 
                     <p class="text-secondary mb-3" style="font-size: 0.88rem; line-height: 1.6;">
-                        {{ \Illuminate\Support\Str::limit($discussion['body'] ?? ($discussion['content'] ?? ''), 150) }}
+                        {{ \Illuminate\Support\Str::limit($discBody, 150) }}
                     </p>
 
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                         <div class="d-flex align-items-center gap-2">
                             <div class="avatar-circle-sm bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;">
-                                {{ strtoupper(substr($discussion['author_name'] ?? 'P', 0, 1)) }}
+                                {{ strtoupper(substr($discAuthor, 0, 1)) }}
                             </div>
                             <span class="fw-semibold text-dark" style="font-size: 0.82rem;">
-                                {{ $discussion['author_name'] ?? 'Pengguna MediGO' }}
+                                {{ $discAuthor }}
                             </span>
                         </div>
 
                         <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.82rem;">
                             <span>
                                 <i class="bi bi-chat-left-text me-1 text-medigo-primary"></i>
-                                {{ $discussion['comments_count'] ?? 0 }} Komentar
+                                {{ $discCommentsCount }} Komentar
                             </span>
                         </div>
                     </div>

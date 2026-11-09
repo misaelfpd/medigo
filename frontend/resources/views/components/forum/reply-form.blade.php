@@ -3,7 +3,7 @@
         <div class="row">
             <div class="col-lg-8 mx-auto">
                 @if(Auth::check())
-                <form action="{{ route('discussions.reply', $discussion['id']) }}" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded-pill shadow-sm border position-relative">
+                <form action="{{ route('discussions.reply', $discussion['id_diskusi'] ?? $discussion['id']) }}" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded-pill shadow-sm border position-relative">
                     @csrf
                     <input type="hidden" name="parent_id" id="replyParentId" value="">
 

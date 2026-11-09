@@ -64,14 +64,50 @@ class ProfileController extends Controller
                     // Fetch user discussions (API Baru)
                     $discResponse = Http::timeout(3)->withToken($token)->get("{$backendUrl}/api/user/discussions");
                     if ($discResponse->successful()) {
-                        $myDiscussions = $discResponse->json('data') ?? [];
+                        $rawDisc = $discResponse->json('data') ?? [];
+                        $myDiscussions = collect($rawDisc)->map(function ($item) {
+                            $item = (array) $item;
+                            $id = $item['id_diskusi'] ?? $item['id'] ?? null;
+                            $title = $item['judul_diskusi'] ?? $item['title'] ?? '';
+                            $body = $item['isi_diskusi'] ?? $item['body'] ?? ($item['content'] ?? '');
+                            $category = $item['kategori'] ?? $item['category'] ?? 'Umum';
+                            $img = $item['gambar_diskusi'] ?? $item['image_path'] ?? null;
+                            return array_merge($item, [
+                                'id' => $id,
+                                'id_diskusi' => $id,
+                                'title' => $title,
+                                'judul_diskusi' => $title,
+                                'body' => $body,
+                                'isi_diskusi' => $body,
+                                'category' => $category,
+                                'kategori' => $category,
+                                'image_path' => $img,
+                                'gambar_diskusi' => $img,
+                            ]);
+                        })->all();
                         $stats['discussions_count'] = count($myDiscussions);
                     }
 
                     // Fetch user forum comments (API Baru)
                     $forumCommResponse = Http::timeout(3)->withToken($token)->get("{$backendUrl}/api/user/comments");
                     if ($forumCommResponse->successful()) {
-                        $myForumComments = $forumCommResponse->json('data') ?? [];
+                        $rawComm = $forumCommResponse->json('data') ?? [];
+                        $myForumComments = collect($rawComm)->map(function ($item) {
+                            $item = (array) $item;
+                            $id = $item['id_tanggapan'] ?? $item['id'] ?? null;
+                            $discId = $item['id_diskusi'] ?? $item['discussion_id'] ?? null;
+                            $body = $item['isi_tanggapan'] ?? $item['body'] ?? ($item['content'] ?? '');
+                            $discTitle = $item['discussion_title'] ?? $item['judul_diskusi'] ?? 'Diskusi Terkait';
+                            return array_merge($item, [
+                                'id' => $id,
+                                'id_tanggapan' => $id,
+                                'discussion_id' => $discId,
+                                'id_diskusi' => $discId,
+                                'body' => $body,
+                                'isi_tanggapan' => $body,
+                                'discussion_title' => $discTitle,
+                            ]);
+                        })->all();
                     }
                 } catch (\Exception $e) {
                     Log::info('Profile data fetch from backend skipped: ' . $e->getMessage());
@@ -131,48 +167,57 @@ class ProfileController extends Controller
 
         // Direct database fallback if backend token is absent or call failed
         $offset = ($page - 1) * $limit;
-        $query = \Illuminate\Support\Facades\DB::table('faskes_comments')
-            ->join('faskes', 'faskes_comments.faskes_id', '=', 'faskes.id')
-            ->where('faskes_comments.user_id', $user->id);
+        try {
+            $query = \Illuminate\Support\Facades\DB::table('komentar')
+                ->join('faskes', 'komentar.id_faskes', '=', 'faskes.id_faskes')
+                ->where('komentar.id_user', $user->id);
 
-        $totalReviews = $query->count();
-        $reviews = $query->select(
-                'faskes_comments.*',
-                'faskes.nama_faskes',
-                'faskes.tipe as faskes_tipe',
-                'faskes.alamat as faskes_alamat'
-            )
-            ->orderBy('faskes_comments.created_at', 'desc')
-            ->offset($offset)
-            ->limit($limit)
-            ->get();
+            $totalReviews = $query->count();
+            $reviews = $query->select(
+                    'komentar.*',
+                    'faskes.nama_faskes',
+                    'faskes.jenis_faskes as faskes_tipe',
+                    'faskes.alamat_faskes as faskes_alamat'
+                )
+                ->orderBy('komentar.created_at', 'desc')
+                ->offset($offset)
+                ->limit($limit)
+                ->get();
 
-        $formatted = $reviews->map(function ($item) {
-            $typeSlug = 'hospital';
-            $tipeLower = strtolower($item->faskes_tipe ?? '');
-            if (str_contains($tipeLower, 'puskesmas')) {
-                $typeSlug = 'puskesmas';
-            } elseif (str_contains($tipeLower, 'klinik') || str_contains($tipeLower, 'dokter')) {
-                $typeSlug = 'clinic';
-            }
+            $formatted = $reviews->map(function ($item) {
+                $typeSlug = 'hospital';
+                $tipeLower = strtolower($item->faskes_tipe ?? '');
+                if (str_contains($tipeLower, 'puskesmas')) {
+                    $typeSlug = 'puskesmas';
+                } elseif (str_contains($tipeLower, 'klinik') || str_contains($tipeLower, 'dokter')) {
+                    $typeSlug = 'clinic';
+                }
 
-            $nama = trim($item->nama_faskes ?? '');
-            if ($typeSlug === 'puskesmas' && !preg_match('/^(puskesmas|pkm)\b/i', $nama)) {
-                $nama = 'Puskesmas ' . $nama;
-            }
+                $nama = trim($item->nama_faskes ?? '');
+                if ($typeSlug === 'puskesmas' && !preg_match('/^(puskesmas|pkm)\b/i', $nama)) {
+                    $nama = 'Puskesmas ' . $nama;
+                }
 
-            return [
-                'id' => $item->id,
-                'faskes_id' => $item->faskes_id,
-                'nama_faskes' => $nama,
-                'type_slug' => $typeSlug,
-                'rating' => (int)$item->rating,
-                'body' => $item->body,
-                'created_at' => $item->created_at,
-                'created_at_human' => \Carbon\Carbon::parse($item->created_at)->diffForHumans(),
-                'faskes_url' => url('/faskes/' . $item->faskes_id),
-            ];
-        });
+                $reviewId = $item->id_komentar ?? ($item->id ?? null);
+                $faskesId = $item->id_faskes ?? ($item->faskes_id ?? null);
+                $body = $item->isi_komentar ?? ($item->body ?? '');
+
+                return [
+                    'id' => $reviewId,
+                    'faskes_id' => $faskesId,
+                    'nama_faskes' => $nama,
+                    'type_slug' => $typeSlug,
+                    'rating' => (int)$item->rating,
+                    'body' => $body,
+                    'created_at' => $item->created_at,
+                    'created_at_human' => \Carbon\Carbon::parse($item->created_at)->diffForHumans(),
+                    'faskes_url' => url('/faskes/' . $faskesId),
+                ];
+            });
+        } catch (\Exception $e) {
+            $formatted = collect([]);
+            $totalReviews = 0;
+        }
 
         return response()->json([
             'status' => 'success',

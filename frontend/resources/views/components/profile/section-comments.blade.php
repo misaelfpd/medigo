@@ -13,32 +13,38 @@
 <!-- Container Scrollable -->
 <div class="d-flex flex-column {{ $isMobile ? 'gap-2-5' : 'gap-3' }} mb-4 scrollable-section" style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
     @forelse($myForumComments ?? [] as $komentar)
-        <div class="card border rounded-4 bg-light shadow-none p-3 position-relative comment-card-item" id="user-comment-{{ $komentar['id'] }}">
+        @php
+            $cId = $komentar['id_tanggapan'] ?? ($komentar['id'] ?? null);
+            $cDiscId = $komentar['id_diskusi'] ?? ($komentar['discussion_id'] ?? null);
+            $cBody = $komentar['isi_tanggapan'] ?? ($komentar['body'] ?? ($komentar['content'] ?? ''));
+            $cTitle = $komentar['discussion_title'] ?? ($komentar['judul_diskusi'] ?? 'Diskusi Terkait');
+        @endphp
+        <div class="card border rounded-4 bg-light shadow-none p-3 position-relative comment-card-item" id="user-comment-{{ $cId }}">
             <div class="mb-1">
                 <span class="badge bg-secondary mb-1" style="font-size: 0.65rem;">Membalas di diskusi:</span>
                 <h6 class="fw-bold text-dark mb-0 text-truncate" style="font-size: {{ $isMobile ? '0.85rem' : '0.9rem' }}; max-width: 80%;">
-                    <a href="{{ url('/discussions/' . $komentar['discussion_id']) }}" class="text-medigo-primary text-decoration-none">
-                        {{ $komentar['discussion_title'] ?? 'Diskusi Terkait' }}
+                    <a href="{{ url('/discussions/' . $cDiscId) }}" class="text-medigo-primary text-decoration-none">
+                        {{ $cTitle }}
                     </a>
                 </h6>
             </div>
             
             <p class="text-dark mb-2" style="font-size: {{ $isMobile ? '0.8rem' : '0.88rem' }}; line-height: 1.4;">
-                "{{ \Illuminate\Support\Str::limit($komentar['body'], $isMobile ? 80 : 120) }}"
+                "{{ \Illuminate\Support\Str::limit($cBody, $isMobile ? 80 : 120) }}"
             </p>
 
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted" style="font-size: 0.7rem;">
-                    {{ \Carbon\Carbon::parse($komentar['created_at'])->diffForHumans() }}
+                    {{ !empty($komentar['created_at']) ? \Carbon\Carbon::parse($komentar['created_at'])->diffForHumans() : 'Baru saja' }}
                 </span>
                 
                 <div class="d-flex gap-2">
                     <!-- Tombol ke Halaman Diskusi -->
-                    <a href="{{ url('/discussions/' . $komentar['discussion_id']) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0-5" style="font-size: 0.72rem;" title="Lihat Diskusi">
+                    <a href="{{ url('/discussions/' . $cDiscId) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0-5" style="font-size: 0.72rem;" title="Lihat Diskusi">
                         <i class="bi bi-box-arrow-up-right"></i> Lihat
                     </a>
                     <!-- Tombol Hapus Komentar -->
-                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-forum-comment" data-id="{{ $komentar['id'] }}" style="font-size: 0.72rem;" title="Hapus Komentar">
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-forum-comment" data-id="{{ $cId }}" style="font-size: 0.72rem;" title="Hapus Komentar">
                         <i class="bi bi-trash"></i> Hapus
                     </button>
                 </div>

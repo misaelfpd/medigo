@@ -1,7 +1,9 @@
 @php
     // Cocokkan kepemilikan berdasarkan email user yang login di frontend 
     // dengan email author yang dikirim dari API backend
-    $authorEmail = $discussion['author_email'] ?? ($discussion['email'] ?? null);
+    $authorEmail = $discussion['author_email'] ?? ($discussion['email_user'] ?? ($discussion['email'] ?? null));
+    $authorName = $discussion['author_name'] ?? ($discussion['nama_user'] ?? 'Pengguna');
+    $discId = $discussion['id_diskusi'] ?? ($discussion['id'] ?? null);
     $isDiscussionOwner = Auth::check() && $authorEmail && (Auth::user()->email === $authorEmail);
     $canReportDiscussion = Auth::check() && !$isDiscussionOwner;
 @endphp
@@ -9,10 +11,10 @@
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="d-flex align-items-center gap-3">
         <div class="avatar-circle text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style="width: 48px; height: 48px; background-color: #002b5e;">
-            {{ strtoupper(substr($discussion['author_name'] ?? 'P', 0, 1)) }}
+            {{ strtoupper(substr($authorName, 0, 1)) }}
         </div>
         <div>
-            <div class="fw-bold">{{ $discussion['author_name'] ?? 'Pengguna' }}</div>
+            <div class="fw-bold">{{ $authorName }}</div>
             <div class="text-muted small">{{ \Carbon\Carbon::parse($discussion['created_at'] ?? now())->diffForHumans() }}</div>
         </div>
     </div>
@@ -27,7 +29,7 @@
             <li>
                 <button 
                     class="dropdown-item text-danger btn-delete-discussion"
-                    data-id="{{ $discussion['id'] }}"
+                    data-id="{{ $discId }}"
                     onclick="return confirm('Apakah Anda yakin ingin menghapus diskusi ini? Tindakan ini tidak bisa dibatalkan.')">
                     <i class="bi bi-trash me-2"></i> Hapus Diskusi
                 </button>
@@ -44,7 +46,7 @@
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
             <li>
-                <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#dynamicReportModal" data-report-type="discussion" data-report-id="{{ $discussion['id'] }}">
+                <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#dynamicReportModal" data-report-type="discussion" data-report-id="{{ $discId }}">
                     <i class="bi bi-flag me-2"></i> Laporkan Diskusi
                 </button>
             </li>

@@ -12,7 +12,7 @@
         <div class="d-flex align-items-center gap-2">
             <h6 class="fw-bold text-dark m-0 sheet-title">Daftar Faskes Terdekat</h6>
             <span class="badge badge-medigo-primary rounded-pill px-2 py-0-5 d-none" id="mobileSheetCountBadge" style="font-size: 0.68rem;">
-                {{ count($faskesList) }}
+                {{ count($faskesList ?? []) }}
             </span>
         </div>
         <!-- Close (X) Button -->

@@ -11,14 +11,22 @@
 <!-- Container Scrollable -->
 <div id="profileReviewsContainer{{ $isMobile ? 'Mobile' : 'Desktop' }}" class="d-flex flex-column {{ $isMobile ? 'gap-2-5' : 'gap-3' }} mb-3 scrollable-section" style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
     @forelse($userReviews as $review)
-        <div class="card border rounded-4 bg-white shadow-2xs p-3 profile-review-item position-relative" id="user-review-{{ $review['id'] }}">
+        @php
+            $revId = $review['id_komentar'] ?? ($review['id'] ?? null);
+            $revFaskesId = $review['id_faskes'] ?? ($review['faskes_id'] ?? 1);
+            $revBody = $review['isi_komentar'] ?? ($review['body'] ?? '');
+            $revName = $review['nama_faskes'] ?? 'Fasilitas Kesehatan';
+            $revUrl = $review['faskes_url'] ?? url('/faskes/' . $revFaskesId);
+            $revDate = $review['created_at_human'] ?? (!empty($review['created_at']) ? \Carbon\Carbon::parse($review['created_at'])->diffForHumans() : 'Baru saja');
+        @endphp
+        <div class="card border rounded-4 bg-white shadow-2xs p-3 profile-review-item position-relative" id="user-review-{{ $revId }}">
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <div>
                         <h6 class="fw-bold text-dark mb-0" style="font-size: {{ $isMobile ? '0.9rem' : '0.95rem' }};">
-                            <a href="{{ $review['faskes_url'] ?? url('/faskes/' . $review['faskes_id']) }}" class="text-dark text-decoration-none">{{ $review['nama_faskes'] ?? 'Fasilitas Kesehatan' }}</a>
+                            <a href="{{ $revUrl }}" class="text-dark text-decoration-none">{{ $revName }}</a>
                         </h6>
-                        <span class="text-muted" style="font-size: {{ $isMobile ? '0.72rem' : '0.76rem' }};">{{ $review['created_at_human'] ?? 'Baru saja' }}</span>
+                        <span class="text-muted" style="font-size: {{ $isMobile ? '0.72rem' : '0.76rem' }};">{{ $revDate }}</span>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
@@ -27,17 +35,17 @@
                 </div>
             </div>
             
-            @if(!empty($review['body']))
-                <p class="text-dark mb-2 mt-1" style="font-size: {{ $isMobile ? '0.82rem' : '0.88rem' }}; line-height: 1.4;">{{ $review['body'] }}</p>
+            @if(!empty($revBody))
+                <p class="text-dark mb-2 mt-1" style="font-size: {{ $isMobile ? '0.82rem' : '0.88rem' }}; line-height: 1.4;">{{ $revBody }}</p>
             @endif
 
             <div class="d-flex justify-content-between align-items-center mt-2">
-                <a href="{{ url('/faskes/' . ($review['faskes_id'] ?? 1)) }}" class="btn btn-sm btn-light rounded-pill px-3 text-medigo-primary fw-semibold" style="font-size: 0.74rem;">
+                <a href="{{ $revUrl }}" class="btn btn-sm btn-light rounded-pill px-3 text-medigo-primary fw-semibold" style="font-size: 0.74rem;">
                     Lihat Faskes <i class="bi bi-chevron-right ms-1"></i>
                 </a>
                 
                 <!-- Tombol Hapus Review Faskes -->
-                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-faskes-review" data-id="{{ $review['id'] }}" style="font-size: 0.72rem;" title="Hapus Ulasan">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-faskes-review" data-id="{{ $revId }}" style="font-size: 0.72rem;" title="Hapus Ulasan">
                     <i class="bi bi-trash"></i> Hapus
                 </button>
             </div>

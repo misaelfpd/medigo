@@ -36,7 +36,33 @@ class DiscussionController extends Controller
 
             if ($response->successful()) {
                 $body = $response->json();
-                $discussions = $body['data']['data'] ?? [];
+                $rawItems = $body['data']['data'] ?? [];
+                $discussions = collect($rawItems)->map(function ($item) {
+                    $item = (array) $item;
+                    $id = $item['id_diskusi'] ?? $item['id'] ?? null;
+                    $title = $item['judul_diskusi'] ?? $item['title'] ?? '';
+                    $body = $item['isi_diskusi'] ?? $item['body'] ?? $item['content'] ?? '';
+                    $category = $item['kategori'] ?? $item['category'] ?? 'Umum';
+                    $imagePath = $item['gambar_diskusi'] ?? $item['image_path'] ?? $item['image'] ?? null;
+                    $userId = $item['id_user'] ?? $item['user_id'] ?? null;
+
+                    return array_merge($item, [
+                        'id' => $id,
+                        'id_diskusi' => $id,
+                        'title' => $title,
+                        'judul_diskusi' => $title,
+                        'body' => $body,
+                        'isi_diskusi' => $body,
+                        'content' => $body,
+                        'category' => $category,
+                        'kategori' => $category,
+                        'image_path' => $imagePath,
+                        'gambar_diskusi' => $imagePath,
+                        'user_id' => $userId,
+                        'id_user' => $userId,
+                    ]);
+                })->all();
+
                 $pagination = $body['data'] ?? []; 
             }
         } catch (\Exception $e) {
@@ -44,7 +70,7 @@ class DiscussionController extends Controller
         }
 
         // Jika backend tidak mengembalikan data, biarkan $discussions tetap kosong []
-        return view('users.discussions', compact('discussions', 'category', 'tab', 'pagination'));
+        return view('users.discussion', compact('discussions', 'category', 'tab', 'pagination'));
     }
 
     public function create()
@@ -79,8 +105,12 @@ class DiscussionController extends Controller
 
             if ($response->successful()) {
                 $token = $response->json('access_token');
+                $userData = $response->json('user');
                 if ($token) {
-                    session(['user_backend_token' => $token]);
+                    session([
+                        'user_backend_token' => $token,
+                        'user_backend_data'  => $userData,
+                    ]);
                     return $token;
                 }
             }
@@ -209,21 +239,70 @@ class DiscussionController extends Controller
             if ($response->successful()) {
                 $responseBody = $response->json();
                 $data = $responseBody['data'] ?? [];
-                $discussion = $data['discussion'] ?? null;
+                $rawDiscussion = $data['discussion'] ?? null;
                 $rawComments = $data['comments'] ?? [];
+
+                if ($rawDiscussion) {
+                    $d = (array) $rawDiscussion;
+                    $idVal = $d['id_diskusi'] ?? $d['id'] ?? $id;
+                    $titleVal = $d['judul_diskusi'] ?? $d['title'] ?? '';
+                    $bodyVal = $d['isi_diskusi'] ?? $d['body'] ?? $d['content'] ?? '';
+                    $catVal = $d['kategori'] ?? $d['category'] ?? 'Umum';
+                    $imgVal = $d['gambar_diskusi'] ?? $d['image_path'] ?? null;
+                    $usrVal = $d['id_user'] ?? $d['user_id'] ?? null;
+                    $authorNameVal = $d['nama_user'] ?? $d['author_name'] ?? 'Pengguna';
+                    $authorEmailVal = $d['email_user'] ?? $d['author_email'] ?? null;
+
+                    $discussion = array_merge($d, [
+                        'id' => $idVal,
+                        'id_diskusi' => $idVal,
+                        'title' => $titleVal,
+                        'judul_diskusi' => $titleVal,
+                        'body' => $bodyVal,
+                        'isi_diskusi' => $bodyVal,
+                        'category' => $catVal,
+                        'kategori' => $catVal,
+                        'image_path' => $imgVal,
+                        'gambar_diskusi' => $imgVal,
+                        'user_id' => $usrVal,
+                        'id_user' => $usrVal,
+                        'author_name' => $authorNameVal,
+                        'author_email' => $authorEmailVal,
+                    ]);
+                }
 
                 $currentUserId = Auth::id();
 
                 $commentMap = [];
                 foreach ($rawComments as $comment) {
                     $c = (array) $comment;
+                    $cId = $c['id_tanggapan'] ?? $c['id'] ?? null;
+                    $cDiscId = $c['id_diskusi'] ?? $c['discussion_id'] ?? $id;
+                    $cParentId = $c['id_parent'] ?? $c['parent_id'] ?? null;
+                    $cUserId = $c['id_user'] ?? $c['user_id'] ?? null;
+                    $cBody = $c['isi_tanggapan'] ?? $c['body'] ?? $c['content'] ?? '';
+                    $cImage = $c['gambar_tanggapan'] ?? $c['image_path'] ?? null;
+                    $cName = $c['nama_user'] ?? $c['commentator_name'] ?? 'Pengguna';
+                    $cEmail = $c['email_user'] ?? $c['commentator_email'] ?? null;
+
+                    $c['id'] = $cId;
+                    $c['id_tanggapan'] = $cId;
+                    $c['discussion_id'] = $cDiscId;
+                    $c['id_diskusi'] = $cDiscId;
+                    $c['parent_id'] = $cParentId;
+                    $c['id_parent'] = $cParentId;
+                    $c['user_id'] = $cUserId;
+                    $c['id_user'] = $cUserId;
+                    $c['body'] = $cBody;
+                    $c['isi_tanggapan'] = $cBody;
+                    $c['content'] = $cBody;
+                    $c['image_path'] = $cImage;
+                    $c['gambar_tanggapan'] = $cImage;
+                    $c['commentator_name'] = $cName;
+                    $c['commentator_email'] = $cEmail;
                     $c['replies'] = []; 
                     
-                    if (!isset($c['body']) && isset($c['content'])) {
-                        $c['body'] = $c['content'];
-                    }
-                    
-                    $commentMap[$c['id']] = $c;
+                    $commentMap[$cId] = $c;
                 }
 
                 foreach ($commentMap as $cid => $c) {

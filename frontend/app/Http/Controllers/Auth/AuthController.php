@@ -231,10 +231,11 @@ class AuthController extends Controller
                 $userData = $body['data'] ?? [];
 
                 // Create or update local user record
+                $userName = $userData['nama_user'] ?? ($userData['name'] ?? explode('@', $email)[0]);
                 $user = User::updateOrCreate(
                     ['email' => $email],
                     [
-                        'name' => $userData['name'] ?? explode('@', $email)[0],
+                        'name' => $userName,
                         'password' => Hash::make($password),
                     ]
                 );
