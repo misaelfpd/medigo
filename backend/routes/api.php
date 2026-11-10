@@ -30,6 +30,9 @@ Route::post('/faskes/{faskes_id}/feedback', [FaskesFeedbackController::class, 's
 Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat semua diskusi
 Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat 1 diskusi spesifik
 
+// Rute Search
+Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
+
 // Rute Terproteksi (Wajib punya Token / udah Login)
 Route::middleware('auth:sanctum')->group(function () {
 

@@ -57,7 +57,7 @@ PROMPT;
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
         ]);
-
+        
         if (! $gemini->isConfigured()) {
             return response()->json(['message' => self::UNAVAILABLE], 503);
         }
@@ -67,32 +67,42 @@ PROMPT;
         $userLat = isset($validated['latitude']) ? (float) $validated['latitude'] : null;
         $userLng = isset($validated['longitude']) ? (float) $validated['longitude'] : null;
 
-        $contents = GeminiChat::where('id_user', $user->id_user)
-            ->where('created_at', '>=', now()->subDay())
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->limit(self::HISTORY_LIMIT)
-            ->get()
-            ->reverse()
-            ->map(fn (GeminiChat $chat) => ['role' => $chat->role, 'parts' => [['text' => $chat->message]]])
-            ->values()
-            ->all();
+        // Cek apakah ada user yang login (opsional)
+        $user = $request->user();
+        $userId = $user ? $user->id_user : null;
+
+        // Ambil history chat HANYA JIKA user sudah login (jika guest, history kosong dulu)
+        $contents = [];
+        if ($userId) {
+            $contents = GeminiChat::where('id_user', $userId)
+                ->where('created_at', '>=', now()->subDay())
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->limit(self::HISTORY_LIMIT)
+                ->get()
+                ->reverse()
+                ->map(fn (GeminiChat $chat) => ['role' => $chat->role, 'parts' => [['text' => $chat->message]]])
+                ->values()
+                ->all();
+        }
 
         $contents[] = ['role' => 'user', 'parts' => [['text' => $userMessage]]];
 
         try {
             $aiReply = $this->converse($gemini, $contents, $userLat, $userLng);
         } catch (RuntimeException $e) {
-            Log::error('Gemini chat failed', ['user' => $user->id_user, 'error' => $e->getMessage()]);
+            Log::error('Gemini chat failed', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => self::UNAVAILABLE], 502);
         }
 
-        // Only a real answer is kept as memory; failures above are never saved.
-        DB::transaction(function () use ($user, $userMessage, $aiReply) {
-            GeminiChat::create(['id_user' => $user->id_user, 'role' => 'user', 'message' => $userMessage]);
-            GeminiChat::create(['id_user' => $user->id_user, 'role' => 'model', 'message' => $aiReply]);
-        });
+        // Simpan ke database HANYA JIKA user login (agar tabel GeminiChat tidak error karena id_user null, kecuali kolom id_user di DB nullable)
+        if ($userId) {
+            DB::transaction(function () use ($userId, $userMessage, $aiReply) {
+                GeminiChat::create(['id_user' => $userId, 'role' => 'user', 'message' => $userMessage]);
+                GeminiChat::create(['id_user' => $userId, 'role' => 'model', 'message' => $aiReply]);
+            });
+        }
 
         return response()->json([
             'message' => 'Success',
@@ -313,7 +323,7 @@ PROMPT;
             'tools' => [[
                 'function_declarations' => [[
                     'name' => 'cari_faskes',
-                    'description' => 'Mencari data fasilitas kesehatan (faskes: Rumah Sakit, Klinik, Puskesmas) di database Medigo berdasarkan kata kunci, lokasi terdekat, filter BPJS, spesialis dokter, atau fasilitas medis.',
+                    'description' => 'Mencari data fasilitas kesehatan (faskes) di database berdasarkan berbagai kriteria spesifik seperti kata kunci nama, kota, spesialisasi dokter, fasilitas penunjang, status BPJS, kelas RS, jenis faskes, atau jarak terdekat.',
                     'parameters' => [
                         'type' => 'OBJECT',
                         'properties' => [
@@ -333,11 +343,106 @@ PROMPT;
                                 'type' => 'BOOLEAN',
                                 'description' => 'Set true jika user meminta faskes yang paling dekat dari lokasinya saat ini.',
                             ],
+                            'jenis_faskes' => [
+                                'type' => 'STRING',
+                                'description' => "Jenis faskes, misalnya: 'Rumah Sakit', 'Klinik', 'Puskesmas'."
+                            ],
+                            'spesialisasi' => [
+                                'type' => 'STRING',
+                                'description' => "Spesialisasi dokter yang dicari, misalnya: 'Anak', 'Jantung', 'Penyakit Dalam'."
+                            ],
+                            'fasilitas' => [
+                                'type' => 'STRING',
+                                'description' => "Fasilitas penunjang medis, misalnya: 'IGD', 'Laboratorium', 'Radiologi'."
+                            ],
+                            '_support_bpjs' => [
+                                'type' => 'BOOLEAN',
+                                'description' => "Set true jika hanya mencari faskes yang mendukung BPJS."
+                            ],
+                            'kelas' => [
+                                'type' => 'STRING',
+                                'description' => "Kelas rumah sakit, misalnya: 'A', 'B', 'C', 'D'."
+                            ],
+                            'lat' => [
+                                'type' => 'NUMBER',
+                                'description' => "Latitude posisi user (jika meminta faskes terdekat di daerah saya)."
+                            ],
+                            'lng' => [
+                                'type' => 'NUMBER',
+                                'description' => "Longitude posisi user."
+                            ]
                         ],
-                        'required' => ['keyword'],
                     ],
                 ]],
             ]],
         ];
+    }
+
+    private function searchFaskesAdvanced(array $args)
+    {
+        $query = Faskes::query()->select([
+            'faskes.id_faskes', 'faskes.nama_faskes', 'faskes.jenis_faskes', 
+            'faskes.alamat_faskes', 'faskes.kecamatan', 'faskes.kota_kabupaten', 
+            'faskes.provinsi', 'faskes.kelas', 'faskes._support_bpjs', 'faskes.link_maps'
+        ]);
+
+        // 1. Filter Jarak GPS (Terdekat di daerah saya)
+        if (!empty($args['lat']) && !empty($args['lng'])) {
+            $lat = (float) $args['lat'];
+            $lng = (float) $args['lng'];
+            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
+            
+            $query->selectRaw("{$haversine} AS distance_km")
+                  ->whereNotNull('faskes.latitude')
+                  ->whereNotNull('faskes.longitude')
+                  ->orderBy('distance_km', 'asc');
+        }
+
+        // 2. Filter Kota / Kabupaten
+        if (!empty($args['kota_kabupaten'])) {
+            $query->where('faskes.kota_kabupaten', 'like', "%{$args['kota_kabupaten']}%");
+        }
+
+        // 3. Filter Jenis Faskes
+        if (!empty($args['jenis_faskes'])) {
+            $query->where('faskes.jenis_faskes', 'like', "%{$args['jenis_faskes']}%");
+        }
+
+        // 4. Filter Kelas Faskes
+        if (!empty($args['kelas'])) {
+            $query->where('faskes.kelas', 'like', "%{$args['kelas']}%");
+        }
+
+        // 5. Filter Support BPJS
+        if (isset($args['_support_bpjs'])) {
+            $query->where('faskes._support_bpjs', (bool)$args['_support_bpjs']);
+        }
+
+        // 6. Filter Berdasarkan Spesialisasi (Relasi ke tabel spesialisasi_faskes)
+        if (!empty($args['spesialisasi'])) {
+            $spec = $args['spesialisasi'];
+            $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
+                  ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                  ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spec}%");
+        }
+
+        // 7. Filter Berdasarkan Fasilitas Penunjang (Relasi ke tabel fasilitas_faskes)
+        if (!empty($args['fasilitas'])) {
+            $facility = $args['fasilitas'];
+            $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
+                  ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                  ->where('fasilitas.nama_fasilitas', 'like', "%{$facility}%");
+        }
+
+        // 8. Keyword Bebas (Nama Faskes / Alamat)
+        if (!empty($args['keyword'])) {
+            $keyword = trim($args['keyword']);
+            $query->where(function ($q) use ($keyword) {
+                $q->where('faskes.nama_faskes', 'like', "%{$keyword}%")
+                  ->orWhere('faskes.alamat_faskes', 'like', "%{$keyword}%");
+            });
+        }
+
+        return $query->distinct()->limit(5)->get();
     }
 }
