@@ -514,4 +514,97 @@ class FaskesController extends Controller
             ],
         ]);
     }
+    /**
+     * Method Utama untuk Filtering & AI Function Calling
+     * 
+     * @param array $params Parameter pencarian (bisa dari $request->all() atau dari AI Function Call)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function searchFaskes(Request $request)
+    {
+        // Mendukung input dari Request HTTP biasa maupun array langsung dari AI Function Calling
+        $params = $request->all();
+
+        $query = DB::table('faskes');
+
+        // 1. Filter Berdasarkan Daerah Saya (Koordinat GPS & Radius)
+        $lat = $params['lat'] ?? null;
+        $lng = $params['lng'] ?? null;
+        $radius = $params['radius'] ?? 5; // Default radius 5 km jika tidak diisi
+
+        if ($lat && $lng) {
+            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latittude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latittude))))";
+            
+            $query->select('faskes.*')
+                ->selectRaw("{$haversine} AS distance_km")
+                ->whereNotNull('faskes.latittude')
+                ->whereNotNull('faskes.longitude');
+
+            if (isset($params['radius'])) {
+                $query->having('distance_km', '<=', (float)$radius);
+            }
+
+            $query->orderBy('distance_km', 'asc');
+        } else {
+            $query->select('faskes.*')->orderBy('faskes.id_faskes', 'asc');
+        }
+
+        // 2. Filter Berdasarkan Kota atau Kabupaten (Poin 2)
+        if (!empty($params['kota_kabupaten'])) {
+            $query->where('faskes.kota_kabupaten', 'like', "%{$params['kota_kabupaten']}%");
+        }
+
+        // 3. Filter Berdasarkan Spesialisasi Tertentu (Poin 3)
+        // Menerima nama spesialisasi (misal: "Anak", "Jantung", "Penyakit Dalam")
+        if (!empty($params['spesialisasi'])) {
+            $spesialisasi = $params['spesialisasi'];
+            $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
+                  ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                  ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spesialisasi}%");
+        }
+
+        // 4. Filter Berdasarkan Fasilitas Penunjang Tertentu (Poin 4)
+        // Menerima nama fasilitas (misal: "IGD", "Laboratorium", "Radiologi", "ICU")
+        if (!empty($params['fasilitas'])) {
+            $fasilitas = $params['fasilitas'];
+            $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
+                  ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                  ->where('fasilitas.nama_fasilitas', 'like', "%{$fasilitas}%");
+        }
+
+        // 5. Filter Support BPJS (Poin 6)
+        if (isset($params['is_support_bpjs']) && $params['is_support_bpjs'] !== '') {
+            $bpjsVal = filter_var($params['is_support_bpjs'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            $query->where('faskes.is_support_bpjs', $bpjsVal);
+        }
+
+        // 7. Filter Kelas Faskes (Poin 7 - misal: Kelas A, B, C, D)
+        if (!empty($params['kelas'])) {
+            $query->where('faskes.kelas', 'like', "%{$params['kelas']}%");
+        }
+
+        // 8. Filter Jenis Faskes (Poin 8 - Rumah Sakit, Klinik, Puskesmas)
+        if (!empty($params['jenis_faskes'])) {
+            $jenis = $params['jenis_faskes'];
+            $query->where('faskes.jenis_faskes', 'like', "%{$jenis}%");
+        }
+
+        // Batasi hasil maksimal untuk AI / Filtering (default 10)
+        $limit = min((int)($params['limit'] ?? 10), 50);
+        $faskesList = $query->distinct()->limit($limit)->get();
+
+        // Transformasi tambahan (slug, rating, dll)
+        $faskesList->transform(function ($item) {
+            $item->type_slug = $this->getTypeSlug($item->jenis_faskes);
+            $item->nama_faskes = $this->formatFaskesName($item->nama_faskes, $item->type_slug, $item->jenis_faskes);
+            return $item;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data faskes berhasil ditemukan',
+            'total' => $faskesList->count(),
+            'data' => $faskesList
+        ]);
+    }
 }
