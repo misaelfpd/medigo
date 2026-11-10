@@ -3,8 +3,7 @@
     <div class="container d-flex justify-content-between align-items-center">
         <!-- Logo Section -->
         <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="/faskes">
-            <i class="bi bi-hospital navbar-brand-icon"></i>
-            MediGO
+            <img class="w-50" src="{{ asset('images/medigo_logo.png') }}" alt="Logo Faskes">
         </a>
 
         <!-- Desktop Navigation Links -->
