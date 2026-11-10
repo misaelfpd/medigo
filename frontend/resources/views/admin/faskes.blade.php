@@ -4,6 +4,9 @@
 @section('title', 'MediGO - Beranda')
 
 @section('content')
+    @php
+        $hospitals = $hospitals ?? $faskesList ?? [];
+    @endphp
     {{-- Rekomendasi / Hospital Section --}}
     <section class="hospital-section py-3 py-lg-4">
         <div class="container">

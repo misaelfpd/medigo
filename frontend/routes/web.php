@@ -45,7 +45,7 @@ Route::get('/discussions/create', [DiscussionController::class, 'create'])->name
 Route::post('/discussions', [DiscussionController::class, 'store'])->name('discussions.store');
 Route::get('/discussions/{id_diskusi}', [DiscussionController::class, 'show'])->name('discussions.show');
 Route::post('/discussions/{id_diskusi}/comments', [DiscussionController::class, 'reply'])->name('discussions.reply');
-Route::delete('/discussion-comments/{id_komentar}', [DiscussionController::class, 'destroyComment'])->name('discussion-comments.destroy');
+Route::delete('/discussion-comments/{id_tanggapan}', [DiscussionController::class, 'destroyComment'])->name('discussion-comments.destroy');
 Route::delete('/discussions/{id_diskusi}', [DiscussionController::class, 'destroyDiscussion'])->name('discussions.destroy');
 Route::post('/forum/report/{type}/{id}', [DiscussionController::class, 'report'])->name('forum.report');
 

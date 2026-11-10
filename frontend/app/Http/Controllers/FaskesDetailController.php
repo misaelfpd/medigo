@@ -32,6 +32,87 @@ class FaskesDetailController extends Controller
         return $name;
     }
 
+    private function formatFaskesType($jenisFaskes, $typeSlug = '', $name = '')
+    {
+        $jenis = trim($jenisFaskes ?? '');
+
+        if (empty($jenis) || strcasecmp($jenis, 'Fasilitas Kesehatan') === 0 || strcasecmp($jenis, 'faskes') === 0) {
+            $nameLower = strtolower($name ?? '');
+            $slugLower = strtolower($typeSlug ?? '');
+
+            if ($slugLower === 'puskesmas' || str_contains($nameLower, 'puskesmas') || str_contains($nameLower, 'pkm')) {
+                return 'Puskesmas';
+            }
+            if ($slugLower === 'clinic' || str_contains($nameLower, 'klinik') || str_contains($nameLower, 'clinic')) {
+                return 'Klinik';
+            }
+            if (str_contains($nameLower, 'apotik') || str_contains($nameLower, 'apotek') || str_contains($nameLower, 'farma')) {
+                return 'Apotek';
+            }
+            if (str_contains($nameLower, 'laboratorium') || str_contains($nameLower, 'lab')) {
+                return 'Laboratorium';
+            }
+
+            return 'Rumah Sakit';
+        }
+
+        $jenisLower = strtolower($jenis);
+        if (str_contains($jenisLower, 'rumah sakit') || $jenisLower === 'rs') {
+            return 'Rumah Sakit';
+        }
+        if (str_contains($jenisLower, 'puskesmas')) {
+            return 'Puskesmas';
+        }
+        if (str_contains($jenisLower, 'klinik')) {
+            return 'Klinik';
+        }
+        if (str_contains($jenisLower, 'apotik') || str_contains($jenisLower, 'apotek')) {
+            return 'Apotek';
+        }
+
+        return ucwords($jenisLower);
+    }
+
+    private function formatAddress($alamat, $kota = '', $kecamatan = '', $provinsi = '')
+    {
+        $alamat = trim($alamat ?? '');
+        $kota = trim($kota ?? '');
+        $kecamatan = trim($kecamatan ?? '');
+        $provinsi = trim($provinsi ?? '');
+
+        // Ganti typo "JL," atau "JLN," menjadi "Jl."
+        $alamat = preg_replace('/^(?:jl|jln),\s*/i', 'Jl. ', $alamat);
+        $alamat = ltrim($alamat, ",- \t\n\r\0\x0B");
+
+        if (empty($alamat) && !empty($kecamatan)) {
+            $alamat = 'Kec. ' . $kecamatan;
+        }
+
+        if (!empty($alamat) && !preg_match('/^(?:jl|jalan|gang|gg|komp|komplek|gedung|kav|kavling|dusun|desa|kel|kec)\b/i', $alamat)) {
+            if (preg_match('/(?:raya|barat|timur|selatan|utara|no\b|nomor|km\b|blok)/i', $alamat)) {
+                $alamat = 'Jl. ' . $alamat;
+            }
+        }
+
+        $parts = array_filter([$alamat, $kota, $provinsi], function ($p) {
+            return !empty($p);
+        });
+
+        // Hindari duplikasi jika alamat sudah mencantumkan kota / provinsi
+        $full = '';
+        foreach ($parts as $p) {
+            if ($full === '') {
+                $full = $p;
+            } else {
+                if (!str_contains(strtolower($full), strtolower($p))) {
+                    $full .= ', ' . $p;
+                }
+            }
+        }
+
+        return $full;
+    }
+
     private function getGoogleMapsUrl($name, $lat = null, $lng = null, $kota = '', $alamat = '')
     {
         // Build a rich query: Name + Address + Kota for better accuracy
@@ -150,32 +231,27 @@ class FaskesDetailController extends Controller
                         && str_starts_with($item['link_maps'], 'http')
                         && (str_contains($item['link_maps'], '@') || str_contains($item['link_maps'], 'place') || str_contains($item['link_maps'], 'maps.app.goo.gl') || str_contains($item['link_maps'], 'dir'));
 
-                    // UPDATE: BE menggunakan alamat_faskes, bukan alamat
-                    $alamatFaskes = $item['alamat_faskes'] ?? $item['alamat'] ?? '';
+                    $kota = $item['kota_kabupaten'] ?? $item['kota'] ?? '';
+                    $kecamatan = $item['kecamatan'] ?? '';
+                    $provinsi = $item['provinsi'] ?? '';
+                    $alamatFaskes = $item['alamat_faskes'] ?? $item['alamat'] ?? $item['alamat_lengkap'] ?? $item['jalan'] ?? '';
+
+                    $fullAddress = $this->formatAddress($alamatFaskes, $kota, $kecamatan, $provinsi);
+                    $resolvedType = $this->formatFaskesType($jenisFaskes, $typeSlug, $formattedName);
+
                     $navUrl = $hasSpecificLink
                         ? $item['link_maps']
                         : $this->getGoogleMapsUrl($formattedName, $lat, $lng, $kota, $alamatFaskes);
 
-                    $fullAddress = $alamatFaskes;
-                    if (!empty($item['kota_kabupaten'])) {
-                        $fullAddress .= (str_contains($fullAddress, $item['kota_kabupaten']) ? '' : ', ' . $item['kota_kabupaten']);
-                    }
-                    if (!empty($item['provinsi'])) {
-                        $fullAddress .= (str_contains($fullAddress, $item['provinsi']) ? '' : ', ' . $item['provinsi']);
-                    }
-
-                    // UPDATE: BE menggunakan kontak (dari migration add_kontak), bukan telepon/telp_faskes
-                    $phone = !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : '-');
+                    $phone = !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : (!empty($item['telepon']) ? $item['telepon'] : '-'));
                     $distance = $request->query('distance', '2.4 km');
 
                     $faskes = [
                         'id' => $item['id_faskes'] ?? $item['id'],
                         'nama_faskes' => $formattedName,
-                        // UPDATE: tampilkan jenis_faskes dari BE
-                        'tipe' => $jenisFaskes ?: 'Rumah Sakit',
+                        'tipe' => $resolvedType,
                         'type_slug' => $typeSlug,
                         'kelas' => $item['kelas'] ?? 'A',
-                        // UPDATE: BE menggunakan _support_bpjs, bukan is_support_bpjs
                         'is_support_bpjs' => (bool) ($item['_support_bpjs'] ?? $item['is_support_bpjs'] ?? true),
                         'alamat' => $fullAddress,
                         'kota_kabupaten' => $kota,
@@ -190,8 +266,8 @@ class FaskesDetailController extends Controller
                         'photos' => $this->getGalleryPhotos($typeSlug, $item['id_faskes'] ?? $item['id']),
                         'description' => $this->getDefaultDescription(
                             $formattedName,
-                            $jenisFaskes ?: 'Rumah Sakit',
-                            $item['kota_kabupaten'] ?? 'Jakarta Selatan'
+                            $resolvedType,
+                            $kota ?: 'Jakarta Selatan'
                         ),
                     ];
                 }

@@ -1,5 +1,5 @@
 @props([
-    'id' => 1,
+    'id' => 0,
     'foto' => null,
     'hospital_name' => 'Metro General Hospital',
     'type' => 'Rumah Sakit',
@@ -23,6 +23,46 @@
     $formattedHospitalName = trim($hospital_name);
     if (($type_slug === 'puskesmas' || str_contains(strtolower($type ?? ''), 'puskesmas')) && !preg_match('/^(puskesmas|pkm)\b/i', $formattedHospitalName)) {
         $formattedHospitalName = 'Puskesmas ' . $formattedHospitalName;
+    }
+
+    // Resolve clean facility type for badge (never show generic "Fasilitas Kesehatan")
+    $resolvedType = trim($type ?? '');
+    if (empty($resolvedType) || strcasecmp($resolvedType, 'Fasilitas Kesehatan') === 0 || strcasecmp($resolvedType, 'faskes') === 0) {
+        $nameLower = strtolower($formattedHospitalName);
+        if ($type_slug === 'puskesmas' || str_contains($nameLower, 'puskesmas') || str_contains($nameLower, 'pkm')) {
+            $resolvedType = 'Puskesmas';
+        } elseif ($type_slug === 'clinic' || str_contains($nameLower, 'klinik') || str_contains($nameLower, 'clinic')) {
+            $resolvedType = 'Klinik';
+        } elseif (str_contains($nameLower, 'apotik') || str_contains($nameLower, 'apotek') || str_contains($nameLower, 'farma')) {
+            $resolvedType = 'Apotek';
+        } elseif (str_contains($nameLower, 'laboratorium') || str_contains($nameLower, 'lab')) {
+            $resolvedType = 'Laboratorium';
+        } else {
+            $resolvedType = 'Rumah Sakit';
+        }
+    } else {
+        $low = strtolower($resolvedType);
+        if (str_contains($low, 'rumah sakit') || $low === 'rs') {
+            $resolvedType = 'Rumah Sakit';
+        } elseif (str_contains($low, 'puskesmas')) {
+            $resolvedType = 'Puskesmas';
+        } elseif (str_contains($low, 'klinik')) {
+            $resolvedType = 'Klinik';
+        } elseif (str_contains($low, 'apotik') || str_contains($low, 'apotek')) {
+            $resolvedType = 'Apotek';
+        } else {
+            $resolvedType = ucwords($low);
+        }
+    }
+
+    // Clean address: remove leading comma or orphan comma, ensure road formatting
+    $cleanAddress = trim($hospital_address ?? '');
+    $cleanAddress = preg_replace('/^(?:jl|jln),\s*/i', 'Jl. ', $cleanAddress);
+    $cleanAddress = ltrim($cleanAddress, ",- \t\n\r\0\x0B");
+    if (!empty($cleanAddress) && !preg_match('/^(?:jl|jalan|gang|gg|komp|komplek|gedung|kav|kavling|dusun|desa|kel|kec)\b/i', $cleanAddress)) {
+        if (preg_match('/(?:raya|barat|timur|selatan|utara|no\b|nomor|km\b|blok)/i', $cleanAddress)) {
+            $cleanAddress = 'Jl. ' . $cleanAddress;
+        }
     }
 
     // Icon selection based on type_slug
@@ -72,12 +112,12 @@
                         </div>
                     @endif
                 </div>
-                <p class="card-text text-muted mb-2 hospital-card-address">{{ $hospital_address }}</p>
+                <p class="card-text text-muted mb-2 hospital-card-address">{{ $cleanAddress }}</p>
 
                 <div class="d-flex gap-1 mb-2 align-items-center flex-wrap hospital-card-badges">
-                    @if($type)
+                    @if($resolvedType)
                         <span class="badge-custom badge-type-{{ $type_slug }}" style="background-color: #f1f5f9; color: #475569;">
-                            {{ $type }}
+                            {{ $resolvedType }}
                         </span>
                     @endif
                     @if($hospital_class)

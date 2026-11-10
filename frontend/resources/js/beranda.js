@@ -43,9 +43,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos((lat1 * Math.PI) / 180) *
-                Math.cos((lat2 * Math.PI) / 180) *
-                Math.sin(dLon / 2) *
-                Math.sin(dLon / 2);
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return Math.round(R * c * 10) / 10;
     }
@@ -60,46 +60,119 @@ document.addEventListener("DOMContentLoaded", function () {
         return `https://www.google.com/maps/search/?api=1&query=${encoded}`;
     }
 
+    // Helper to resolve specific facility type (never generic 'Fasilitas Kesehatan')
+    function resolveFaskesType(item, typeSlug = "hospital", name = "") {
+        let resolved = (item.type || item.jenis_faskes || item.tipe || "").trim();
+        if (!resolved || resolved.toLowerCase() === "fasilitas kesehatan" || resolved.toLowerCase() === "faskes") {
+            const nameLower = (name || item.name || item.nama_faskes || "").toLowerCase();
+            if (typeSlug === "puskesmas" || nameLower.includes("puskesmas") || nameLower.includes("pkm")) {
+                return "Puskesmas";
+            }
+            if (typeSlug === "clinic" || nameLower.includes("klinik") || nameLower.includes("clinic")) {
+                return "Klinik";
+            }
+            if (nameLower.includes("apotik") || nameLower.includes("apotek") || nameLower.includes("farma")) {
+                return "Apotek";
+            }
+            if (nameLower.includes("laboratorium") || nameLower.includes("lab")) {
+                return "Laboratorium";
+            }
+            return "Rumah Sakit";
+        }
+        const low = resolved.toLowerCase();
+        if (low.includes("rumah sakit") || low === "rs") return "Rumah Sakit";
+        if (low.includes("puskesmas")) return "Puskesmas";
+        if (low.includes("klinik")) return "Klinik";
+        if (low.includes("apotik") || low.includes("apotek")) return "Apotek";
+        return resolved.charAt(0).toUpperCase() + resolved.slice(1);
+    }
+
+    // Helper to clean faskes address (remove leading comma, fix JL, ensure road formatting)
+    function cleanFaskesAddress(rawAlamat, kota = "", kecamatan = "") {
+        let addr = (rawAlamat || "").trim();
+        addr = addr.replace(/^(?:jl|jln),\s*/i, "Jl. ");
+        addr = addr.replace(/^[,\-\s]+/, "");
+
+        if (!addr && kecamatan) {
+            addr = "Kec. " + kecamatan.trim();
+        }
+
+        if (addr && !/^(?:jl|jalan|gang|gg|komp|komplek|gedung|kav|kavling|dusun|desa|kel|kec)\b/i.test(addr)) {
+            if (/(?:raya|barat|timur|selatan|utara|no\b|nomor|km\b|blok)/i.test(addr)) {
+                addr = "Jl. " + addr;
+            }
+        }
+
+        const city = (kota || "").trim();
+        if (addr && city) {
+            if (addr.toLowerCase().endsWith(city.toLowerCase())) {
+                return addr;
+            }
+            return `${addr}, ${city}`;
+        } else if (addr) {
+            return addr;
+        } else if (city) {
+            return city;
+        }
+        return "";
+    }
+
     // 2. Render Single Hospital Card HTML
     function renderHospitalCardHtml(item) {
+        // --- 1. PASTIKAN ID TERTANGKAP DENGAN BENAR ---
+        const hospitalId = item.id || item.id_faskes || "";
+        // console.log("Data Item Faskes:", item);
+        // console.log("ID Faskes:", item.id_faskes);
         const distStr =
             item.currentDistance !== null &&
-            item.currentDistance !== undefined &&
-            item.currentDistance !== 999
+                item.currentDistance !== undefined &&
+                item.currentDistance !== 999
                 ? `${item.currentDistance} km`
                 : item.distance || "2.4 km";
+
         let name = (
             item.hospital_name ||
             item.name ||
+            item.nama_faskes ||
             "Fasilitas Kesehatan"
         ).trim();
-        const address = item.hospital_address || item.address || "";
-        const rating = item.hospital_rating || item.rating || null;
-        const hasValidRating =
-            rating && parseFloat(rating) > 0 && rating !== "Belum dirating";
+
         const typeSlug = item.type_slug || "hospital";
+
+        // --- 2. PASTIKAN DETAIL URL TIDAK UNDEFINED ---
         const detailUrl =
             item.detail_url && item.detail_url !== "#"
                 ? item.detail_url
-                : `/faskes/${item.id}`;
+                : `/faskes/${hospitalId}`; // Gunakan hospitalId yang sudah difilter
 
         if (
             (typeSlug === "puskesmas" ||
-                (item.type && item.type.toLowerCase().includes("puskesmas"))) &&
+                (item.type && item.type.toLowerCase().includes("puskesmas")) ||
+                (item.jenis_faskes && item.jenis_faskes.toLowerCase().includes("puskesmas"))) &&
             !/^(puskesmas|pkm)\b/i.test(name)
         ) {
             name = "Puskesmas " + name;
         }
 
+        const resolvedType = resolveFaskesType(item, typeSlug, name);
+        const address = cleanFaskesAddress(
+            item.hospital_address || item.address || item.alamat_faskes || item.alamat || "",
+            item.kota_kabupaten || item.kota || "",
+            item.kecamatan || ""
+        );
+        const rating = item.hospital_rating || item.rating || item.avg_rating || null;
+        const hasValidRating =
+            rating && parseFloat(rating) > 0 && rating !== "Belum dirating";
+
         const navUrl =
             item.link_maps && item.link_maps.startsWith("http")
                 ? item.link_maps
                 : buildGoogleMapsUrl(
-                      name,
-                      item.lat,
-                      item.lng,
-                      item.kota_kabupaten || "",
-                  );
+                    name,
+                    item.lat,
+                    item.lng,
+                    item.kota_kabupaten || "",
+                );
 
         let typeIcon = "bi-hospital";
         if (typeSlug === "clinic") {
@@ -108,74 +181,73 @@ document.addEventListener("DOMContentLoaded", function () {
             typeIcon = "bi-plus-circle-fill";
         }
 
+        // --- 3. PASTIKAN BPJS STATUS TERBACA (CAST KE BOOLEAN) ---
+        const isBpjsSupport = (item.bpjs_support === true || item.bpjs_support === 1 || item._support_bpjs === true || item._support_bpjs === 1 || item.is_support_bpjs === true || item.is_support_bpjs === 1);
+
         return `
             <div class="col-12 col-md-4 hospital-card-wrapper" 
-                 id="home-card-col-${item.id}" 
-                 data-id="${item.id}"
+                 id="home-card-col-${hospitalId}" 
+                 data-id="${hospitalId}"
                  data-name="${name}"
                  data-type="${typeSlug}"
-                 data-class="${item.hospital_class || ""}"
+                 data-class="${item.hospital_class || item.kelas || ""}"
                  data-rating="${hasValidRating ? rating : ""}"
-                 data-bpjs="${item.bpjs_support ? "1" : "0"}"
-                 data-lat="${item.lat || ""}" 
-                 data-lng="${item.lng || ""}">
+                 data-bpjs="${isBpjsSupport ? "1" : "0"}"
+                 data-lat="${item.lat || item.latitude || ""}" 
+                 data-lng="${item.lng || item.longitude || ""}">
                 <div class="card hospital-card h-100">
                     <div class="hospital-card-main">
                         <div class="hospital-card-img-wrapper faskes-avatar-banner faskes-avatar-${typeSlug}">
                             <i class="bi ${typeIcon} faskes-avatar-icon text-white"></i>
-                            ${
-                                item.is_open
-                                    ? `
+                            ${item.is_open
+                ? `
                                 <span class="badge-status-open d-md-none">
                                     <span class="status-dot"></span> Buka
                                 </span>
                             `
-                                    : ""
-                            }
+                : ""
+            }
                         </div>
 
                         <div class="card-body hospital-card-body d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <h6 class="card-title fw-bold mb-0 text-dark hospital-card-title">${name}</h6>
-                                ${
-                                    hasValidRating
-                                        ? `
+                                ${hasValidRating
+                ? `
                                     <div class="rating-badge d-flex align-items-center flex-shrink-0 ms-1">
                                         <i class="bi bi-star-fill text-warning me-1" style="font-size: 0.72rem;"></i>
                                         <span class="fw-bold text-dark" style="font-size: 0.78rem;">${rating}</span>
                                     </div>
                                 `
-                                        : `
+                : `
                                     <div class="rating-badge d-flex align-items-center flex-shrink-0 ms-1 text-muted" style="font-size: 0.72rem;">
                                         <i class="bi bi-star me-1 text-muted opacity-50"></i>
                                         <span class="small text-muted" style="font-size: 0.7rem;">Belum dirating</span>
                                     </div>
                                 `
-                                }
+            }
                             </div>
                             <p class="card-text text-muted mb-2 hospital-card-address">${address}</p>
 
                             <div class="d-flex gap-1 mb-2 align-items-center flex-wrap hospital-card-badges">
-                                ${
-                                    item.type
-                                        ? `
+                                ${resolvedType
+                ? `
                                     <span class="badge-custom badge-type-${typeSlug}" style="background-color: #f1f5f9; color: #475569;">
-                                        ${item.type}
+                                        ${resolvedType}
                                     </span>
                                 `
-                                        : ""
-                                }
-                                ${
-                                    item.hospital_class
-                                        ? `
-                                    <span class="badge-custom badge-kelas">Kelas ${item.hospital_class}</span>
+                : ""
+            }
+                                ${item.hospital_class || item.kelas
+                ? `
+                                    <span class="badge-custom badge-kelas">Kelas ${item.hospital_class || item.kelas}</span>
                                 `
-                                        : ""
-                                }
-                                <span class="badge-custom ${item.bpjs_support ? "badge-bpjs" : "badge-non-bpjs"}">
-                                    ${item.bpjs_support ? "BPJS" : "Non BPJS"}
+                : ""
+            }
+                                <span class="badge-custom ${isBpjsSupport ? "badge-bpjs" : "badge-non-bpjs"}">
+                                    ${isBpjsSupport ? "BPJS" : "Non BPJS"}
                                 </span>
-                                <span class="distance-info ms-auto" id="home-distance-${item.id}">
+                                <span class="distance-info ms-auto" id="home-distance-${hospitalId}">
                                     <i class="bi bi-sign-turn-right me-1" style="font-size: 0.8rem;"></i>
                                     <span class="distance-value">${distStr}</span>
                                 </span>
@@ -184,7 +256,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
 
                     <div class="hospital-card-actions mt-auto d-flex gap-2">
-                        <a href="${navUrl}" id="home-nav-${item.id}" class="btn btn-navigasi flex-grow-1 text-white d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none" target="_blank">
+                        <a href="${navUrl}" id="home-nav-${hospitalId}" class="btn btn-navigasi flex-grow-1 text-white d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none" target="_blank">
                             <i class="bi bi-sign-turn-right"></i> Navigasi
                         </a>
                         <a href="${detailUrl}" class="btn btn-detail flex-grow-1 d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none">
@@ -194,20 +266,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
             </div>
         `;
-    }
-
-    // Update visibility of load more button container
-    function updateLoadMoreButtonState() {
-        const loadMoreContainer = document.getElementById(
-            "homeLoadMoreContainer",
-        );
-        if (loadMoreContainer) {
-            if (hasMoreHomeItems) {
-                loadMoreContainer.classList.remove("d-none");
-            } else {
-                loadMoreContainer.classList.add("d-none");
-            }
-        }
     }
 
     // 3. Apply Toggle Filters & Sort Cards
@@ -375,7 +433,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     hospitalsData = items.map((item) => {
                         const itemLat = parseFloat(item.latitude || item.lat);
                         const itemLng = parseFloat(item.longitude || item.lng);
-                        // UPDATE: BE menggunakan jenis_faskes, bukan tipe
+
+                        // ID Faskes yang aman (mendukung id_faskes atau id)
+                        const faskesId = item.id_faskes || item.id || "";
+
                         const typeSlug =
                             item.type_slug ||
                             (() => {
@@ -398,10 +459,12 @@ document.addEventListener("DOMContentLoaded", function () {
                                     return "clinic";
                                 return "hospital";
                             })();
+
                         const rating =
                             item.avg_rating && parseFloat(item.avg_rating) > 0
                                 ? parseFloat(item.avg_rating).toFixed(1)
                                 : null;
+
                         const distance = getDistanceKm(
                             lat,
                             lng,
@@ -411,12 +474,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         let fName = (
                             item.nama_faskes ||
+                            item.nama ||
                             item.name ||
                             "Fasilitas Kesehatan"
                         ).trim();
-                        // UPDATE: BE menggunakan jenis_faskes, bukan tipe
+
                         const jenisFaskes =
-                            item.jenis_faskes || item.tipe || "";
+                            item.jenis_faskes || item.tipe || item.type || "";
                         if (
                             (typeSlug === "puskesmas" ||
                                 (jenisFaskes &&
@@ -428,22 +492,43 @@ document.addEventListener("DOMContentLoaded", function () {
                             fName = "Puskesmas " + fName;
                         }
 
+                        const resolvedType = resolveFaskesType(item, typeSlug, fName);
+
+                        // --- PERBAIKAN UTAMA: AMBIL ALAMAT DAN KOTA DENGAN AMAN ---
+                        const rawAlamat = (
+                            item.alamat_faskes ||
+                            item.alamat ||
+                            item.alamat_lengkap ||
+                            item.address ||
+                            item.jalan ||
+                            item.lokasi ||
+                            ""
+                        ).trim();
+
+                        const kota = (item.kota_kabupaten || item.kota || item.city || "").trim();
+
+                        // Paksa gabungkan nama jalan dan kota secara langsung agar tidak hilang oleh helper
+                        let cleanAddress = rawAlamat;
+                        if (rawAlamat && kota) {
+                            // Format ulang "JL." menjadi "Jl. " agar rapi
+                            cleanAddress = rawAlamat.replace(/^(?:jl|jln)\.?\s*/i, "Jl. ");
+                            if (!cleanAddress.toLowerCase().includes(kota.toLowerCase())) {
+                                cleanAddress = `${cleanAddress}, ${kota}`;
+                            }
+                        } else if (!rawAlamat && kota) {
+                            cleanAddress = kota;
+                        }
+
                         return {
-                            id: item.id_faskes ?? item.id,
+                            id: faskesId,
                             hospital_name: fName,
-                            type: jenisFaskes || "Fasilitas Kesehatan",
+                            type: resolvedType,
                             type_slug: typeSlug,
-                            // UPDATE: BE menggunakan alamat_faskes, bukan alamat
-                            hospital_address:
-                                (item.alamat_faskes || item.alamat || "") +
-                                (item.kota_kabupaten
-                                    ? ", " + item.kota_kabupaten
-                                    : ""),
+                            hospital_address: cleanAddress, // Alamat jalan & kota sekarang masuk ke sini dengan aman!
                             hospital_rating: rating,
-                            hospital_class: item.kelas || null,
-                            // UPDATE: BE menggunakan _support_bpjs, bukan is_support_bpjs
+                            hospital_class: item.kelas || item.hospital_class || null,
                             bpjs_support: !!(
-                                item._support_bpjs ?? item.is_support_bpjs
+                                item._support_bpjs ?? item.is_support_bpjs ?? item.bpjs_support
                             ),
                             distance:
                                 distance !== null ? `${distance} km` : "2.4 km",
@@ -453,16 +538,16 @@ document.addEventListener("DOMContentLoaded", function () {
                             lng: itemLng,
                             navigasi_url:
                                 item.link_maps &&
-                                item.link_maps !== "-" &&
-                                item.link_maps.startsWith("http")
+                                    item.link_maps !== "-" &&
+                                    item.link_maps.startsWith("http")
                                     ? item.link_maps
                                     : buildGoogleMapsUrl(
-                                          fName,
-                                          itemLat,
-                                          itemLng,
-                                          item.kota_kabupaten || "",
-                                      ),
-                            detail_url: `/faskes/${item.id_faskes ?? item.id}`,
+                                        fName,
+                                        itemLat,
+                                        itemLng,
+                                        kota,
+                                    ),
+                            detail_url: `/faskes/${faskesId}`, // ID dijamin tidak undefined lagi!
                         };
                     });
 
@@ -540,21 +625,22 @@ document.addEventListener("DOMContentLoaded", function () {
                                 : null;
                         const distance = userState.isDetected
                             ? getDistanceKm(
-                                  userState.lat,
-                                  userState.lng,
-                                  itemLat,
-                                  itemLng,
-                              )
+                                userState.lat,
+                                userState.lng,
+                                itemLat,
+                                itemLng,
+                            )
                             : null;
 
                         let fName = (
                             item.nama_faskes ||
+                            item.nama ||
                             item.name ||
                             "Fasilitas Kesehatan"
                         ).trim();
                         // UPDATE: BE menggunakan jenis_faskes, bukan tipe
                         const jenisFaskes =
-                            item.jenis_faskes || item.tipe || "";
+                            item.jenis_faskes || item.tipe || item.type || "";
                         if (
                             (typeSlug === "puskesmas" ||
                                 (jenisFaskes &&
@@ -566,22 +652,29 @@ document.addEventListener("DOMContentLoaded", function () {
                             fName = "Puskesmas " + fName;
                         }
 
+                        const resolvedType = resolveFaskesType(item, typeSlug, fName);
+                        const rawAlamat =
+                            item.alamat_faskes ||
+                            item.alamat ||
+                            item.alamat_lengkap ||
+                            item.address ||
+                            item.jalan ||
+                            item.lokasi ||
+                            "";
+                        const kota = item.kota_kabupaten || item.kota || item.city || "";
+                        const cleanAddress = cleanFaskesAddress(rawAlamat, kota, item.kecamatan || "");
+
                         return {
                             id: item.id_faskes ?? item.id,
                             hospital_name: fName,
-                            type: jenisFaskes || "Fasilitas Kesehatan",
+                            type: resolvedType,
                             type_slug: typeSlug,
-                            // UPDATE: BE menggunakan alamat_faskes, bukan alamat
-                            hospital_address:
-                                (item.alamat_faskes || item.alamat || "") +
-                                (item.kota_kabupaten
-                                    ? ", " + item.kota_kabupaten
-                                    : ""),
+                            hospital_address: cleanAddress,
                             hospital_rating: rating,
-                            hospital_class: item.kelas || null,
+                            hospital_class: item.kelas || item.hospital_class || null,
                             // UPDATE: BE menggunakan _support_bpjs, bukan is_support_bpjs
                             bpjs_support: !!(
-                                item._support_bpjs ?? item.is_support_bpjs
+                                item._support_bpjs ?? item.is_support_bpjs ?? item.bpjs_support
                             ),
                             distance:
                                 distance !== null ? `${distance} km` : "2.4 km",
@@ -591,15 +684,15 @@ document.addEventListener("DOMContentLoaded", function () {
                             lng: itemLng,
                             navigasi_url:
                                 item.link_maps &&
-                                item.link_maps !== "-" &&
-                                item.link_maps.startsWith("http")
+                                    item.link_maps !== "-" &&
+                                    item.link_maps.startsWith("http")
                                     ? item.link_maps
                                     : buildGoogleMapsUrl(
-                                          fName,
-                                          itemLat,
-                                          itemLng,
-                                          item.kota_kabupaten || "",
-                                      ),
+                                        fName,
+                                        itemLat,
+                                        itemLng,
+                                        item.kota_kabupaten || "",
+                                    ),
                             detail_url: `/faskes/${item.id_faskes ?? item.id}`,
                         };
                     });

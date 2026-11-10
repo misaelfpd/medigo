@@ -27,8 +27,9 @@ class DiscussionController extends Controller
             $queryParams['category'] = $category;
         }
 
+        // Pastikan parameter ini ditangkap di Backend Controller jika user membuka tab Diskusi Saya
         if ($tab === 'my_discussions' && Auth::check()) {
-            $queryParams['user_id'] = Auth::id();
+            $queryParams['id_user'] = Auth::user()->id_user ?? Auth::id();
         }
 
         try {
@@ -37,29 +38,37 @@ class DiscussionController extends Controller
             if ($response->successful()) {
                 $body = $response->json();
                 $rawItems = $body['data']['data'] ?? [];
+                
                 $discussions = collect($rawItems)->map(function ($item) {
                     $item = (array) $item;
-                    $id = $item['id_diskusi'] ?? $item['id'] ?? null;
-                    $title = $item['judul_diskusi'] ?? $item['title'] ?? '';
-                    $body = $item['isi_diskusi'] ?? $item['body'] ?? $item['content'] ?? '';
-                    $category = $item['kategori'] ?? $item['category'] ?? 'Umum';
-                    $imagePath = $item['gambar_diskusi'] ?? $item['image_path'] ?? $item['image'] ?? null;
-                    $userId = $item['id_user'] ?? $item['user_id'] ?? null;
+                    $id_diskusi = $item['id_diskusi'] ?? $item['id'] ?? null;
+                    $judul = $item['judul_diskusi'] ?? $item['title'] ?? '';
+                    $isi = $item['isi_diskusi'] ?? $item['body'] ?? $item['content'] ?? '';
+                    $kategori = $item['kategori'] ?? $item['category'] ?? 'Umum';
+                    $gambar = $item['gambar_diskusi'] ?? $item['image_path'] ?? $item['image'] ?? null;
+                    $id_user = $item['id_user'] ?? $item['user_id'] ?? null;
 
+                    // Menggunakan key Bahasa Indonesia sebagai yang utama, 
+                    // tapi mempertahankan key english untuk fallback jika blade masih menggunakannya
                     return array_merge($item, [
-                        'id' => $id,
-                        'id_diskusi' => $id,
-                        'title' => $title,
-                        'judul_diskusi' => $title,
-                        'body' => $body,
-                        'isi_diskusi' => $body,
-                        'content' => $body,
-                        'category' => $category,
-                        'kategori' => $category,
-                        'image_path' => $imagePath,
-                        'gambar_diskusi' => $imagePath,
-                        'user_id' => $userId,
-                        'id_user' => $userId,
+                        'id_diskusi' => $id_diskusi,
+                        'id' => $id_diskusi,
+                        
+                        'judul_diskusi' => $judul,
+                        'title' => $judul,
+                        
+                        'isi_diskusi' => $isi,
+                        'body' => $isi,
+                        'content' => $isi,
+                        
+                        'kategori' => $kategori,
+                        'category' => $kategori,
+                        
+                        'gambar_diskusi' => $gambar,
+                        'image_path' => $gambar,
+                        
+                        'id_user' => $id_user,
+                        'user_id' => $id_user,
                     ]);
                 })->all();
 
@@ -69,7 +78,6 @@ class DiscussionController extends Controller
             Log::info('Discussions fetch fallback: ' . $e->getMessage());
         }
 
-        // Jika backend tidak mengembalikan data, biarkan $discussions tetap kosong []
         return view('users.discussion', compact('discussions', 'category', 'tab', 'pagination'));
     }
 
@@ -100,7 +108,7 @@ class DiscussionController extends Controller
             $response = Http::timeout(5)
                 ->withHeaders(['X-Service-Key' => (string) config('services.medigo.service_key')])
                 ->post("{$backendUrl}/api/auth/token-by-email", [
-                    'email' => Auth::user()->email,
+                    'email' => Auth::user()->email_user ?? Auth::user()->email,
                 ]);
 
             if ($response->successful()) {
@@ -162,6 +170,7 @@ class DiscussionController extends Controller
                 }
             }
 
+            // Payload POST diskusi ke backend (pastikan validasi di Backend masih menerima 'title' & 'content')
             $response = $http->post("{$backendUrl}/api/discussions", [
                 'title'    => $request->input('title'),
                 'content'  => $request->input('content'),
@@ -170,7 +179,8 @@ class DiscussionController extends Controller
 
             if ($response->successful()) {
                 $resData = $response->json();
-                $newId = $resData['discussion_id'] ?? null;
+                $newId = $resData['discussion_id'] ?? $resData['id_diskusi'] ?? null;
+                
                 if ($newId) {
                     return redirect()->route('discussions.show', $newId)->with('success', 'Topik diskusi Anda berhasil dipublikasikan!');
                 }
@@ -185,7 +195,7 @@ class DiscussionController extends Controller
         }
     }
 
-    public function report(Request $request, $type, $id)
+    public function report(Request $request, $type, $target_id)
     {
         if (!Auth::check()) {
             return redirect()->route('login')->with('warning', 'Silakan masuk terlebih dahulu untuk melaporkan.');
@@ -200,8 +210,8 @@ class DiscussionController extends Controller
                 $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
                 $endpoint = $type === 'comment' 
-                    ? "{$backendUrl}/api/comments/{$id}/report" 
-                    : "{$backendUrl}/api/discussions/{$id}/report";
+                    ? "{$backendUrl}/api/comments/{$target_id}/report" 
+                    : "{$backendUrl}/api/discussions/{$target_id}/report";
 
                 $response = Http::timeout(5)->withToken($token)->post($endpoint, [
                     'reason' => $request->input('reason')
@@ -217,7 +227,7 @@ class DiscussionController extends Controller
         return back()->with('error', 'Gagal mengirim laporan. Silakan coba lagi nanti.');
     }
 
-    public function show($id)
+    public function show($id_diskusi)
     {
         $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
         $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
@@ -231,10 +241,11 @@ class DiscussionController extends Controller
             
             $http = Http::timeout(4);
             if ($token) {
-                $http->withToken($token);
+                $http = $http->withToken($token);
             }
 
-            $response = $http->get("{$backendUrl}/api/discussions/{$id}");
+            // Hit backend API menggunakan $id_diskusi
+            $response = $http->get("{$backendUrl}/api/discussions/{$id_diskusi}");
 
             if ($response->successful()) {
                 $responseBody = $response->json();
@@ -244,7 +255,7 @@ class DiscussionController extends Controller
 
                 if ($rawDiscussion) {
                     $d = (array) $rawDiscussion;
-                    $idVal = $d['id_diskusi'] ?? $d['id'] ?? $id;
+                    $idVal = $d['id_diskusi'] ?? $d['id'] ?? $id_diskusi;
                     $titleVal = $d['judul_diskusi'] ?? $d['title'] ?? '';
                     $bodyVal = $d['isi_diskusi'] ?? $d['body'] ?? $d['content'] ?? '';
                     $catVal = $d['kategori'] ?? $d['category'] ?? 'Umum';
@@ -254,30 +265,32 @@ class DiscussionController extends Controller
                     $authorEmailVal = $d['email_user'] ?? $d['author_email'] ?? null;
 
                     $discussion = array_merge($d, [
-                        'id' => $idVal,
                         'id_diskusi' => $idVal,
-                        'title' => $titleVal,
+                        'id' => $idVal,
                         'judul_diskusi' => $titleVal,
-                        'body' => $bodyVal,
+                        'title' => $titleVal,
                         'isi_diskusi' => $bodyVal,
-                        'category' => $catVal,
+                        'body' => $bodyVal,
                         'kategori' => $catVal,
-                        'image_path' => $imgVal,
+                        'category' => $catVal,
                         'gambar_diskusi' => $imgVal,
-                        'user_id' => $usrVal,
+                        'image_path' => $imgVal,
                         'id_user' => $usrVal,
+                        'user_id' => $usrVal,
+                        'nama_user' => $authorNameVal,
                         'author_name' => $authorNameVal,
+                        'email_user' => $authorEmailVal,
                         'author_email' => $authorEmailVal,
                     ]);
                 }
 
-                $currentUserId = Auth::id();
+                $currentUserId = Auth::user()->id_user ?? Auth::id();
 
                 $commentMap = [];
                 foreach ($rawComments as $comment) {
                     $c = (array) $comment;
                     $cId = $c['id_tanggapan'] ?? $c['id'] ?? null;
-                    $cDiscId = $c['id_diskusi'] ?? $c['discussion_id'] ?? $id;
+                    $cDiscId = $c['id_diskusi'] ?? $c['discussion_id'] ?? $id_diskusi;
                     $cParentId = $c['id_parent'] ?? $c['parent_id'] ?? null;
                     $cUserId = $c['id_user'] ?? $c['user_id'] ?? null;
                     $cBody = $c['isi_tanggapan'] ?? $c['body'] ?? $c['content'] ?? '';
@@ -285,28 +298,38 @@ class DiscussionController extends Controller
                     $cName = $c['nama_user'] ?? $c['commentator_name'] ?? 'Pengguna';
                     $cEmail = $c['email_user'] ?? $c['commentator_email'] ?? null;
 
-                    $c['id'] = $cId;
                     $c['id_tanggapan'] = $cId;
-                    $c['discussion_id'] = $cDiscId;
+                    $c['id'] = $cId;
+                    
                     $c['id_diskusi'] = $cDiscId;
-                    $c['parent_id'] = $cParentId;
+                    $c['discussion_id'] = $cDiscId;
+                    
                     $c['id_parent'] = $cParentId;
-                    $c['user_id'] = $cUserId;
+                    $c['parent_id'] = $cParentId;
+                    
                     $c['id_user'] = $cUserId;
-                    $c['body'] = $cBody;
+                    $c['user_id'] = $cUserId;
+                    
                     $c['isi_tanggapan'] = $cBody;
+                    $c['body'] = $cBody;
                     $c['content'] = $cBody;
-                    $c['image_path'] = $cImage;
+                    
                     $c['gambar_tanggapan'] = $cImage;
+                    $c['image_path'] = $cImage;
+                    
+                    $c['nama_user'] = $cName;
                     $c['commentator_name'] = $cName;
+                    
+                    $c['email_user'] = $cEmail;
                     $c['commentator_email'] = $cEmail;
+                    
                     $c['replies'] = []; 
                     
                     $commentMap[$cId] = $c;
                 }
 
                 foreach ($commentMap as $cid => $c) {
-                    $parentId = $c['parent_id'] ?? null;
+                    $parentId = $c['id_parent'];
                     if ($parentId && isset($commentMap[$parentId])) {
                         $commentMap[$parentId]['replies'][] = &$commentMap[$cid];
                     }
@@ -314,18 +337,18 @@ class DiscussionController extends Controller
 
                 $rootComments = [];
                 foreach ($commentMap as $cid => $c) {
-                    if (empty($c['parent_id'])) {
+                    if (empty($c['id_parent'])) {
                         $rootComments[] = $c;
                     }
                 }
 
                 if ($currentUserId && !empty($rootComments)) {
                     usort($rootComments, function ($a, $b) use ($currentUserId) {
-                        $aIsMine = (($a['user_id'] ?? 0) == $currentUserId);
-                        $bIsMine = (($b['user_id'] ?? 0) == $currentUserId);
+                        $aIsMine = (($a['id_user'] ?? 0) == $currentUserId);
+                        $bIsMine = (($b['id_user'] ?? 0) == $currentUserId);
 
-                        $aHasMyReply = collect($a['replies'])->contains('user_id', $currentUserId);
-                        $bHasMyReply = collect($b['replies'])->contains('user_id', $currentUserId);
+                        $aHasMyReply = collect($a['replies'])->contains('id_user', $currentUserId);
+                        $bHasMyReply = collect($b['replies'])->contains('id_user', $currentUserId);
 
                         $scoreA = ($aIsMine ? 2 : 0) + ($aHasMyReply ? 1 : 0);
                         $scoreB = ($bIsMine ? 2 : 0) + ($bHasMyReply ? 1 : 0);
@@ -347,7 +370,7 @@ class DiscussionController extends Controller
         return view('users.discussion_detail', compact('discussion', 'comments'));
     }
 
-    public function reply(Request $request, $id)
+public function reply(Request $request, $id_diskusi)
     {
         if (!Auth::check()) {
             return redirect()->route('login')->with('warning', 'Silakan masuk terlebih dahulu untuk membalas diskusi.');
@@ -356,7 +379,7 @@ class DiscussionController extends Controller
         $request->validate([
             'content'   => 'required|string|max:1000',
             'image'     => 'nullable|image|mimes:jpeg,png,jpg|max:5120', 
-            'parent_id' => 'nullable|integer', 
+            'id_parent' => 'nullable|integer', 
         ]);
 
         $token = $this->getBackendToken();
@@ -366,35 +389,40 @@ class DiscussionController extends Controller
                 $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
                 $http = Http::timeout(10)->withToken($token);
 
+                // SESUAIKAN PAYLOAD DENGAN REQUEST DI BACKEND COMMENT CONTROLLER
                 $payload = [
-                    'body'      => $request->input('content'),
-                    'parent_id' => $request->input('parent_id'), 
+                    'body'      => $request->input('content'), // Sesuai dengan $request->validate(['body' => ...]) di backend
+                    'parent_id' => $request->input('id_parent') ?? $request->input('parent_id'), // Sesuai dengan request backend
                 ];
 
                 if ($request->hasFile('image')) {
                     $image = $request->file('image');
                     $response = $http->attach(
-                        'image', 
+                        'image', // Sesuai dengan $request->hasFile('image') di backend
                         file_get_contents($image->getPathname()), 
                         $image->getClientOriginalName()
-                    )->post("{$backendUrl}/api/discussions/{$id}/comments", $payload);
+                    )->post("{$backendUrl}/api/discussions/{$id_diskusi}/comments", $payload);
                 } else {
-                    $response = $http->post("{$backendUrl}/api/discussions/{$id}/comments", $payload);
+                    $response = $http->post("{$backendUrl}/api/discussions/{$id_diskusi}/comments", $payload);
                 }
                 
                 if ($response->successful()) {
-                    return redirect()->route('discussions.show', $id)->with('success', 'Balasan Anda berhasil dikirim!');
+                    return redirect()->route('discussions.show', $id_diskusi)->with('success', 'Balasan Anda berhasil dikirim!');
                 }
+
+                // Tambahkan log error jika backend mengembalikan status gagal (contoh: 404 atau 422)
+                $errorMsg = $response->json('message') ?? 'Gagal mengirim balasan.';
+                return redirect()->route('discussions.show', $id_diskusi)->with('error', $errorMsg);
+                
             } catch (\Exception $e) {
                 Log::warning('Failed posting discussion reply to backend: ' . $e->getMessage());
             }
         }
 
-        return redirect()->route('discussions.show', $id)->with('error', 'Gagal mengirim balasan.');
+        return redirect()->route('discussions.show', $id_diskusi)->with('error', 'Gagal mengirim balasan.');
     }
 
-    // FUNGSI: Menghapus komentar/balasan diskusi
-    public function destroyComment(Request $request, $id)
+    public function destroyComment(Request $request, $id_tanggapan = null)
     {
         if (!Auth::check()) {
             if ($request->ajax() || $request->wantsJson()) {
@@ -409,7 +437,7 @@ class DiscussionController extends Controller
                 $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
                 $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
-                $response = Http::withToken($token)->delete("{$backendUrl}/api/discussion-comments/{$id}");
+                $response = Http::withToken($token)->delete("{$backendUrl}/api/discussion-comments/{$id_tanggapan}");
 
                 if ($response->successful()) {
                     if ($request->ajax() || $request->wantsJson()) {
@@ -434,8 +462,7 @@ class DiscussionController extends Controller
         return back()->with('error', 'Gagal menghapus komentar atau Anda tidak memiliki akses.');
     }
 
-    // FUNGSI: Menghapus diskusi milik user sendiri
-    public function destroyDiscussion(Request $request, $id)
+    public function destroyDiscussion(Request $request, $id_diskusi)
     {
         if (!Auth::check()) {
             if ($request->ajax() || $request->wantsJson()) {
@@ -450,7 +477,7 @@ class DiscussionController extends Controller
                 $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
                 $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
-                $response = Http::withToken($token)->delete("{$backendUrl}/api/discussions/{$id}");
+                $response = Http::withToken($token)->delete("{$backendUrl}/api/discussions/{$id_diskusi}");
 
                 if ($response->successful()) {
                     if ($request->ajax() || $request->wantsJson()) {

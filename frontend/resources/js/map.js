@@ -130,6 +130,63 @@ document.addEventListener("DOMContentLoaded", function () {
         return `https://www.google.com/maps/search/?api=1&query=${encoded}`;
     }
 
+    // Helper to resolve specific facility type (never generic 'Fasilitas Kesehatan')
+    function resolveFaskesType(item, typeSlug = "hospital", name = "") {
+        let resolved = (item.type || item.jenis_faskes || item.tipe || "").trim();
+        if (!resolved || resolved.toLowerCase() === "fasilitas kesehatan" || resolved.toLowerCase() === "faskes") {
+            const nameLower = (name || item.name || item.nama_faskes || "").toLowerCase();
+            if (typeSlug === "puskesmas" || nameLower.includes("puskesmas") || nameLower.includes("pkm")) {
+                return "Puskesmas";
+            }
+            if (typeSlug === "clinic" || nameLower.includes("klinik") || nameLower.includes("clinic")) {
+                return "Klinik";
+            }
+            if (nameLower.includes("apotik") || nameLower.includes("apotek") || nameLower.includes("farma")) {
+                return "Apotek";
+            }
+            if (nameLower.includes("laboratorium") || nameLower.includes("lab")) {
+                return "Laboratorium";
+            }
+            return "Rumah Sakit";
+        }
+        const low = resolved.toLowerCase();
+        if (low.includes("rumah sakit") || low === "rs") return "Rumah Sakit";
+        if (low.includes("puskesmas")) return "Puskesmas";
+        if (low.includes("klinik")) return "Klinik";
+        if (low.includes("apotik") || low.includes("apotek")) return "Apotek";
+        return resolved.charAt(0).toUpperCase() + resolved.slice(1);
+    }
+
+    // Helper to clean faskes address (remove leading comma, fix JL, ensure road formatting)
+    function cleanFaskesAddress(rawAlamat, kota = "", kecamatan = "") {
+        let addr = (rawAlamat || "").trim();
+        addr = addr.replace(/^(?:jl|jln),\s*/i, "Jl. ");
+        addr = addr.replace(/^[,\-\s]+/, "");
+
+        if (!addr && kecamatan) {
+            addr = "Kec. " + kecamatan.trim();
+        }
+
+        if (addr && !/^(?:jl|jalan|gang|gg|komp|komplek|gedung|kav|kavling|dusun|desa|kel|kec)\b/i.test(addr)) {
+            if (/(?:raya|barat|timur|selatan|utara|no\b|nomor|km\b|blok)/i.test(addr)) {
+                addr = "Jl. " + addr;
+            }
+        }
+
+        const city = (kota || "").trim();
+        if (addr && city) {
+            if (addr.toLowerCase().endsWith(city.toLowerCase())) {
+                return addr;
+            }
+            return `${addr}, ${city}`;
+        } else if (addr) {
+            return addr;
+        } else if (city) {
+            return city;
+        }
+        return "";
+    }
+
     // 6. Custom Pin Marker Creator
     function createCustomPin(item, isActive = false) {
         let pinClass = "pin-hospital";
@@ -298,6 +355,13 @@ document.addEventListener("DOMContentLoaded", function () {
             displayName = "Puskesmas " + displayName;
         }
 
+        const resolvedType = resolveFaskesType(item, typeSlug, displayName);
+        const cleanAddress = cleanFaskesAddress(
+            item.address || item.alamat_faskes || item.alamat || "",
+            item.kota_kabupaten || item.kota || "",
+            item.kecamatan || ""
+        );
+
         const navUrl =
             item.link_maps &&
             item.link_maps !== "-" &&
@@ -308,7 +372,7 @@ document.addEventListener("DOMContentLoaded", function () {
                       item.lat,
                       item.lng,
                       item.kota_kabupaten || "",
-                      item.address || "",
+                      cleanAddress,
                   );
 
         let typeIcon = "bi-hospital";
@@ -323,7 +387,7 @@ document.addEventListener("DOMContentLoaded", function () {
                  id="card-faskes-${item.id}" 
                  data-id="${item.id}"
                  data-name="${displayName}"
-                 data-address="${item.address}"
+                 data-address="${cleanAddress}"
                  data-lat="${item.lat}"
                  data-lng="${item.lng}">
                 <div class="d-flex gap-3 align-items-start">
@@ -334,10 +398,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         <h6 class="facility-name fw-bold mb-1 text-dark text-truncate" title="${displayName}">
                             ${displayName}
                         </h6>
-                        <p class="facility-address text-muted mb-2 text-truncate" title="${item.address}">
-                            ${item.address}
+                        <p class="facility-address text-muted mb-2 text-truncate" title="${cleanAddress}">
+                            ${cleanAddress}
                         </p>
                         <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
+                            ${resolvedType ? `<span class="badge-custom badge-type-pill" style="background-color: #f1f5f9; color: #475569; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px;">${resolvedType}</span>` : ""}
                             ${item.hospital_class ? `<span class="badge-custom badge-kelas">Kelas ${item.hospital_class}</span>` : ""}
                             <span class="badge-custom ${item.bpjs_support ? "badge-bpjs" : "badge-non-bpjs"}">
                                 ${item.bpjs_support ? "BPJS" : "Non - BPJS"}
@@ -385,6 +450,13 @@ document.addEventListener("DOMContentLoaded", function () {
             displayName = "Puskesmas " + displayName;
         }
 
+        const resolvedType = resolveFaskesType(item, typeSlug, displayName);
+        const cleanAddress = cleanFaskesAddress(
+            item.address || item.alamat_faskes || item.alamat || "",
+            item.kota_kabupaten || item.kota || "",
+            item.kecamatan || ""
+        );
+
         const navUrl =
             item.link_maps &&
             item.link_maps !== "-" &&
@@ -395,7 +467,7 @@ document.addEventListener("DOMContentLoaded", function () {
                       item.lat,
                       item.lng,
                       item.kota_kabupaten || "",
-                      item.address || "",
+                      cleanAddress,
                   );
 
         let typeIcon = "bi-hospital";
@@ -421,11 +493,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         <h6 class="mobile-sheet-title fw-bold text-dark text-truncate mb-1" title="${displayName}">
                             ${displayName}
                         </h6>
-                        <p class="mobile-sheet-address text-muted text-truncate mb-1" title="${item.address}">
-                            ${item.address}
+                        <p class="mobile-sheet-address text-muted text-truncate mb-1" title="${cleanAddress}">
+                            ${cleanAddress}
                         </p>
                         <div class="d-flex align-items-center gap-1 flex-wrap">
-                            ${item.type ? `<span class="badge-custom badge-type-pill" style="background-color: #f1f5f9; color: #475569; font-size: 0.65rem;">${item.type}</span>` : ""}
+                            ${resolvedType ? `<span class="badge-custom badge-type-pill" style="background-color: #f1f5f9; color: #475569; font-size: 0.65rem;">${resolvedType}</span>` : ""}
                             ${item.hospital_class ? `<span class="badge-custom badge-kelas">Kelas ${item.hospital_class}</span>` : ""}
                             <span class="badge-custom ${item.bpjs_support ? "badge-bpjs" : "badge-non-bpjs"}">
                                 ${item.bpjs_support ? "BPJS" : "Non-BPJS"}
@@ -724,12 +796,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         const rawName =
                             item.nama_faskes ||
+                            item.nama ||
                             item.name ||
                             "Fasilitas Kesehatan";
                         let fName = rawName.trim();
                         // UPDATE: BE menggunakan jenis_faskes, bukan tipe
                         const jenisFaskes =
-                            item.jenis_faskes || item.tipe || "";
+                            item.jenis_faskes || item.tipe || item.type || "";
                         if (
                             (typeSlug === "puskesmas" ||
                                 (jenisFaskes &&
@@ -741,17 +814,24 @@ document.addEventListener("DOMContentLoaded", function () {
                             fName = "Puskesmas " + fName;
                         }
 
+                        const resolvedType = resolveFaskesType(item, typeSlug, fName);
+                        const rawAlamat =
+                            item.alamat_faskes ||
+                            item.alamat ||
+                            item.alamat_lengkap ||
+                            item.address ||
+                            item.jalan ||
+                            item.lokasi ||
+                            "";
+                        const kota = item.kota_kabupaten || item.kota || item.city || "";
+                        const cleanAddress = cleanFaskesAddress(rawAlamat, kota, item.kecamatan || "");
+
                         return {
                             id: item.id_faskes ?? item.id,
                             name: fName,
-                            type: jenisFaskes || "Fasilitas Kesehatan",
+                            type: resolvedType,
                             type_slug: typeSlug,
-                            // UPDATE: BE menggunakan alamat_faskes, bukan alamat
-                            address:
-                                (item.alamat_faskes || item.alamat || "") +
-                                (item.kota_kabupaten
-                                    ? ", " + item.kota_kabupaten
-                                    : ""),
+                            address: cleanAddress,
                             rating: rating,
                             total_reviews: item.total_reviews || 0,
                             hospital_class:

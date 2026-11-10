@@ -49,6 +49,83 @@ class BerandaController extends Controller
         return $name;
     }
 
+    private function formatFaskesType($jenisFaskes, $typeSlug = '', $name = '')
+    {
+        $jenis = trim($jenisFaskes ?? '');
+
+        if (empty($jenis) || strcasecmp($jenis, 'Fasilitas Kesehatan') === 0 || strcasecmp($jenis, 'faskes') === 0) {
+            $nameLower = strtolower($name ?? '');
+            $slugLower = strtolower($typeSlug ?? '');
+
+            if ($slugLower === 'puskesmas' || str_contains($nameLower, 'puskesmas') || str_contains($nameLower, 'pkm')) {
+                return 'Puskesmas';
+            }
+            if ($slugLower === 'clinic' || str_contains($nameLower, 'klinik') || str_contains($nameLower, 'clinic')) {
+                return 'Klinik';
+            }
+            if (str_contains($nameLower, 'apotik') || str_contains($nameLower, 'apotek') || str_contains($nameLower, 'farma')) {
+                return 'Apotek';
+            }
+            if (str_contains($nameLower, 'laboratorium') || str_contains($nameLower, 'lab')) {
+                return 'Laboratorium';
+            }
+
+            return 'Rumah Sakit';
+        }
+
+        $jenisLower = strtolower($jenis);
+        if (str_contains($jenisLower, 'rumah sakit') || $jenisLower === 'rs') {
+            return 'Rumah Sakit';
+        }
+        if (str_contains($jenisLower, 'puskesmas')) {
+            return 'Puskesmas';
+        }
+        if (str_contains($jenisLower, 'klinik')) {
+            return 'Klinik';
+        }
+        if (str_contains($jenisLower, 'apotik') || str_contains($jenisLower, 'apotek')) {
+            return 'Apotek';
+        }
+
+        return ucwords($jenisLower);
+    }
+
+    private function formatAddress($alamat, $kota = '', $kecamatan = '')
+    {
+        $alamat = trim($alamat ?? '');
+        $kota = trim($kota ?? '');
+        $kecamatan = trim($kecamatan ?? '');
+
+        // Ganti typo "JL," atau "JLN," menjadi "Jl."
+        $alamat = preg_replace('/^(?:jl|jln),\s*/i', 'Jl. ', $alamat);
+        // Hapus koma atau spasi di depan alamat
+        $alamat = ltrim($alamat, ",- \t\n\r\0\x0B");
+
+        if (empty($alamat) && !empty($kecamatan)) {
+            $alamat = 'Kec. ' . $kecamatan;
+        }
+
+        // Jika alamat belum ada awalan nama jalan (Jl. / Gang dll) dan terlihat nama jalan, tambahkan "Jl. "
+        if (!empty($alamat) && !preg_match('/^(?:jl|jalan|gang|gg|komp|komplek|gedung|kav|kavling|dusun|desa|kel|kec)\b/i', $alamat)) {
+            if (preg_match('/(?:raya|barat|timur|selatan|utara|no\b|nomor|km\b|blok)/i', $alamat)) {
+                $alamat = 'Jl. ' . $alamat;
+            }
+        }
+
+        if (!empty($alamat) && !empty($kota)) {
+            if (str_ends_with(strtolower($alamat), strtolower($kota))) {
+                return $alamat;
+            }
+            return $alamat . ', ' . $kota;
+        } elseif (!empty($alamat)) {
+            return $alamat;
+        } elseif (!empty($kota)) {
+            return $kota;
+        }
+
+        return '';
+    }
+
     private function getGoogleMapsUrl(
         $name,
         $lat = null,
@@ -110,15 +187,15 @@ class BerandaController extends Controller
             // Request data faskes dari Backend API.
             $response = Http::timeout(8)->get(
                 "{$backendUrl}/api/faskes",
-                [
+                array_filter([
                     'lat' => $lat,
                     'lng' => $lng,
                     'page' => $page,
                     'limit' => $limit,
                     'search' => $request->input('search'),
-                    'bpjs' => $request->input('bpjs'),
-                    'jenis' => $request->input('jenis'),
-                ]
+                    '_support_bpjs' => $request->input('_support_bpjs') ?? $request->input('bpjs'),
+                    'jenis_faskes' => $request->input('jenis_faskes') ?? $request->input('jenis') ?? $request->input('tipe'),
+                ], fn($val) => $val !== null && $val !== '')
             );
 
             if ($response->successful()) {
@@ -138,13 +215,16 @@ class BerandaController extends Controller
                 $hasMore = ($page * $limit) < $total;
 
                 foreach ($items as $item) {
+                    $item = (array) $item;
+
                     // Menentukan jenis fasilitas kesehatan.
+                    $jenisFaskes = $item['jenis_faskes']
+                        ?? $item['tipe']
+                        ?? $item['type']
+                        ?? '';
+
                     $typeSlug = $item['type_slug']
-                        ?? $this->getTypeSlug(
-                            $item['jenis_faskes']
-                            ?? $item['tipe']
-                            ?? ''
-                        );
+                        ?? $this->getTypeSlug($jenisFaskes);
 
                     // Rating.
                     $rating = (
@@ -160,19 +240,17 @@ class BerandaController extends Controller
                     // Koordinat.
                     $itemLat = !empty($item['latitude'])
                         ? (float) $item['latitude']
-                        : null;
+                        : (!empty($item['lat']) ? (float) $item['lat'] : null);
 
                     $itemLng = !empty($item['longitude'])
                         ? (float) $item['longitude']
-                        : null;
+                        : (!empty($item['lng']) ? (float) $item['lng'] : null);
 
                     // Nama faskes.
                     $rawName = $item['nama_faskes']
+                        ?? $item['nama']
+                        ?? $item['name']
                         ?? 'Fasilitas Kesehatan';
-
-                    $jenisFaskes = $item['jenis_faskes']
-                        ?? $item['tipe']
-                        ?? '';
 
                     $formattedName = $this->formatFaskesName(
                         $rawName,
@@ -180,12 +258,21 @@ class BerandaController extends Controller
                         $jenisFaskes
                     );
 
-                    // Alamat dan kota.
-                    $kota = $item['kota_kabupaten'] ?? '';
-
-                    $alamat = $item['alamat_faskes']
+                    // Alamat, kota, kecamatan.
+                    $kota = $item['kota_kabupaten'] ?? $item['kota'] ?? $item['city'] ?? '';
+                    $kecamatan = $item['kecamatan'] ?? $item['district'] ?? '';
+                    $rawAlamat = $item['alamat_faskes']
                         ?? $item['alamat']
+                        ?? $item['alamat_lengkap']
+                        ?? $item['address']
+                        ?? $item['jalan']
+                        ?? $item['lokasi']
                         ?? '';
+
+                    $cleanAddress = $this->formatAddress($rawAlamat, $kota, $kecamatan);
+
+                    // Tipe faskes untuk badge (tidak boleh generic 'Fasilitas Kesehatan')
+                    $resolvedType = $this->formatFaskesType($jenisFaskes, $typeSlug, $formattedName);
 
                     // Memeriksa link Google Maps dari backend.
                     $linkMaps = $item['link_maps'] ?? '';
@@ -211,7 +298,7 @@ class BerandaController extends Controller
                             $itemLat,
                             $itemLng,
                             $kota,
-                            $alamat
+                            $rawAlamat
                         );
 
                     $id = $item['id_faskes']
@@ -229,21 +316,20 @@ class BerandaController extends Controller
 
                         'hospital_name' => $formattedName,
 
-                        'type' => $jenisFaskes
-                            ?: 'Fasilitas Kesehatan',
+                        'type' => $resolvedType,
 
                         'type_slug' => $typeSlug,
 
-                        'hospital_address' => $alamat .
-                            (!empty($kota) ? ', ' . $kota : ''),
+                        'hospital_address' => $cleanAddress,
 
                         'hospital_rating' => $rating,
 
-                        'hospital_class' => $item['kelas'] ?? null,
+                        'hospital_class' => $item['kelas'] ?? $item['hospital_class'] ?? null,
 
                         'bpjs_support' => (bool) (
                             $item['_support_bpjs']
                             ?? $item['is_support_bpjs']
+                            ?? $item['bpjs_support']
                             ?? false
                         ),
 

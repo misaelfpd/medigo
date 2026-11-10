@@ -96,7 +96,7 @@
                 <!-- Title & Badges -->
                 <div>
                     <span class="badge rounded-pill bg-white text-dark px-3 py-1 fw-bold mb-2 shadow-xs" style="font-size: 0.76rem;">
-                        {{ $faskes['tipe'] ?? 'Fasilitas Kesehatan' }}
+                        {{ (!empty($faskes['tipe']) && strcasecmp($faskes['tipe'], 'Fasilitas Kesehatan') !== 0) ? $faskes['tipe'] : 'Rumah Sakit' }}
                     </span>
                     <h2 class="fw-bold text-white mb-2">{{ $faskesDisplayName }}</h2>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
