@@ -332,6 +332,8 @@ class FaskesController extends Controller
             'latitude' => $lat,
             'longitude' => $lng,
             '_support_bpjs' => $isBpjs,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return response()->json([
@@ -434,6 +436,8 @@ class FaskesController extends Controller
                 $updateData['_support_bpjs'] = filter_var($bpjsVal, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
             }
         }
+
+        $updateData['updated_at'] = now();
 
         DB::table('faskes')->where('id_faskes', $id)->update($updateData);
 

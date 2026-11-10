@@ -17,10 +17,7 @@ class User extends Authenticatable
     // 2. Kasih tau Laravel kalau primary key-nya 'id_user', bukan 'id'
     protected $primaryKey = 'id_user';
 
-    // 3. Matikan timestamps karena di file migration lu kemarin lu hapus
-    public $timestamps = false;
-
-    // 4. Kolom apa aja yang boleh diisi
+    // 3. Kolom apa aja yang boleh diisi
     protected $fillable = [
         'nama_user',
         'email_user',

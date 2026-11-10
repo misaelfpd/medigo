@@ -37,6 +37,14 @@ class DatabaseSeederTest extends TestCase
         $this->assertGreaterThan(1000, DB::table('fasilitas_faskes')->count());
         $this->assertGreaterThan(1000, DB::table('spesialisasi_faskes')->count());
 
+        $faskesSample = DB::table('faskes')->first();
+        $this->assertNotNull($faskesSample->created_at);
+        $this->assertNotNull($faskesSample->updated_at);
+
+        $userSample = User::where('email_user', 'test@example.com')->first();
+        $this->assertNotNull($userSample->created_at);
+        $this->assertNotNull($userSample->updated_at);
+
         $generated = User::factory()->count(3)->create();
         $this->assertCount(3, $generated);
     }

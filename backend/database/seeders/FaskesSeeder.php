@@ -37,6 +37,8 @@ class FaskesSeeder extends Seeder
             $data[] = [
                 'id_fasilitas' => (int) $row['id_fasilitas'],
                 'nama_fasilitas' => trim($row['nama_fasilitas']),
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
         }
 
@@ -63,6 +65,8 @@ class FaskesSeeder extends Seeder
             $data[] = [
                 'id_spesialisasi' => (int) $row['id_spesialisasi'],
                 'nama_spesialisasi' => trim($row['nama_spesialisasi']),
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
         }
 
@@ -109,6 +113,8 @@ class FaskesSeeder extends Seeder
                 'longitude' => $lng,
                 'link_maps' => $linkMaps,
                 '_support_bpjs' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
         }
 
@@ -135,6 +141,8 @@ class FaskesSeeder extends Seeder
             $data[] = [
                 'id_faskes' => (int) $row['id_faskes'],
                 'id_fasilitas' => (int) $row['id_fasilitas'],
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
         }
 
@@ -161,6 +169,8 @@ class FaskesSeeder extends Seeder
             $data[] = [
                 'id_faskes' => (int) $row['id_faskes'],
                 'id_spesialisasi' => (int) $row['id_spesialisasi'],
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
         }
 
