@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,6 +36,10 @@ class AuthTest extends TestCase
         $profileResponse = $this->withToken($token)->getJson('/api/user');
         $profileResponse->assertOk()
             ->assertJsonPath('email_user', 'budi@example.com');
+
+        $userInDb = User::where('email_user', 'budi@example.com')->first();
+        $this->assertNotNull($userInDb->created_at);
+        $this->assertNotNull($userInDb->updated_at);
 
         $logoutResponse = $this->withToken($token)->postJson('/api/logout');
         $logoutResponse->assertOk()

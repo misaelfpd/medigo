@@ -78,6 +78,10 @@ class FaskesManagementTest extends TestCase
             ->assertJsonPath('status', 'success');
 
         $this->assertDatabaseHas('faskes', ['nama_faskes' => 'Klinik Baru', 'kota_kabupaten' => 'Depok']);
+
+        $created = DB::table('faskes')->where('nama_faskes', 'Klinik Baru')->first();
+        $this->assertNotNull($created->created_at);
+        $this->assertNotNull($created->updated_at);
     }
 
     public function test_admin_stats_requires_admin(): void
