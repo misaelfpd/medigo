@@ -4,10 +4,8 @@
             <!-- Brand & Tagline -->
             <div class="col-lg-3 col-md-6">
                 <a href="/" class="footer-brand">
-                    <i class="bi bi-hospital navbar-brand-icon"></i>
-                    MediGO
+                    <img class="w-50" src="{{ asset('images/medigo_logo.png') }}" alt="Logo Faskes">
                 </a>
-                <p class="footer-tagline">Your Health, Faster.</p>
             </div>
 
             <!-- Tautan Cepat -->

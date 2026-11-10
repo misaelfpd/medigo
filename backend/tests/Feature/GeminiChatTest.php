@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -202,5 +203,109 @@ class GeminiChatTest extends TestCase
         Http::fake();
 
         $this->postJson('/api/chat-ai', [])->assertUnprocessable()->assertJsonValidationErrors('message');
+    }
+
+    public function test_nearest_faskes_sorted_by_distance_when_coordinates_provided(): void
+    {
+        $dekat = Faskes::create([
+            'nama_faskes' => 'RS Dekat Sehat',
+            'jenis_faskes' => 'Rumah Sakit',
+            'kota_kabupaten' => 'Kota Bogor',
+            'alamat_faskes' => 'Jl. Pajajaran Dekat',
+            'latitude' => -6.59500000,
+            'longitude' => 106.79000000,
+            '_support_bpjs' => true,
+        ]);
+
+        $jauh = Faskes::create([
+            'nama_faskes' => 'RS Jauh Banget',
+            'jenis_faskes' => 'Rumah Sakit',
+            'kota_kabupaten' => 'Kota Depok',
+            'alamat_faskes' => 'Jl. Margonda Jauh',
+            'latitude' => -6.40000000,
+            'longitude' => 106.80000000,
+            '_support_bpjs' => false,
+        ]);
+
+        $callTurn = ['role' => 'model', 'parts' => [[
+            'functionCall' => [
+                'id' => 'call_nearby',
+                'name' => 'cari_faskes',
+                'args' => [
+                    'keyword' => 'rumah sakit terdekat',
+                    'terdekat' => true,
+                ],
+            ],
+        ]]];
+
+        Http::fake([self::url('model-a') => Http::sequence()
+            ->push(['candidates' => [['content' => $callTurn]]])
+            ->push(self::text('RS terdekat adalah RS Dekat Sehat dengan jarak sekitar 0.56 km.')),
+        ]);
+
+        $this->postJson('/api/chat-ai', [
+            'message' => 'apakah ada rumah sakit terdekat?',
+            'latitude' => -6.59000000,
+            'longitude' => 106.79000000,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data', 'RS terdekat adalah RS Dekat Sehat dengan jarak sekitar 0.56 km.');
+
+        $firstReq = Http::recorded()[0][0];
+        $systemText = $firstReq['system_instruction']['parts'][0]['text'];
+        $this->assertStringContainsString('Latitude: -6.59', $systemText);
+        $this->assertStringContainsString('Longitude: 106.79', $systemText);
+
+        $toolReq = Http::recorded()[1][0];
+        $functionResponse = last($toolReq['contents'])['parts'][0]['functionResponse'];
+        $faskesList = $functionResponse['response']['faskes'];
+
+        $this->assertSame('RS Dekat Sehat', $faskesList[0]['nama_faskes']);
+        $this->assertLessThan($faskesList[1]['jarak_km'], $faskesList[0]['jarak_km']);
+        $this->assertArrayHasKey('jarak_km', $faskesList[0]);
+        $this->assertArrayHasKey('jarak_teks', $faskesList[0]);
+    }
+
+    public function test_can_search_faskes_by_doctor_spesialisasi(): void
+    {
+        $faskes = Faskes::create([
+            'nama_faskes' => 'Klinik Jantung Utama',
+            'jenis_faskes' => 'Klinik',
+            'kota_kabupaten' => 'Kota Bogor',
+            'alamat_faskes' => 'Jl. Jenderal Sudirman',
+        ]);
+
+        $idSpesialisasi = DB::table('spesialisasi')->insertGetId([
+            'nama_spesialisasi' => 'Spesialis Jantung dan Pembuluh Darah',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('spesialisasi_faskes')->insert([
+            'id_faskes' => $faskes->id_faskes,
+            'id_spesialisasi' => $idSpesialisasi,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $callTurn = ['role' => 'model', 'parts' => [[
+            'functionCall' => [
+                'name' => 'cari_faskes',
+                'args' => ['keyword' => 'jantung'],
+            ],
+        ]]];
+
+        Http::fake([self::url('model-a') => Http::sequence()
+            ->push(['candidates' => [['content' => $callTurn]]])
+            ->push(self::text('Ditemukan Klinik Jantung Utama.')),
+        ]);
+
+        $this->postJson('/api/chat-ai', ['message' => 'cari faskes dokter spesialis jantung'])
+            ->assertOk();
+
+        $toolReq = Http::recorded()[1][0];
+        $faskesList = last($toolReq['contents'])['parts'][0]['functionResponse']['response']['faskes'];
+        $this->assertSame('Klinik Jantung Utama', $faskesList[0]['nama_faskes']);
+        $this->assertContains('Spesialis Jantung dan Pembuluh Darah', $faskesList[0]['spesialisasi']);
     }
 }
