@@ -22,7 +22,7 @@ TENTANG WEBSITE MEDIGO:
   * Pengguna dapat mencari faskes berdasarkan nama, jenis (Rumah Sakit, Klinik, Puskesmas), kota/kabupaten, dan kecamatan.
   * Filter dukungan BPJS Kesehatan (menampilkan faskes yang melayani pasien BPJS).
   * Pencarian faskes terdekat berbasis GPS/koordinat real-time pengguna.
-  * Setiap faskes menampilkan informasi alamat, kontak, kelas, daftar fasilitas medis (seperti IGD 24 Jam, Rawat Inap, Laboratorium, Farmasi), daftar dokter spesialis (seperti Spesialis Anak, Penyakit Dalam, Gigi, Kandungan), serta tautan Google Maps untuk navigasi.
+  * Setiap faskes menampilkan informasi alamat, kontak telepon, kelas, daftar fasilitas medis (seperti IGD 24 Jam, Rawat Inap, Laboratorium, Farmasi), daftar dokter spesialis (seperti Spesialis Anak, Penyakit Dalam, Gigi, Kandungan), serta tautan Google Maps untuk navigasi.
 - FITUR FORUM DISKUSI:
   * Pengguna yang sudah login dapat membuat topik diskusi/tanya-jawab kesehatan baru melalui menu 'Buat Diskusi' di halaman Forum Diskusi (/discussions).
   * Pengguna lain dapat memberikan tanggapan/komentar serta berbagi pengalaman medis.
@@ -35,7 +35,7 @@ TENTANG WEBSITE MEDIGO:
 
 ATURAN PENTING & PANDUAN MENJAWAB:
 1. PENCARIAN FASKES: Jika user mencari faskes, klinik, rumah sakit, puskesmas, dokter spesialis, fasilitas medis, atau menanyakan faskes TERDEKAT, SELALU gunakan fungsi `cari_faskes`.
-2. FASKES TERDEKAT: Jika user menanyakan faskes terdekat dan terdapat info lokasi pengguna, sebutkan nama faskes terdekat, jaraknya (dalam km), alamat, dan status penerimaan BPJS-nya dengan jelas.
+2. FASKES TERDEKAT: Jika user menanyakan faskes terdekat dan terdapat info lokasi pengguna, sebutkan nama faskes terdekat, jaraknya (dalam km), alamat, nomor telepon/kontak, dan status penerimaan BPJS-nya dengan jelas.
 3. JIKA LOKASI BELUM TERSEDIA: Jika user meminta rekomendasi 'terdekat' namun tidak ada data koordinat lokasi, jelaskan bahwa pengguna dapat mengaktifkan izin lokasi di peramban/aplikasi atau menyebutkan nama kota/kecamatan mereka.
 4. KONSULTASI MEDIS: Berikan edukasi dan saran medis awal yang menenangkan serta pertolongan pertama dasar, namun selalu ingatkan pengguna untuk memeriksakan diri langsung ke dokter atau faskes terdekat untuk penanganan dan diagnosis pasti.
 5. PANDUAN WEBSITE: Jika user bertanya tentang cara menggunakan fitur website (seperti cara membuat diskusi, cara beri ulasan, cara lapor konten), pandu mereka dengan langkah-langkah yang jelas sesuai fitur Medigo di atas.
@@ -50,23 +50,23 @@ PROMPT;
 
     private const UNAVAILABLE = 'Maaf, Asisten Medigo sedang tidak tersedia. Coba lagi beberapa saat lagi ya.';
 
-    public function chat(Request $request, GeminiClient $gemini): JsonResponse {
-    //     dd([
-    //     'is_configured' => $gemini->isConfigured(),
-    //     'api_key_env' => env('GEMINI_API_KEY'),
-    //     'request_data' => $request->all(),
-    //     'user' => $request->user()
-    // ]);
-        
+    public function chat(Request $request, GeminiClient $gemini): JsonResponse
+    {
         $request->validate([
             'message' => 'required|string|max:2000',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'lat' => 'nullable|numeric|between:-90,90',
+            'lng' => 'nullable|numeric|between:-180,180',
         ]);
-        
+
         if (! $gemini->isConfigured()) {
             return response()->json(['message' => self::UNAVAILABLE], 503);
         }
 
         $userMessage = $request->input('message');
+        $userLat = $request->filled('latitude') ? (float) $request->input('latitude') : ($request->filled('lat') ? (float) $request->input('lat') : null);
+        $userLng = $request->filled('longitude') ? (float) $request->input('longitude') : ($request->filled('lng') ? (float) $request->input('lng') : null);
 
         // Cek apakah ada user yang login (opsional)
         $user = $request->user();
@@ -90,14 +90,14 @@ PROMPT;
         $contents[] = ['role' => 'user', 'parts' => [['text' => $userMessage]]];
 
         try {
-            $aiReply = $this->converse($gemini, $contents);
+            $aiReply = $this->converse($gemini, $contents, $userLat, $userLng);
         } catch (RuntimeException $e) {
             Log::error('Gemini chat failed', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => self::UNAVAILABLE], 502);
         }
 
-        // Simpan ke database HANYA JIKA user login (agar tabel GeminiChat tidak error karena id_user null, kecuali kolom id_user di DB nullable)
+        // Simpan ke database HANYA JIKA user login
         if ($userId) {
             DB::transaction(function () use ($userId, $userMessage, $aiReply) {
                 GeminiChat::create(['id_user' => $userId, 'role' => 'user', 'message' => $userMessage]);
@@ -114,12 +114,12 @@ PROMPT;
     /**
      * Run the model, answering its function calls until it replies with text.
      */
-    private function converse(GeminiClient $gemini, array $contents): string
+    private function converse(GeminiClient $gemini, array $contents, ?float $userLat = null, ?float $userLng = null): string
     {
         $model = null; // Chosen on the first call, then kept for the follow-ups.
 
         for ($round = 0; $round <= self::MAX_TOOL_ROUNDS; $round++) {
-            [$model, $data] = $gemini->generate($this->payload($contents), $model);
+            [$model, $data] = $gemini->generate($this->payload($contents, $userLat, $userLng), $model);
 
             $parts = $data['candidates'][0]['content']['parts'] ?? [];
             $calls = array_values(array_filter($parts, fn ($part) => isset($part['functionCall'])));
@@ -146,7 +146,7 @@ PROMPT;
                 'parts' => array_map(fn ($part) => ['functionResponse' => array_filter([
                     'id' => $part['functionCall']['id'] ?? null,
                     'name' => $part['functionCall']['name'],
-                    'response' => $this->runTool($part['functionCall']),
+                    'response' => $this->runTool($part['functionCall'], $userLat, $userLng),
                 ])], $calls),
             ];
         }
@@ -154,47 +154,36 @@ PROMPT;
         throw new RuntimeException('Gemini kept calling tools without answering');
     }
 
-    private function runTool(array $call): array
+    private function runTool(array $call, ?float $userLat = null, ?float $userLng = null): array
     {
         if ($call['name'] !== 'cari_faskes') {
             return ['error' => "Fungsi {$call['name']} tidak tersedia."];
         }
 
         $args = $call['args'] ?? [];
+        if (empty($args['lat']) && $userLat !== null) {
+            $args['lat'] = $userLat;
+        }
+        if (empty($args['lng']) && $userLng !== null) {
+            $args['lng'] = $userLng;
+        }
+
         $results = $this->searchFaskesAdvanced($args);
 
         return $results->isEmpty()
-            ? ['message' => "Tidak ada faskes yang cocok dengan kriteria tersebut."]
-            : ['faskes' => $results->all()];
+            ? ['message' => 'Faskes dengan kriteria tersebut tidak ditemukan di database Medigo.']
+            : ['faskes' => $results->values()->all()];
     }
 
-    /**
-     * Every word must match the name, type, city or district, case-insensitively
-     * ("gigi bogor" finds dental clinics in Bogor).
-     */
-    private function searchFaskes(string $keyword)
+    private function payload(array $contents, ?float $userLat = null, ?float $userLng = null): array
     {
-        $query = Faskes::query()->select([
-            'id_faskes', 'nama_faskes', 'jenis_faskes', 'alamat_faskes',
-            'kecamatan', 'kota_kabupaten', 'provinsi', 'link_maps', '_support_bpjs',
-        ]);
-
-        foreach (array_slice(preg_split('/\s+/', mb_strtolower($keyword)), 0, 5) as $word) {
-            $pattern = '%'.addcslashes($word, '\\%_').'%';
-            $query->where(function ($q) use ($pattern) {
-                foreach (['nama_faskes', 'jenis_faskes', 'kota_kabupaten', 'kecamatan'] as $column) {
-                    $q->orWhereRaw("LOWER({$column}) LIKE ? ESCAPE '\\'", [$pattern]);
-                }
-            });
+        $systemText = self::SYSTEM_PROMPT;
+        if ($userLat !== null && $userLng !== null) {
+            $systemText .= "\n\n[Lokasi Pengguna Real-Time]: Pengguna saat ini berada di koordinat Latitude: {$userLat}, Longitude: {$userLng}. Jika pengguna menanyakan faskes/rumah sakit terdekat, prioritaskan pencarian terdekat dengan koordinat ini.";
         }
 
-        return $query->limit(5)->get();
-    }
-
-    private function payload(array $contents): array
-    {
         return [
-            'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+            'system_instruction' => ['parts' => [['text' => $systemText]]],
             'contents' => $contents,
             'tools' => [[
                 'function_declarations' => [[
@@ -205,40 +194,40 @@ PROMPT;
                         'properties' => [
                             'keyword' => [
                                 'type' => 'STRING',
-                                'description' => "Kata kunci umum atau nama faskes, misalnya: 'Primaya', 'RSUD', 'Klinik'."
+                                'description' => "Kata kunci umum atau nama faskes, misalnya: 'Primaya', 'RSUD', 'Klinik'.",
                             ],
                             'kota_kabupaten' => [
                                 'type' => 'STRING',
-                                'description' => "Filter wilayah kota atau kabupaten, misalnya: 'Kota Bogor' atau 'Kab. Bogor'."
+                                'description' => "Filter wilayah kota atau kabupaten, misalnya: 'Kota Bogor' atau 'Kab. Bogor'.",
                             ],
                             'jenis_faskes' => [
                                 'type' => 'STRING',
-                                'description' => "Jenis faskes, misalnya: 'Rumah Sakit', 'Klinik', 'Puskesmas'."
+                                'description' => "Jenis faskes, misalnya: 'Rumah Sakit', 'Klinik', 'Puskesmas'.",
                             ],
                             'spesialisasi' => [
                                 'type' => 'STRING',
-                                'description' => "Spesialisasi dokter yang dicari, misalnya: 'Anak', 'Jantung', 'Penyakit Dalam'."
+                                'description' => "Spesialisasi dokter yang dicari, misalnya: 'Anak', 'Jantung', 'Penyakit Dalam'.",
                             ],
                             'fasilitas' => [
                                 'type' => 'STRING',
-                                'description' => "Fasilitas penunjang medis, misalnya: 'IGD', 'Laboratorium', 'Radiologi'."
+                                'description' => "Fasilitas penunjang medis, misalnya: 'IGD', 'Laboratorium', 'Radiologi'.",
                             ],
                             '_support_bpjs' => [
                                 'type' => 'BOOLEAN',
-                                'description' => "Set true jika hanya mencari faskes yang mendukung BPJS."
+                                'description' => 'Set true jika hanya mencari faskes yang mendukung BPJS.',
                             ],
                             'kelas' => [
                                 'type' => 'STRING',
-                                'description' => "Kelas rumah sakit, misalnya: 'A', 'B', 'C', 'D'."
+                                'description' => "Kelas rumah sakit, misalnya: 'A', 'B', 'C', 'D'.",
                             ],
                             'lat' => [
                                 'type' => 'NUMBER',
-                                'description' => "Latitude posisi user (jika meminta faskes terdekat di daerah saya)."
+                                'description' => 'Latitude posisi user (jika meminta faskes terdekat di daerah saya).',
                             ],
                             'lng' => [
                                 'type' => 'NUMBER',
-                                'description' => "Longitude posisi user."
-                            ]
+                                'description' => 'Longitude posisi user.',
+                            ],
                         ],
                     ],
                 ]],
@@ -249,68 +238,149 @@ PROMPT;
     private function searchFaskesAdvanced(array $args)
     {
         $query = Faskes::query()->select([
-            'faskes.id_faskes', 'faskes.nama_faskes', 'faskes.jenis_faskes', 
-            'faskes.alamat_faskes', 'faskes.kecamatan', 'faskes.kota_kabupaten', 
-            'faskes.provinsi', 'faskes.kelas', 'faskes._support_bpjs', 'faskes.link_maps'
+            'faskes.id_faskes', 'faskes.nama_faskes', 'faskes.jenis_faskes',
+            'faskes.alamat_faskes', 'faskes.telepon', 'faskes.kecamatan', 'faskes.kota_kabupaten',
+            'faskes.provinsi', 'faskes.kelas', 'faskes._support_bpjs', 'faskes.link_maps',
+            'faskes.latitude', 'faskes.longitude',
         ]);
 
-        // 1. Filter Jarak GPS (Terdekat di daerah saya)
-        if (!empty($args['lat']) && !empty($args['lng'])) {
-            $lat = (float) $args['lat'];
-            $lng = (float) $args['lng'];
-            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
-            
-            $query->selectRaw("{$haversine} AS distance_km")
-                  ->whereNotNull('faskes.latitude')
-                  ->whereNotNull('faskes.longitude')
-                  ->orderBy('distance_km', 'asc');
-        }
+        $lat = ! empty($args['lat']) ? (float) $args['lat'] : null;
+        $lng = ! empty($args['lng']) ? (float) $args['lng'] : null;
 
-        // 2. Filter Kota / Kabupaten
-        if (!empty($args['kota_kabupaten'])) {
+        // 1. Filter Kota / Kabupaten
+        if (! empty($args['kota_kabupaten'])) {
             $query->where('faskes.kota_kabupaten', 'like', "%{$args['kota_kabupaten']}%");
         }
 
-        // 3. Filter Jenis Faskes
-        if (!empty($args['jenis_faskes'])) {
+        // 2. Filter Jenis Faskes
+        if (! empty($args['jenis_faskes'])) {
             $query->where('faskes.jenis_faskes', 'like', "%{$args['jenis_faskes']}%");
         }
 
-        // 4. Filter Kelas Faskes
-        if (!empty($args['kelas'])) {
+        // 3. Filter Kelas Faskes
+        if (! empty($args['kelas'])) {
             $query->where('faskes.kelas', 'like', "%{$args['kelas']}%");
         }
 
-        // 5. Filter Support BPJS
+        // 4. Filter Support BPJS
         if (isset($args['_support_bpjs'])) {
-            $query->where('faskes._support_bpjs', (bool)$args['_support_bpjs']);
+            $query->where('faskes._support_bpjs', (bool) $args['_support_bpjs']);
         }
 
-        // 6. Filter Berdasarkan Spesialisasi (Relasi ke tabel spesialisasi_faskes)
-        if (!empty($args['spesialisasi'])) {
+        // 5. Filter Berdasarkan Spesialisasi (Relasi ke tabel spesialisasi_faskes)
+        if (! empty($args['spesialisasi'])) {
             $spec = $args['spesialisasi'];
-            $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
-                  ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
-                  ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spec}%");
-        }
-
-        // 7. Filter Berdasarkan Fasilitas Penunjang (Relasi ke tabel fasilitas_faskes)
-        if (!empty($args['fasilitas'])) {
-            $facility = $args['fasilitas'];
-            $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
-                  ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
-                  ->where('fasilitas.nama_fasilitas', 'like', "%{$facility}%");
-        }
-
-        // 8. Keyword Bebas (Nama Faskes / Alamat)
-        if (!empty($args['keyword'])) {
-            $keyword = trim($args['keyword']);
-            $query->where(function ($q) use ($keyword) {
-                $q->where('faskes.nama_faskes', 'like', "%{$keyword}%")
-                  ->orWhere('faskes.alamat_faskes', 'like', "%{$keyword}%");
+            $query->whereExists(function ($sub) use ($spec) {
+                $sub->select(DB::raw(1))
+                    ->from('spesialisasi_faskes')
+                    ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                    ->whereColumn('spesialisasi_faskes.id_faskes', 'faskes.id_faskes')
+                    ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spec}%");
             });
         }
 
-        return $query->distinct()->limit(5)->get();
+        // 6. Filter Berdasarkan Fasilitas Penunjang (Relasi ke tabel fasilitas_faskes)
+        if (! empty($args['fasilitas'])) {
+            $facility = $args['fasilitas'];
+            $query->whereExists(function ($sub) use ($facility) {
+                $sub->select(DB::raw(1))
+                    ->from('fasilitas_faskes')
+                    ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                    ->whereColumn('fasilitas_faskes.id_faskes', 'faskes.id_faskes')
+                    ->where('fasilitas.nama_fasilitas', 'like', "%{$facility}%");
+            });
+        }
+
+        // 7. Keyword Bebas (Mencocokkan nama, jenis, kota, kecamatan, alamat, spesialisasi, fasilitas)
+        if (! empty($args['keyword'])) {
+            $cleanKeyword = trim($args['keyword']);
+            $words = array_values(array_filter(
+                preg_split('/\s+/', mb_strtolower($cleanKeyword)),
+                fn ($w) => ! in_array($w, ['dekat', 'terdekat', 'sekitar', 'di', 'dari', 'sini', 'saya', 'lokasi', 'ada', 'apakah'], true) && $w !== ''
+            ));
+
+            if (! empty($words)) {
+                foreach (array_slice($words, 0, 5) as $word) {
+                    $pattern = '%'.addcslashes($word, '\\%_').'%';
+                    $query->where(function ($q) use ($pattern) {
+                        foreach (['faskes.nama_faskes', 'faskes.jenis_faskes', 'faskes.kota_kabupaten', 'faskes.kecamatan', 'faskes.alamat_faskes'] as $column) {
+                            $q->orWhereRaw("LOWER({$column}) LIKE ? ESCAPE '\\'", [$pattern]);
+                        }
+
+                        $q->orWhereExists(function ($sub) use ($pattern) {
+                            $sub->select(DB::raw(1))
+                                ->from('spesialisasi_faskes')
+                                ->join('spesialisasi', 'spesialisasi.id_spesialisasi', '=', 'spesialisasi_faskes.id_spesialisasi')
+                                ->whereColumn('spesialisasi_faskes.id_faskes', 'faskes.id_faskes')
+                                ->whereRaw("LOWER(spesialisasi.nama_spesialisasi) LIKE ? ESCAPE '\\'", [$pattern]);
+                        });
+
+                        $q->orWhereExists(function ($sub) use ($pattern) {
+                            $sub->select(DB::raw(1))
+                                ->from('fasilitas_faskes')
+                                ->join('fasilitas', 'fasilitas.id_fasilitas', '=', 'fasilitas_faskes.id_fasilitas')
+                                ->whereColumn('fasilitas_faskes.id_faskes', 'faskes.id_faskes')
+                                ->whereRaw("LOWER(fasilitas.nama_fasilitas) LIKE ? ESCAPE '\\'", [$pattern]);
+                        });
+                    });
+                }
+            }
+        }
+
+        $limit = ($lat !== null && $lng !== null) ? 25 : 5;
+        $items = $query->limit($limit)->get();
+
+        if ($items->isEmpty()) {
+            return $items;
+        }
+
+        $faskesIds = $items->pluck('id_faskes')->all();
+
+        $fasilitasMap = DB::table('fasilitas_faskes')
+            ->join('fasilitas', 'fasilitas.id_fasilitas', '=', 'fasilitas_faskes.id_fasilitas')
+            ->whereIn('fasilitas_faskes.id_faskes', $faskesIds)
+            ->select('fasilitas_faskes.id_faskes', 'fasilitas.nama_fasilitas')
+            ->get()
+            ->groupBy('id_faskes')
+            ->map(fn ($group) => $group->pluck('nama_fasilitas')->all());
+
+        $spesialisasiMap = DB::table('spesialisasi_faskes')
+            ->join('spesialisasi', 'spesialisasi.id_spesialisasi', '=', 'spesialisasi_faskes.id_spesialisasi')
+            ->whereIn('spesialisasi_faskes.id_faskes', $faskesIds)
+            ->select('spesialisasi_faskes.id_faskes', 'spesialisasi.nama_spesialisasi')
+            ->get()
+            ->groupBy('id_faskes')
+            ->map(fn ($group) => $group->pluck('nama_spesialisasi')->all());
+
+        $items->each(function ($item) use ($fasilitasMap, $spesialisasiMap, $lat, $lng) {
+            $item->fasilitas = $fasilitasMap->get($item->id_faskes, []);
+            $item->spesialisasi = $spesialisasiMap->get($item->id_faskes, []);
+
+            if (! $item->link_maps) {
+                $mapsQuery = urlencode(implode(', ', array_filter([$item->nama_faskes, $item->alamat_faskes, $item->kota_kabupaten])));
+                $item->link_maps = ($item->latitude && $item->longitude)
+                    ? "https://www.google.com/maps/search/{$mapsQuery}/@{$item->latitude},{$item->longitude},17z"
+                    : "https://www.google.com/maps/search/?api=1&query={$mapsQuery}";
+            }
+
+            if ($lat !== null && $lng !== null && $item->latitude !== null && $item->longitude !== null) {
+                $dLat = deg2rad((float) $item->latitude - $lat);
+                $dLng = deg2rad((float) $item->longitude - $lng);
+                $a = sin($dLat / 2) * sin($dLat / 2) +
+                    cos(deg2rad($lat)) * cos(deg2rad((float) $item->latitude)) *
+                    sin($dLng / 2) * sin($dLng / 2);
+                $c = 2 * atan2(sqrt(max(0.0, min(1.0, $a))), sqrt(max(0.0, min(1.0, 1 - $a))));
+                $jarak = round(6371 * $c, 2);
+                $item->distance_km = $jarak;
+                $item->jarak_km = $jarak;
+                $item->jarak_teks = "{$jarak} km dari lokasimu";
+            }
+        });
+
+        if ($lat !== null && $lng !== null) {
+            $items = $items->sortBy(fn ($item) => $item->jarak_km ?? 999999)->values();
+        }
+
+        return $items->take(5);
     }
 }

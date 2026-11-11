@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Faskes;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -275,6 +276,7 @@ class FaskesController extends Controller
             'nama_faskes' => 'required|string|max:255',
             'jenis_faskes' => 'required|string|max:100',
             'alamat_faskes' => 'required|string',
+            'telepon' => 'nullable|string|max:50',
             'kota_kabupaten' => 'nullable|string|max:100',
             'provinsi' => 'nullable|string|max:100',
             'kelas' => 'nullable|string|max:10',
@@ -328,6 +330,7 @@ class FaskesController extends Controller
             'kota_kabupaten' => $kotaKab,
             'kecamatan' => $request->kecamatan ?? null,
             'alamat_faskes' => $request->alamat_faskes,
+            'telepon' => $request->filled('telepon') ? trim($request->telepon) : null,
             'link_maps' => $linkMaps,
             'latitude' => $lat,
             'longitude' => $lng,
@@ -355,6 +358,7 @@ class FaskesController extends Controller
             'nama_faskes' => 'sometimes|required|string|max:255',
             'jenis_faskes' => 'sometimes|required|string|max:100',
             'alamat_faskes' => 'sometimes|required|string',
+            'telepon' => 'nullable|string|max:50',
             'kota_kabupaten' => 'nullable|string|max:100',
             'provinsi' => 'nullable|string|max:100',
             'kelas' => 'nullable|string|max:50',
@@ -388,6 +392,9 @@ class FaskesController extends Controller
         }
         if ($request->has('alamat_faskes')) {
             $updateData['alamat_faskes'] = $request->alamat_faskes;
+        }
+        if ($request->has('telepon')) {
+            $updateData['telepon'] = $request->filled('telepon') ? trim($request->telepon) : null;
         }
 
         $targetLat = $request->has('latitude') && $request->filled('latitude') ? (float) $request->latitude : ($faskes->latitude !== null ? (float) $faskes->latitude : null);
@@ -514,11 +521,12 @@ class FaskesController extends Controller
             ],
         ]);
     }
+
     /**
      * Method Utama untuk Filtering & AI Function Calling
-     * 
-     * @param array $params Parameter pencarian (bisa dari $request->all() atau dari AI Function Call)
-     * @return \Illuminate\Http\JsonResponse
+     *
+     * @param  array  $params  Parameter pencarian (bisa dari $request->all() atau dari AI Function Call)
+     * @return JsonResponse
      */
     public function searchFaskes(Request $request)
     {
@@ -534,14 +542,14 @@ class FaskesController extends Controller
 
         if ($lat && $lng) {
             $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latittude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latittude))))";
-            
+
             $query->select('faskes.*')
                 ->selectRaw("{$haversine} AS distance_km")
                 ->whereNotNull('faskes.latittude')
                 ->whereNotNull('faskes.longitude');
 
             if (isset($params['radius'])) {
-                $query->having('distance_km', '<=', (float)$radius);
+                $query->having('distance_km', '<=', (float) $radius);
             }
 
             $query->orderBy('distance_km', 'asc');
@@ -550,26 +558,26 @@ class FaskesController extends Controller
         }
 
         // 2. Filter Berdasarkan Kota atau Kabupaten (Poin 2)
-        if (!empty($params['kota_kabupaten'])) {
+        if (! empty($params['kota_kabupaten'])) {
             $query->where('faskes.kota_kabupaten', 'like', "%{$params['kota_kabupaten']}%");
         }
 
         // 3. Filter Berdasarkan Spesialisasi Tertentu (Poin 3)
         // Menerima nama spesialisasi (misal: "Anak", "Jantung", "Penyakit Dalam")
-        if (!empty($params['spesialisasi'])) {
+        if (! empty($params['spesialisasi'])) {
             $spesialisasi = $params['spesialisasi'];
             $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
-                  ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
-                  ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spesialisasi}%");
+                ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spesialisasi}%");
         }
 
         // 4. Filter Berdasarkan Fasilitas Penunjang Tertentu (Poin 4)
         // Menerima nama fasilitas (misal: "IGD", "Laboratorium", "Radiologi", "ICU")
-        if (!empty($params['fasilitas'])) {
+        if (! empty($params['fasilitas'])) {
             $fasilitas = $params['fasilitas'];
             $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
-                  ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
-                  ->where('fasilitas.nama_fasilitas', 'like', "%{$fasilitas}%");
+                ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                ->where('fasilitas.nama_fasilitas', 'like', "%{$fasilitas}%");
         }
 
         // 5. Filter Support BPJS (Poin 6)
@@ -579,24 +587,25 @@ class FaskesController extends Controller
         }
 
         // 7. Filter Kelas Faskes (Poin 7 - misal: Kelas A, B, C, D)
-        if (!empty($params['kelas'])) {
+        if (! empty($params['kelas'])) {
             $query->where('faskes.kelas', 'like', "%{$params['kelas']}%");
         }
 
         // 8. Filter Jenis Faskes (Poin 8 - Rumah Sakit, Klinik, Puskesmas)
-        if (!empty($params['jenis_faskes'])) {
+        if (! empty($params['jenis_faskes'])) {
             $jenis = $params['jenis_faskes'];
             $query->where('faskes.jenis_faskes', 'like', "%{$jenis}%");
         }
 
         // Batasi hasil maksimal untuk AI / Filtering (default 10)
-        $limit = min((int)($params['limit'] ?? 10), 50);
+        $limit = min((int) ($params['limit'] ?? 10), 50);
         $faskesList = $query->distinct()->limit($limit)->get();
 
         // Transformasi tambahan (slug, rating, dll)
         $faskesList->transform(function ($item) {
             $item->type_slug = $this->getTypeSlug($item->jenis_faskes);
             $item->nama_faskes = $this->formatFaskesName($item->nama_faskes, $item->type_slug, $item->jenis_faskes);
+
             return $item;
         });
 
@@ -604,7 +613,7 @@ class FaskesController extends Controller
             'status' => 'success',
             'message' => 'Data faskes berhasil ditemukan',
             'total' => $faskesList->count(),
-            'data' => $faskesList
+            'data' => $faskesList,
         ]);
     }
 }
