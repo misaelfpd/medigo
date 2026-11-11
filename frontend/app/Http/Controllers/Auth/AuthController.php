@@ -168,7 +168,8 @@ class AuthController extends Controller
             $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
             $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
-            $response = Http::timeout(4)->post("{$backendUrl}/api/login", [
+            // Hilangkan timeout sementara supaya tidak terputus kalau backend agak lambat
+            $response = Http::post("{$backendUrl}/api/login", [
                 'email' => $email,
                 'password' => $password,
             ]);
@@ -179,9 +180,13 @@ class AuthController extends Controller
                     'user_backend_token' => $body['access_token'] ?? null,
                     'user_backend_data' => $body['data'] ?? null,
                 ]);
+            } else {
+                // JEBAKAN KITA: Tampilkan apa alasan backend menolak login!
+                dd('API BE Gagal Login. Status: ' . $response->status(), 'Response BE:', $response->json());
             }
         } catch (\Exception $e) {
-            Log::info('Backend login sync bypassed: ' . $e->getMessage());
+            // JEBAKAN KITA: Tampilkan jika FE sama sekali tidak bisa konek ke BE
+            dd('Koneksi dari FE ke BE Terputus. Pesan Error:', $e->getMessage());
         }
     }
 

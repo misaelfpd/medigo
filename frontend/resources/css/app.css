@@ -592,7 +592,7 @@ body {
 }
 
 /* ==========================================================================
-   MEDIGO BRAND COLOR UTILITIES
+   MEDIGO BRAND COLOR UTILITIES & CHAT LAYOUT
    ========================================================================== */
 .badge-medigo-primary {
     background-color: #002b5e !important;
@@ -608,31 +608,295 @@ body {
     color: #002b5e !important;
 }
 
-.btn-medigo-primary {
-    background-color: #002b5e !important;
-    border-color: #002b5e !important;
-    color: #ffffff !important;
-    transition: all 0.2s ease;
+/* ==========================================================================
+   CHAT LAYOUT & RESPONSIVE HEIGHT
+   ========================================================================== */
+.chat-wrapper {
+    max-width: 900px;
+    margin: 20px auto;
+    /* Margin diperkecil */
+    height: calc(100vh - 100px);
+    /* Tinggi otomatis: Layar penuh dikurangi tinggi Navbar */
+    display: flex;
+    flex-direction: column;
 }
 
-.btn-medigo-primary:hover {
-    background-color: #001f44 !important;
-    border-color: #001f44 !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(0, 43, 94, 0.2);
+.chat-header {
+    border-radius: 16px 16px 0 0;
+    padding: 20px 24px;
+    flex-shrink: 0;
+    /* Cegah header menyusut */
 }
 
-.btn-medigo-outline {
-    background-color: transparent !important;
-    border: 1.5px solid #002b5e !important;
-    color: #002b5e !important;
+.chat-body-container {
+    background: #ffffff;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    /* Ambil seluruh sisa tinggi dari wrapper */
+    overflow: hidden;
+    /* Cegah elemen bocor dari sudut melengkung */
+}
+
+.chat-box {
+    flex-grow: 1;
+    height: 0;
+    /* Trik wajib Flexbox agar scroll hanya terjadi di dalam area ini */
+    overflow-y: auto;
+    padding: 24px;
+    scroll-behavior: smooth;
+}
+
+/* Area khusus untuk input agar selalu menempel di bawah chat box */
+.chat-input-area {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background-color: #ffffff;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Message Layout & Avatars */
+.msg-row {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    gap: 12px;
+}
+
+.msg-row.user {
+    flex-direction: row-reverse;
+}
+
+.avatar-bot {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background-color: #002b5e;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.avatar-bot::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background-color: #20c997;
+    border: 2px solid #fff;
+    border-radius: 50%;
+}
+
+.avatar-user {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Bubbles */
+.bubble-wrap {
+    max-width: 75%;
+    display: flex;
+    flex-direction: column;
+}
+
+.msg-row.user .bubble-wrap {
+    align-items: flex-end;
+}
+
+.bubble {
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #1e293b;
+}
+
+.msg-row.bot .bubble {
+    background-color: #ffffff;
+    border: 1px solid #f1f5f9;
+    border-top-left-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.msg-row.user .bubble {
+    background-color: #002b5e;
+    color: #ffffff;
+    border-top-right-radius: 4px;
+}
+
+.timestamp {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 6px;
+}
+
+/* ==========================================================================
+   FASKES CARD (Replikasi Komponen Map/facility-card)
+   ========================================================================== */
+.faskes-cards-container {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 450px;
+}
+
+.facility-item-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    transition: transform 0.2s;
+    background: #fff;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.facility-item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.facility-thumb-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.faskes-avatar-hospital {
+    background-color: #0d6efd;
+}
+
+.faskes-avatar-clinic {
+    background-color: #0dcaf0;
+}
+
+.faskes-avatar-puskesmas {
+    background-color: #20c997;
+}
+
+.faskes-avatar-apotek {
+    background-color: #198754;
+}
+
+.badge-custom {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    border-radius: 9999px;
     font-weight: 600;
-    transition: all 0.2s ease;
 }
 
-.btn-medigo-outline:hover {
-    background-color: #002b5e !important;
-    color: #ffffff !important;
+.badge-kelas {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+
+.badge-bpjs {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.badge-non-bpjs {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.btn-navigasi-pill {
+    background-color: #002b5e;
+    border-radius: 50rem;
+    transition: background 0.2s;
+}
+
+.btn-navigasi-pill:hover {
+    background-color: #001f44;
+    color: white;
+}
+
+.btn-detail-pill {
+    background-color: #f1f5f9;
+    color: #334155;
+    border-radius: 50rem;
+    transition: background 0.2s;
+}
+
+.btn-detail-pill:hover {
+    background-color: #e2e8f0;
+    color: #334155;
+}
+
+/* ==========================================================================
+   TYPING SPINNER (Wavy Dots)
+   ========================================================================== */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+}
+
+.typing-indicator span {
+    width: 6px;
+    height: 6px;
+    background-color: #94a3b8;
+    border-radius: 50%;
+    display: inline-block;
+    animation: wave 1.3s linear infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: -1.1s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: -0.9s;
+}
+
+@keyframes wave {
+
+    0%,
+    60%,
+    100% {
+        transform: initial;
+    }
+
+    30% {
+        transform: translateY(-5px);
+        background-color: #002b5e;
+    }
+}
+
+/* Input Area */
+.input-wrapper {
+    background-color: #f8fafc;
+    border-radius: 50rem;
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.input-wrapper input {
+    background: transparent;
+    border: none;
+    box-shadow: none !important;
+}
+
+.input-wrapper input:focus {
+    outline: none;
 }
 
 /* Modern Horizontal Tab Navigator (Segmented Pill - Guaranteed No Overflow) */
@@ -1338,6 +1602,7 @@ body {
    MOBILE FULL-VIEWPORT MAP UI (MATCHING SCREENSHOT)
    ========================================================================== */
 @media (max-width: 991.98px) {
+
     /* Prevent whole page from scrolling on mobile map */
     .map-page-body {
         overflow: hidden !important;
@@ -1399,7 +1664,7 @@ body {
 }
 
 /* Hide top search bar when bottom sheet is expanded to avoid obstructing cards */
-.mobile-bottom-sheet.is-expanded ~ .mobile-map-top-bar,
+.mobile-bottom-sheet.is-expanded~.mobile-map-top-bar,
 .map-display-wrapper:has(.mobile-bottom-sheet.is-expanded) .mobile-map-top-bar,
 .mobile-map-top-bar.is-hidden-by-sheet {
     opacity: 0 !important;
@@ -1838,7 +2103,7 @@ body {
 
 /* Hide generic navbar on mobile when on detail page so mobile topbar is shown */
 @media (max-width: 991.98px) {
-    .faskes-detail-page > nav.navbar {
+    .faskes-detail-page>nav.navbar {
         display: none !important;
     }
 }

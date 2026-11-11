@@ -5,6 +5,7 @@ use App\Http\Controllers\FaskesDetailController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DiscussionController;
+use App\Http\Controllers\ChatWebController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -36,6 +37,9 @@ Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('regi
 Route::post('/register', [AuthController::class, 'register'])->name('register.post');
 Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 
+// AI Chat
+Route::get('/chat', [ChatWebController::class, 'index'])->name('chat');
+Route::post('/chat', [ChatWebController::class, 'sendChat']);
 // User Profile & Community Routes
 Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
 Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
