@@ -43,6 +43,7 @@ class FaskesManagementTest extends TestCase
             'nama_faskes' => 'Klinik Baru',
             'jenis_faskes' => 'Klinik',
             'alamat_faskes' => 'Jl. Baru No. 2',
+            'telepon' => '021-1234567',
             'kota_kabupaten' => 'Depok',
             '_support_bpjs' => '1',
         ];
@@ -77,7 +78,11 @@ class FaskesManagementTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('status', 'success');
 
-        $this->assertDatabaseHas('faskes', ['nama_faskes' => 'Klinik Baru', 'kota_kabupaten' => 'Depok']);
+        $this->assertDatabaseHas('faskes', [
+            'nama_faskes' => 'Klinik Baru',
+            'kota_kabupaten' => 'Depok',
+            'telepon' => '021-1234567',
+        ]);
 
         $created = DB::table('faskes')->where('nama_faskes', 'Klinik Baru')->first();
         $this->assertNotNull($created->created_at);

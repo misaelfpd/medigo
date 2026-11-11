@@ -17,15 +17,29 @@ class GeminiController extends Controller
 Kamu adalah Asisten Medigo bernama Medibot, asisten AI resmi dari platform kesehatan Medigo. Karaktermu ramah, empatik, santun, dan sangat memahami seluruh fitur website Medigo serta data fasilitas kesehatan.
 
 TENTANG WEBSITE MEDIGO:
-- Medigo adalah platform kesehatan digital yang memudahkan masyarakat mencari dan memilih fasilitas kesehatan.
-- PENCARIAN FASKES: Filter dukungan BPJS, pencarian berbasis koordinat real-time pengguna, fasilitas, dan spesialis.
+- Medigo adalah platform kesehatan digital yang memudahkan masyarakat mencari dan memilih fasilitas kesehatan (Rumah Sakit, Klinik, dan Puskesmas), berdiskusi seputar kesehatan di forum komunitas, serta membaca ulasan/rating nyata dari pasien.
+- FITUR PENCARIAN FASKES:
+  * Pengguna dapat mencari faskes berdasarkan nama, jenis (Rumah Sakit, Klinik, Puskesmas), kota/kabupaten, dan kecamatan.
+  * Filter dukungan BPJS Kesehatan (menampilkan faskes yang melayani pasien BPJS).
+  * Pencarian faskes terdekat berbasis GPS/koordinat real-time pengguna.
+  * Setiap faskes menampilkan informasi alamat, kontak telepon, kelas, daftar fasilitas medis (seperti IGD 24 Jam, Rawat Inap, Laboratorium, Farmasi), daftar dokter spesialis (seperti Spesialis Anak, Penyakit Dalam, Gigi, Kandungan), serta tautan Google Maps untuk navigasi.
+- FITUR FORUM DISKUSI:
+  * Pengguna yang sudah login dapat membuat topik diskusi/tanya-jawab kesehatan baru melalui menu 'Buat Diskusi' di halaman Forum Diskusi (/discussions).
+  * Pengguna lain dapat memberikan tanggapan/komentar serta berbagi pengalaman medis.
+  * Pengguna dapat melihat daftar diskusi milik sendiri di /user/discussions dan komentar sendiri di /user/comments.
+  * Terdapat fitur pelaporan (Report) jika menemukan postingan atau tanggapan yang melanggar aturan, hoax, atau spam.
+- FITUR ULASAN & RATING FASKES:
+  * Pasien dapat memberikan rating bintang (1-5) dan review pengalaman berobat di halaman detail faskes.
+  * Pengguna dapat melihat riwayat ulasannya di /user/reviews.
+  * Tersedia fitur lapor komentar jika ada ulasan yang tidak pantas.
 
 ATURAN PENTING & PANDUAN MENJAWAB:
 1. PENCARIAN FASKES: Jika user mencari faskes, klinik, rumah sakit, puskesmas, dokter spesialis, fasilitas medis, atau menanyakan faskes TERDEKAT, SELALU gunakan fungsi `cari_faskes`.
-2. FASKES TERDEKAT: Jika user menanyakan faskes terdekat dan terdapat info lokasi pengguna, sebutkan nama faskes terdekat, jaraknya (dalam km), alamat, dan status penerimaan BPJS-nya dengan jelas.
-3. JIKA LOKASI BELUM TERSEDIA: Jika user meminta rekomendasi 'terdekat' namun tidak ada data koordinat lokasi, jelaskan bahwa pengguna dapat mengaktifkan izin lokasi di browser mereka.
-4. KONSULTASI MEDIS: Berikan saran medis awal, namun selalu ingatkan pengguna untuk periksa ke dokter.
-5. BAHASA: Gunakan bahasa Indonesia yang santai, komunikatif, ramah, dan penuh empati.
+2. FASKES TERDEKAT: Jika user menanyakan faskes terdekat dan terdapat info lokasi pengguna, sebutkan nama faskes terdekat, jaraknya (dalam km), alamat, nomor telepon/kontak, dan status penerimaan BPJS-nya dengan jelas.
+3. JIKA LOKASI BELUM TERSEDIA: Jika user meminta rekomendasi 'terdekat' namun tidak ada data koordinat lokasi, jelaskan bahwa pengguna dapat mengaktifkan izin lokasi di peramban/aplikasi atau menyebutkan nama kota/kecamatan mereka.
+4. KONSULTASI MEDIS: Berikan edukasi dan saran medis awal yang menenangkan serta pertolongan pertama dasar, namun selalu ingatkan pengguna untuk memeriksakan diri langsung ke dokter atau faskes terdekat untuk penanganan dan diagnosis pasti.
+5. PANDUAN WEBSITE: Jika user bertanya tentang cara menggunakan fitur website (seperti cara membuat diskusi, cara beri ulasan, cara lapor konten), pandu mereka dengan langkah-langkah yang jelas sesuai fitur Medigo di atas.
+6. BAHASA: Gunakan bahasa Indonesia yang santai, komunikatif, ramah, dan penuh empati.
 PROMPT;
 
     private const HISTORY_LIMIT = 20;
@@ -36,6 +50,10 @@ PROMPT;
     {
         $request->validate([
             'message' => 'required|string|max:2000',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'lat' => 'nullable|numeric|between:-90,90',
+            'lng' => 'nullable|numeric|between:-180,180',
         ]);
 
         if (! $gemini->isConfigured()) {
@@ -98,7 +116,7 @@ PROMPT;
         $lastFaskesResults = [];
 
         for ($round = 0; $round <= self::MAX_TOOL_ROUNDS; $round++) {
-            [$model, $data] = $gemini->generate($this->payload($contents), $model);
+            [$model, $data] = $gemini->generate($this->payload($contents, $userLat, $userLng), $model);
 
             $parts = $data['candidates'][0]['content']['parts'] ?? [];
             $calls = array_values(array_filter($parts, fn ($part) => isset($part['functionCall'])));
@@ -140,24 +158,31 @@ PROMPT;
         throw new RuntimeException('Gemini kept calling tools without answering');
     }
 
-    private function runTool(array $call): array
+    private function runTool(array $call, ?float $userLat = null, ?float $userLng = null): array
     {
         if ($call['name'] !== 'cari_faskes') {
             return ['error' => "Fungsi {$call['name']} tidak tersedia."];
         }
 
         $args = $call['args'] ?? [];
+        if (empty($args['lat']) && $userLat !== null) {
+            $args['lat'] = $userLat;
+        }
+        if (empty($args['lng']) && $userLng !== null) {
+            $args['lng'] = $userLng;
+        }
+
         $results = $this->searchFaskesAdvanced($args);
 
         return $results->isEmpty()
-            ? ['message' => "Tidak ada faskes yang cocok dengan kriteria tersebut."]
-            : ['faskes' => $results->all()];
+            ? ['message' => 'Faskes dengan kriteria tersebut tidak ditemukan di database Medigo.']
+            : ['faskes' => $results->values()->all()];
     }
 
     private function payload(array $contents): array
     {
         return [
-            'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+            'system_instruction' => ['parts' => [['text' => $systemText]]],
             'contents' => $contents,
             'tools' => [[
                 'function_declarations' => [[
@@ -216,21 +241,29 @@ PROMPT;
         }
 
         if (isset($args['_support_bpjs'])) {
-            $query->where('faskes._support_bpjs', (bool)$args['_support_bpjs']);
+            $query->where('faskes._support_bpjs', (bool) $args['_support_bpjs']);
         }
 
         if (!empty($args['spesialisasi'])) {
             $spec = $args['spesialisasi'];
-            $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
-                  ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
-                  ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spec}%");
+            $query->whereExists(function ($sub) use ($spec) {
+                $sub->select(DB::raw(1))
+                    ->from('spesialisasi_faskes')
+                    ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                    ->whereColumn('spesialisasi_faskes.id_faskes', 'faskes.id_faskes')
+                    ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spec}%");
+            });
         }
 
         if (!empty($args['fasilitas'])) {
             $facility = $args['fasilitas'];
-            $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
-                  ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
-                  ->where('fasilitas.nama_fasilitas', 'like', "%{$facility}%");
+            $query->whereExists(function ($sub) use ($facility) {
+                $sub->select(DB::raw(1))
+                    ->from('fasilitas_faskes')
+                    ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                    ->whereColumn('fasilitas_faskes.id_faskes', 'faskes.id_faskes')
+                    ->where('fasilitas.nama_fasilitas', 'like', "%{$facility}%");
+            });
         }
 
         if (!empty($args['keyword'])) {

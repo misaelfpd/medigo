@@ -109,6 +109,7 @@ class FaskesSeeder extends Seeder
                 'provinsi' => ! empty($row['provinsi']) ? trim($row['provinsi']) : 'DKI Jakarta',
                 'kota_kabupaten' => $kota ?: 'Jakarta Selatan',
                 'alamat_faskes' => trim($row['alamat'] ?? '-'),
+                'telepon' => ! empty($row['telepon']) ? trim($row['telepon']) : null,
                 'latitude' => $lat,
                 'longitude' => $lng,
                 'link_maps' => $linkMaps,

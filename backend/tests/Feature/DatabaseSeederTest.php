@@ -40,6 +40,7 @@ class DatabaseSeederTest extends TestCase
         $faskesSample = DB::table('faskes')->first();
         $this->assertNotNull($faskesSample->created_at);
         $this->assertNotNull($faskesSample->updated_at);
+        $this->assertNotNull($faskesSample->telepon);
 
         $userSample = User::where('email_user', 'test@example.com')->first();
         $this->assertNotNull($userSample->created_at);
