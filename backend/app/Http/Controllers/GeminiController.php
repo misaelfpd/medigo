@@ -89,7 +89,7 @@ PROMPT;
         $contents[] = ['role' => 'user', 'parts' => [['text' => $messageForGemini]]];
 
         try {
-            [$aiReply, $faskesResults] = $this->converseWithFaskes($gemini, $contents);
+            [$aiReply, $faskesResults] = $this->converseWithFaskes($gemini, $contents, $lat, $lng);
         } catch (RuntimeException $e) {
             Log::error('Gemini chat failed', ['error' => $e->getMessage()]);
             return response()->json(['message' => self::UNAVAILABLE], 502);
@@ -110,13 +110,13 @@ PROMPT;
         ]);
     }
 
-    private function converseWithFaskes(GeminiClient $gemini, array $contents): array
+    private function converseWithFaskes(GeminiClient $gemini, array $contents, ?float $lat = null, ?float $lng = null): array
     {
         $model = null;
         $lastFaskesResults = [];
 
         for ($round = 0; $round <= self::MAX_TOOL_ROUNDS; $round++) {
-            [$model, $data] = $gemini->generate($this->payload($contents, $userLat, $userLng), $model);
+            [$model, $data] = $gemini->generate($this->payload($contents, $lat, $lng), $model);
 
             $parts = $data['candidates'][0]['content']['parts'] ?? [];
             $calls = array_values(array_filter($parts, fn ($part) => isset($part['functionCall'])));
@@ -158,18 +158,18 @@ PROMPT;
         throw new RuntimeException('Gemini kept calling tools without answering');
     }
 
-    private function runTool(array $call, ?float $userLat = null, ?float $userLng = null): array
+    private function runTool(array $call, ?float $lat = null, ?float $lng = null): array
     {
         if ($call['name'] !== 'cari_faskes') {
             return ['error' => "Fungsi {$call['name']} tidak tersedia."];
         }
 
         $args = $call['args'] ?? [];
-        if (empty($args['lat']) && $userLat !== null) {
-            $args['lat'] = $userLat;
+        if (empty($args['lat']) && $lat !== null) {
+            $args['lat'] = $lat;
         }
-        if (empty($args['lng']) && $userLng !== null) {
-            $args['lng'] = $userLng;
+        if (empty($args['lng']) && $lng !== null) {
+            $args['lng'] = $lng;
         }
 
         $results = $this->searchFaskesAdvanced($args);
@@ -182,7 +182,7 @@ PROMPT;
     private function payload(array $contents): array
     {
         return [
-            'system_instruction' => ['parts' => [['text' => $systemText]]],
+            'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
             'contents' => $contents,
             'tools' => [[
                 'function_declarations' => [[
