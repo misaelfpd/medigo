@@ -30,6 +30,9 @@ Route::post('/faskes/{faskes_id}/feedback', [FaskesFeedbackController::class, 's
 Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat semua diskusi
 Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat 1 diskusi spesifik
 
+    // GEMINI AI
+    Route::post('/chat-ai', [GeminiController::class, 'chat']);
+
 // Rute Search
 Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
 
@@ -66,8 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Catatan integrasi frontend: '/comments/{id}/report' digunakan untuk melaporkan balasan DISKUSI (tabel tanggapan_diskusi)
     Route::post('/comments/{id}/report', [DiscussionCommentController::class, 'report']);
 
-    // GEMINI AI
-    Route::post('/chat-ai', [GeminiController::class, 'chat']);
+
 
     // Rute Admin Dashboard Log (Wajib Login + Wajib Admin)
     Route::middleware(AdminMiddleware::class)->group(function () {
