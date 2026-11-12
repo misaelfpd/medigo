@@ -224,7 +224,7 @@ class FaskesController extends Controller
     }
 
     // 2. Ambil detail spesifik satu Faskes (buat halaman detail)
-    public function show($id)
+    public function show(Request $request, $id)
     {
         // 1. Ambil data utama faskesnya
         $faskes = DB::table('faskes')
@@ -256,6 +256,17 @@ class FaskesController extends Controller
         $hasSpecific = ! empty($faskes->link_maps) && ! in_array($faskes->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($faskes->link_maps, 'http') && (str_contains($faskes->link_maps, '@') || str_contains($faskes->link_maps, 'place') || str_contains($faskes->link_maps, 'maps.app.goo.gl') || str_contains($faskes->link_maps, 'dir'));
         if (! $hasSpecific) {
             $faskes->link_maps = $this->getGoogleMapsUrl($faskes->nama_faskes, $faskes->latitude ?? null, $faskes->longitude ?? null, $faskes->kota_kabupaten ?? '', $faskes->alamat_faskes ?? '');
+        }
+
+        // Hitung jarak (distance) jika koordinat user dikirimkan
+        $lat = $request->filled('lat') ? (float) $request->input('lat') : ($request->filled('latitude') ? (float) $request->input('latitude') : null);
+        $lng = $request->filled('lng') ? (float) $request->input('lng') : ($request->filled('longitude') ? (float) $request->input('longitude') : null);
+
+        if ($lat !== null && $lng !== null && ! empty($faskes->latitude) && ! empty($faskes->longitude)) {
+            $applied = RoadDistanceService::applyToCollection(collect([$faskes]), $lat, $lng, false)->first();
+            if ($applied) {
+                $faskes = $applied;
+            }
         }
 
         // 2. Ambil semua ulasan yang terhubung ke faskes ini dari tabel komentar
@@ -295,6 +306,10 @@ class FaskesController extends Controller
             'message' => 'Berhasil mengambil detail faskes',
             'data' => [
                 'faskes' => $faskes,
+                'distance' => $faskes->distance ?? null,
+                'distance_km' => $faskes->distance_km ?? null,
+                'jarak_km' => $faskes->jarak_km ?? null,
+                'jarak_teks' => $faskes->jarak_teks ?? null,
                 'reviews' => $reviews,
                 'fasilitas' => $fasilitas,
                 'spesialisasi' => $spesialisasi,

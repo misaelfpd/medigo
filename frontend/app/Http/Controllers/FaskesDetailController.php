@@ -202,8 +202,21 @@ class FaskesDetailController extends Controller
         $backendUserId = $backendUser['id_user'] ?? $backendUser['id'] ?? null;
 
         try {
+            // Forward coordinates if available
+            $faskesQueryParams = [];
+            if ($request->filled('lat')) {
+                $faskesQueryParams['lat'] = $request->query('lat');
+            } elseif ($request->filled('latitude')) {
+                $faskesQueryParams['lat'] = $request->query('latitude');
+            }
+            if ($request->filled('lng')) {
+                $faskesQueryParams['lng'] = $request->query('lng');
+            } elseif ($request->filled('longitude')) {
+                $faskesQueryParams['lng'] = $request->query('longitude');
+            }
+
             // 1. Fetch Faskes Data
-            $response = Http::timeout(8)->get("{$backendUrl}/api/faskes/{$id}");
+            $response = Http::timeout(8)->get("{$backendUrl}/api/faskes/{$id}", $faskesQueryParams);
             if ($response->successful()) {
                 $body = $response->json();
                 $item = $body['data']['faskes'] ?? ($body['data'] ?? null);
@@ -244,7 +257,27 @@ class FaskesDetailController extends Controller
                         : $this->getGoogleMapsUrl($formattedName, $lat, $lng, $kota, $alamatFaskes);
 
                     $phone = !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : (!empty($item['telepon']) ? $item['telepon'] : '-'));
-                    $distance = $request->query('distance', '2.4 km');
+
+                    // Ambil distance dari backend jika ada koordinat, atau dari URL query parameter
+                    $distance = $body['data']['distance']
+                        ?? $item['distance']
+                        ?? $body['data']['jarak_teks']
+                        ?? $item['jarak_teks']
+                        ?? $request->query('distance')
+                        ?? null;
+
+                    $distanceKm = $body['data']['distance_km']
+                        ?? $item['distance_km']
+                        ?? $body['data']['jarak_km']
+                        ?? $item['jarak_km']
+                        ?? null;
+
+                    if ($distanceKm !== null) {
+                        $distanceKm = (float) $distanceKm;
+                        if (!$distance) {
+                            $distance = number_format($distanceKm, 1, '.', '') . ' km';
+                        }
+                    }
 
                     $faskes = [
                         'id' => $item['id_faskes'] ?? $item['id'],
@@ -260,6 +293,7 @@ class FaskesDetailController extends Controller
                         'avg_rating_display' => $avgRating ? $avgRating : 'Belum dirating',
                         'total_reviews' => $totalReviewsCount,
                         'distance' => $distance,
+                        'distance_km' => $distanceKm,
                         'lat' => $lat,
                         'lng' => $lng,
                         'navigasi_url' => $navUrl,
@@ -319,7 +353,8 @@ class FaskesDetailController extends Controller
                 'avg_rating' => null,
                 'avg_rating_display' => 'Belum dirating',
                 'total_reviews' => 0,
-                'distance' => '2.4 km',
+                'distance' => $request->query('distance', null),
+                'distance_km' => null,
                 'lat' => -6.2758,
                 'lng' => 106.7820,
                 'navigasi_url' => $this->getGoogleMapsUrl('RS Pondok Indah', -6.2758, 106.7820, 'Jakarta Selatan', 'Jl. Metro Pondok Indah Kav. IV, Kby. Lama'),

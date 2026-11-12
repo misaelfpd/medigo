@@ -194,10 +194,18 @@ document.addEventListener("DOMContentLoaded", function () {
         const typeSlug = item.type_slug || "hospital";
 
         // --- 2. PASTIKAN DETAIL URL TIDAK UNDEFINED ---
-        const detailUrl =
+        let detailUrl =
             item.detail_url && item.detail_url !== "#"
                 ? item.detail_url
                 : `/faskes/${hospitalId}`; // Gunakan hospitalId yang sudah difilter
+
+        if (hospitalId && userState.isDetected && userState.lat && userState.lng && !detailUrl.includes("lat=")) {
+            const sep = detailUrl.includes("?") ? "&" : "?";
+            const distParam = (item.currentDistance !== null && item.currentDistance !== undefined && item.currentDistance !== 999)
+                ? `&distance=${encodeURIComponent(item.currentDistance + ' km')}`
+                : (item.distance ? `&distance=${encodeURIComponent(item.distance)}` : '');
+            detailUrl += `${sep}lat=${userState.lat}&lng=${userState.lng}${distParam}`;
+        }
 
         if (
             (typeSlug === "puskesmas" ||
@@ -861,6 +869,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 userState.lng = pos.coords.longitude;
                 userState.isDetected = true;
                 userState.permissionDenied = false;
+
+                try {
+                    sessionStorage.setItem("medigo_user_lat", userState.lat);
+                    sessionStorage.setItem("medigo_user_lng", userState.lng);
+                } catch (_) {}
 
                 if (btnText) btnText.textContent = "Perbarui";
                 if (locText)

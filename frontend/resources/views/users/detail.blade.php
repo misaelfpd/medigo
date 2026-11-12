@@ -73,8 +73,8 @@
                 {{ $faskes['is_support_bpjs'] ? 'BPJS' : 'Non-BPJS' }}
             </span>
             <!-- Distance Badge -->
-            <span class="badge-hero-pill badge-hero-distance">
-                <i class="bi bi-geo-alt-fill me-1"></i> {{ $faskes['distance'] }}
+            <span class="badge-hero-pill badge-hero-distance" id="mobileHeroDistanceBadge">
+                <i class="bi bi-geo-alt-fill me-1"></i> <span class="faskes-distance-display">{{ $faskes['distance'] ?? 'Menghitung jarak...' }}</span>
             </span>
         </div>
     </div>
@@ -106,8 +106,8 @@
                         <span class="badge-custom-pill bg-white {{ $faskes['is_support_bpjs'] ? 'text-success' : 'text-danger' }} shadow-xs">
                             {{ $faskes['is_support_bpjs'] ? 'BPJS' : 'Non-BPJS' }}
                         </span>
-                        <span class="badge-custom-pill bg-white text-dark shadow-xs">
-                            <i class="bi bi-arrow-down-up me-1"></i> {{ $faskes['distance'] }}
+                        <span class="badge-custom-pill bg-white text-dark shadow-xs" id="desktopHeroDistanceBadge">
+                            <i class="bi bi-arrow-down-up me-1"></i> <span class="faskes-distance-display">{{ $faskes['distance'] ?? 'Menghitung jarak...' }}</span>
                         </span>
                         <span class="badge-custom-pill bg-white text-dark shadow-xs" id="desktopHeroRatingBadge">
                             @if(!empty($faskes['avg_rating']))
@@ -656,6 +656,8 @@
         nama_faskes: @json($faskes['nama_faskes']),
         lat: {{ $faskes['lat'] ?? -6.2758 }},
         lng: {{ $faskes['lng'] ?? 106.7820 }},
+        distance: @json($faskes['distance'] ?? null),
+        distance_km: @json($faskes['distance_km'] ?? null),
         navigasi_url: @json($faskes['navigasi_url']),
         alamat: @json($faskes['alamat'] ?? ''),
         kota_kabupaten: @json($faskes['kota_kabupaten'] ?? ''),

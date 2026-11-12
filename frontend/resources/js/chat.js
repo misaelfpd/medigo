@@ -21,11 +21,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeNowEl = document.querySelector('.time-now');
     if(timeNowEl) timeNowEl.textContent = getCurrentTime();
 
+    try {
+        const sLat = sessionStorage.getItem("medigo_user_lat");
+        const sLng = sessionStorage.getItem("medigo_user_lng");
+        if (sLat && sLng) {
+            userLat = parseFloat(sLat);
+            userLng = parseFloat(sLng);
+        }
+    } catch (_) {}
+
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 userLat = position.coords.latitude;
                 userLng = position.coords.longitude;
+                try {
+                    sessionStorage.setItem("medigo_user_lat", userLat);
+                    sessionStorage.setItem("medigo_user_lng", userLng);
+                } catch (_) {}
             },
             (error) => { console.warn("Lokasi dibatasi pengguna:", error.message); }
         );
@@ -171,7 +184,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        const detailUrl = (faskes.detail_url && faskes.detail_url !== '#') ? faskes.detail_url : `/faskes/${faskesId}`;
+        let detailUrl = (faskes.detail_url && faskes.detail_url !== '#') ? faskes.detail_url : `/faskes/${faskesId}`;
+        if (userLat && userLng && !detailUrl.includes('lat=')) {
+            const sep = detailUrl.includes('?') ? '&' : '?';
+            const distParam = faskes.distance_km ? `&distance=${encodeURIComponent(parseFloat(faskes.distance_km).toFixed(1) + ' km')}` : '';
+            detailUrl += `${sep}lat=${userLat}&lng=${userLng}${distParam}`;
+        }
         const distanceStr = faskes.distance_km ? `${parseFloat(faskes.distance_km).toFixed(1)} km` : '-';
         const bpjsStatus = faskes._support_bpjs ? 'BPJS' : 'Non - BPJS';
         const bpjsClass = faskes._support_bpjs ? 'badge-bpjs' : 'badge-non-bpjs';

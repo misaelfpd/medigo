@@ -86,10 +86,12 @@ class RoadDistanceService
                     $item->distance_km = $finalKm;
                     $item->jarak_km = $finalKm;
                     $item->jarak_teks = number_format($finalKm, 1, '.', '').' km';
+                    $item->distance = number_format($finalKm, 1, '.', '').' km';
                 } elseif (is_array($item)) {
                     $item['distance_km'] = $finalKm;
                     $item['jarak_km'] = $finalKm;
                     $item['jarak_teks'] = number_format($finalKm, 1, '.', '').' km';
+                    $item['distance'] = number_format($finalKm, 1, '.', '').' km';
                 }
             }
 
