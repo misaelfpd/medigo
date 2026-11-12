@@ -80,7 +80,6 @@ class FaskesDetailController extends Controller
         $kecamatan = trim($kecamatan ?? '');
         $provinsi = trim($provinsi ?? '');
 
-        // Ganti typo "JL," atau "JLN," menjadi "Jl."
         $alamat = preg_replace('/^(?:jl|jln),\s*/i', 'Jl. ', $alamat);
         $alamat = ltrim($alamat, ",- \t\n\r\0\x0B");
 
@@ -94,19 +93,14 @@ class FaskesDetailController extends Controller
             }
         }
 
-        $parts = array_filter([$alamat, $kota, $provinsi], function ($p) {
-            return !empty($p);
-        });
+        $parts = array_filter([$alamat, $kota, $provinsi], fn ($p) => !empty($p));
 
-        // Hindari duplikasi jika alamat sudah mencantumkan kota / provinsi
         $full = '';
         foreach ($parts as $p) {
             if ($full === '') {
                 $full = $p;
-            } else {
-                if (!str_contains(strtolower($full), strtolower($p))) {
-                    $full .= ', ' . $p;
-                }
+            } elseif (!str_contains(strtolower($full), strtolower($p))) {
+                $full .= ', ' . $p;
             }
         }
 
@@ -115,7 +109,6 @@ class FaskesDetailController extends Controller
 
     private function getGoogleMapsUrl($name, $lat = null, $lng = null, $kota = '', $alamat = '')
     {
-        // Build a rich query: Name + Address + Kota for better accuracy
         $parts = array_filter([trim($name), trim($alamat), trim($kota)]);
         $queryName = implode(', ', $parts);
         $encodedName = urlencode($queryName);
@@ -127,24 +120,24 @@ class FaskesDetailController extends Controller
         return "https://www.google.com/maps/search/?api=1&query={$encodedName}";
     }
 
-    private function getGalleryPhotos($typeSlug, $id = 0)
+    private function formatFacilities(array $rawFasilitas): array
     {
-        $mainPhoto = ($id % 2 === 0) ? 'images/hospital_waterfront.jpg' : 'images/hospital.jpg';
-        if ($typeSlug === 'clinic') {
-            $mainPhoto = 'images/clinic.jpg';
-        }
-
-        return [
-            'main' => $mainPhoto,
-            'reception' => 'images/reception.jpg',
-            'operating_room' => 'images/operating_room.jpg',
-            'patient_room' => 'images/patient_room.jpg',
-        ];
+        return array_map(function ($item) {
+            return [
+                'id' => is_array($item) ? ($item['id_fasilitas'] ?? null) : null,
+                'title' => trim(is_array($item) ? ($item['nama_fasilitas'] ?? '') : (string) $item),
+            ];
+        }, $rawFasilitas);
     }
 
-    private function getDefaultDescription($namaFaskes, $tipe, $kota)
+    private function formatSpecialties(array $rawSpesialisasi): array
     {
-        return "{$namaFaskes} adalah fasilitas pelayanan kesehatan {$tipe} terpercaya yang berlokasi di {$kota}. Berkomitmen untuk memberikan layanan medis unggul dengan mengedepankan keselamatan, kenyamanan, dan kepuasan pasien. Dilengkapi dengan fasilitas medis modern dan canggih, tenaga medis dokter spesialis berpengalaman, perawat profesional, serta layanan instalasi gawat darurat (IGD) siaga 24 jam untuk melayani seluruh lapisan masyarakat secara komprehensif.";
+        return array_map(function ($item) {
+            return [
+                'id' => is_array($item) ? ($item['id_spesialisasi'] ?? null) : null,
+                'title' => trim(is_array($item) ? ($item['nama_spesialisasi'] ?? '') : (string) $item),
+            ];
+        }, $rawSpesialisasi);
     }
 
     private function getBackendToken()
@@ -202,32 +195,30 @@ class FaskesDetailController extends Controller
         $backendUserId = $backendUser['id_user'] ?? $backendUser['id'] ?? null;
 
         try {
-            // 1. Fetch Faskes Data
             $response = Http::timeout(8)->get("{$backendUrl}/api/faskes/{$id}");
             if ($response->successful()) {
                 $body = $response->json();
                 $item = $body['data']['faskes'] ?? ($body['data'] ?? null);
 
                 if ($item) {
-                    // UPDATE: BE menggunakan jenis_faskes, bukan tipe
                     $jenisFaskes = $item['jenis_faskes'] ?? $item['tipe'] ?? '';
                     $typeSlug = $item['type_slug'] ?? $this->getTypeSlug($jenisFaskes);
-                    
+
                     $rawRating = $item['avg_rating'] ?? null;
                     $totalReviewsCount = (int)($item['total_reviews'] ?? 0);
                     $avgRating = ($totalReviewsCount > 0 && $rawRating !== null && (float)$rawRating > 0)
                         ? number_format((float)$rawRating, 1)
                         : null;
 
-                    $lat = !empty($item['latitude']) ? (float)$item['latitude'] : -6.2758;
-                    $lng = !empty($item['longitude']) ? (float)$item['longitude'] : 106.7820;
+                    // Murni koordinat dari API, jika kosong jadikan null
+                    $lat = !empty($item['latitude']) ? (float)$item['latitude'] : null;
+                    $lng = !empty($item['longitude']) ? (float)$item['longitude'] : null;
 
-                    $rawName = $item['nama_faskes'] ?? 'RS Pondok Indah';
+                    $rawName = $item['nama_faskes'] ?? 'Fasilitas Kesehatan';
                     $formattedName = $this->formatFaskesName($rawName, $typeSlug, $jenisFaskes);
-                    $kota = $item['kota_kabupaten'] ?? '';
 
-                    $hasSpecificLink = !empty($item['link_maps']) 
-                        && !in_array($item['link_maps'], ['-', 'TRUE', 'FALSE']) 
+                    $hasSpecificLink = !empty($item['link_maps'])
+                        && !in_array($item['link_maps'], ['-', 'TRUE', 'FALSE'])
                         && str_starts_with($item['link_maps'], 'http')
                         && (str_contains($item['link_maps'], '@') || str_contains($item['link_maps'], 'place') || str_contains($item['link_maps'], 'maps.app.goo.gl') || str_contains($item['link_maps'], 'dir'));
 
@@ -244,14 +235,21 @@ class FaskesDetailController extends Controller
                         : $this->getGoogleMapsUrl($formattedName, $lat, $lng, $kota, $alamatFaskes);
 
                     $phone = !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : (!empty($item['telepon']) ? $item['telepon'] : '-'));
-                    $distance = $request->query('distance', '2.4 km');
+                    
+                    // Jarak murni dari parameter URL, tanpa fallback '2.4 km'
+                    $distance = $request->query('distance');
+
+                    $rawFasilitas = $body['data']['fasilitas'] ?? $item['fasilitas'] ?? [];
+                    $rawSpesialisasi = $body['data']['spesialisasi'] ?? $item['spesialisasi'] ?? [];
+                    
+                    $deskripsiFallback = "{$formattedName} adalah fasilitas pelayanan kesehatan {$resolvedType} yang berlokasi di " . ($kota ?: 'kota Anda') . ".";
 
                     $faskes = [
                         'id' => $item['id_faskes'] ?? $item['id'],
                         'nama_faskes' => $formattedName,
                         'tipe' => $resolvedType,
                         'type_slug' => $typeSlug,
-                        'kelas' => $item['kelas'] ?? 'A',
+                        'kelas' => !empty($item['kelas']) ? $item['kelas'] : null,
                         'is_support_bpjs' => (bool) ($item['_support_bpjs'] ?? $item['is_support_bpjs'] ?? true),
                         'alamat' => $fullAddress,
                         'kota_kabupaten' => $kota,
@@ -263,70 +261,50 @@ class FaskesDetailController extends Controller
                         'lat' => $lat,
                         'lng' => $lng,
                         'navigasi_url' => $navUrl,
-                        'photos' => $this->getGalleryPhotos($typeSlug, $item['id_faskes'] ?? $item['id']),
-                        'description' => $this->getDefaultDescription(
-                            $formattedName,
-                            $resolvedType,
-                            $kota ?: 'Jakarta Selatan'
-                        ),
+                        'description' => $item['deskripsi'] ?? $item['description'] ?? $deskripsiFallback,
+                        'fasilitas' => $this->formatFacilities($rawFasilitas),
+                        'spesialisasi' => $this->formatSpecialties($rawSpesialisasi),
                     ];
                 }
             }
 
-            // 2. Fetch Comments (Paginated, User Pinned to Top)
-            $commentsReq = Http::timeout(8);
-            if ($token) {
-                $commentsReq = $commentsReq->withToken($token);
-            }
-            $commParams = ['limit' => 4, 'page' => 1];
-            if ($user) {
-                $commParams['current_user_email'] = $user->email;
-                $commParams['current_user_id'] = $backendUserId ?: $user->id;
-            }
+            // Ambil Komentar Jika Faskes Ada
+            if ($faskes) {
+                $commentsReq = Http::timeout(8);
+                if ($token) {
+                    $commentsReq = $commentsReq->withToken($token);
+                }
+                $commParams = ['limit' => 4, 'page' => 1];
+                if ($user) {
+                    $commParams['current_user_email'] = $user->email;
+                    $commParams['current_user_id'] = $backendUserId ?: $user->id;
+                }
 
-            $commentsResp = $commentsReq->get("{$backendUrl}/api/faskes/{$id}/comments", $commParams);
-            if ($commentsResp->successful()) {
-                $commData = $commentsResp->json('data') ?? [];
-                $reviews = $commData['comments'] ?? [];
-                $myComment = $commData['my_comment'] ?? null;
-                $hasMoreComments = (bool)($commData['has_more'] ?? false);
-                // Update rating and breakdown stats from comments calculation
-                if (isset($commData['avg_rating'])) {
-                    $faskes['avg_rating'] = $commData['avg_rating'];
-                    $faskes['avg_rating_display'] = $commData['avg_rating'] ? $commData['avg_rating'] : 'Belum dirating';
+                $commentsResp = $commentsReq->get("{$backendUrl}/api/faskes/{$id}/comments", $commParams);
+                if ($commentsResp->successful()) {
+                    $commData = $commentsResp->json('data') ?? [];
+                    $reviews = $commData['comments'] ?? [];
+                    $myComment = $commData['my_comment'] ?? null;
+                    $hasMoreComments = (bool)($commData['has_more'] ?? false);
+
+                    if (isset($commData['avg_rating'])) {
+                        $faskes['avg_rating'] = $commData['avg_rating'];
+                        $faskes['avg_rating_display'] = $commData['avg_rating'] ? $commData['avg_rating'] : 'Belum dirating';
+                    }
+                    if (isset($commData['total_reviews'])) {
+                        $faskes['total_reviews'] = (int)$commData['total_reviews'];
+                    }
+                    $ratingBreakdown = $commData['rating_breakdown'] ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+                    $ratingPercentages = $commData['rating_percentages'] ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
                 }
-                if (isset($commData['total_reviews'])) {
-                    $faskes['total_reviews'] = (int)$commData['total_reviews'];
-                }
-                $ratingBreakdown = $commData['rating_breakdown'] ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
-                $ratingPercentages = $commData['rating_percentages'] ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
             }
         } catch (\Exception $e) {
             Log::warning('Failed to fetch faskes detail or comments from backend API: ' . $e->getMessage());
         }
 
-        // Fallback default data if backend is offline
+        // Jika API mati atau ID Faskes tidak ada, langsung abort 404 (Tidak menggunakan dummy Pondok Indah lagi)
         if (!$faskes) {
-            $faskes = [
-                'id' => $id,
-                'nama_faskes' => 'RS Pondok Indah',
-                'tipe' => 'Rumah Sakit',
-                'type_slug' => 'hospital',
-                'kelas' => 'A',
-                'is_support_bpjs' => true,
-                'alamat' => 'Jl. Metro Pondok Indah Kav. IV, RT.1/RW.16, Pd. Pinang, Kec. Kby. Lama, Kota Jakarta Selatan, DKI Jakarta 12310',
-                'phone' => '-',
-                'avg_rating' => null,
-                'avg_rating_display' => 'Belum dirating',
-                'total_reviews' => 0,
-                'distance' => '2.4 km',
-                'lat' => -6.2758,
-                'lng' => 106.7820,
-                'navigasi_url' => $this->getGoogleMapsUrl('RS Pondok Indah', -6.2758, 106.7820, 'Jakarta Selatan', 'Jl. Metro Pondok Indah Kav. IV, Kby. Lama'),
-                'photos' => $this->getGalleryPhotos('hospital', (int)$id),
-                'description' => 'RS Pondok Indah merupakan salah satu rumah sakit terkemuka yang menyediakan layanan kesehatan terpadu dan modern di Jakarta Selatan.',
-            ];
-            $reviews = [];
+            abort(404, 'Fasilitas Kesehatan tidak ditemukan atau terjadi gangguan koneksi ke server.');
         }
 
         $ratingBreakdown = $ratingBreakdown ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
@@ -337,14 +315,11 @@ class FaskesDetailController extends Controller
         return view('users.detail', compact('faskes', 'reviews', 'myComment', 'hasMoreComments', 'totalComments', 'ratingBreakdown', 'ratingPercentages', 'isLoggedIn', 'currentUserId'));
     }
 
-    /**
-     * AJAX endpoint to fetch comments with pagination
-     */
     public function getComments(Request $request, $id)
     {
         $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
         $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
-        
+
         $token = $this->getBackendToken();
         $user = Auth::user();
         $backendUser = session('user_backend_data');
@@ -376,9 +351,6 @@ class FaskesDetailController extends Controller
         }
     }
 
-    /**
-     * AJAX endpoint to store a new review
-     */
     public function storeComment(Request $request, $id)
     {
         if (!Auth::check()) {
@@ -421,9 +393,6 @@ class FaskesDetailController extends Controller
         }
     }
 
-    /**
-     * AJAX endpoint to update an existing review
-     */
     public function updateComment(Request $request, $id, $commentId)
     {
         if (!Auth::check()) {
@@ -466,9 +435,6 @@ class FaskesDetailController extends Controller
         }
     }
 
-    /**
-     * AJAX endpoint to delete a review
-     */
     public function destroyComment(Request $request, $id, $commentId)
     {
         if (!Auth::check()) {
@@ -503,15 +469,11 @@ class FaskesDetailController extends Controller
         }
     }
 
-    // Shortcut hapus review faskes (dari profil, tanpa faskes_id di URL)
     public function destroyReview(Request $request, $commentId)
     {
         return $this->destroyComment($request, null, $commentId);
     }
 
-    /**
-     * AJAX endpoint to submit data feedback for a faskes
-     */
     public function storeFeedback(Request $request, $id)
     {
         $request->validate([
@@ -552,9 +514,6 @@ class FaskesDetailController extends Controller
         }
     }
 
-    /**
-     * AJAX endpoint to report an inappropriate review
-     */
     public function reportComment(Request $request, $id, $commentId)
     {
         if (!Auth::check()) {
@@ -597,4 +556,3 @@ class FaskesDetailController extends Controller
         }
     }
 }
-

@@ -32,6 +32,35 @@ class DiscussionController extends Controller
             $queryParams['id_user'] = Auth::user()->id_user ?? Auth::id();
         }
 
+        // ==============================================================================
+        // DATA DINAMIS UNTUK SIDEBAR (Hilangkan Hardcode di View)
+        // Note: Idealnya data ini didapat dari endpoint API Backend (misal: /api/categories & /api/trending)
+        // ==============================================================================
+        $sidebarCategories = [
+            ['name' => 'Ulasan Rumah Sakit', 'count' => '1.2k'],
+            ['name' => 'BPJS', 'count' => '856'],
+            ['name' => 'Umum', 'count' => '2.4k'],
+            ['name' => 'Tips Kesehatan', 'count' => '5.1k'],
+        ];
+
+        $trendingDiscussions = [
+            [
+                'title' => 'Proses pindah faskes 1 online terbaru 2024', 
+                'replies_count' => 342, 
+                'url' => '#' // Ganti dengan route('discussions.show', id) jika ada id
+            ],
+            [
+                'title' => 'Rekomendasi dokter anak di Jakarta Selatan', 
+                'replies_count' => 128, 
+                'url' => '#'
+            ],
+            [
+                'title' => 'Pengalaman operasi amandel pakai BPJS', 
+                'replies_count' => 89, 
+                'url' => '#'
+            ],
+        ];
+
         try {
             $response = Http::timeout(4)->get("{$backendUrl}/api/discussions", $queryParams);
 
@@ -48,8 +77,6 @@ class DiscussionController extends Controller
                     $gambar = $item['gambar_diskusi'] ?? $item['image_path'] ?? $item['image'] ?? null;
                     $id_user = $item['id_user'] ?? $item['user_id'] ?? null;
 
-                    // Menggunakan key Bahasa Indonesia sebagai yang utama, 
-                    // tapi mempertahankan key english untuk fallback jika blade masih menggunakannya
                     return array_merge($item, [
                         'id_diskusi' => $id_diskusi,
                         'id' => $id_diskusi,
@@ -78,7 +105,15 @@ class DiscussionController extends Controller
             Log::info('Discussions fetch fallback: ' . $e->getMessage());
         }
 
-        return view('users.discussion', compact('discussions', 'category', 'tab', 'pagination'));
+        // Pass variabel sidebarCategories dan trendingDiscussions ke View
+        return view('users.discussion', compact(
+            'discussions', 
+            'category', 
+            'tab', 
+            'pagination', 
+            'sidebarCategories', 
+            'trendingDiscussions'
+        ));
     }
 
     public function create()

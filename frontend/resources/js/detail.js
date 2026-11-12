@@ -21,6 +21,16 @@ document.addEventListener("DOMContentLoaded", () => {
     initFeedbackAndReporting();
 });
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Helper to generate Google Maps Search URL combining Name, Address, and Coordinates
 function buildGoogleMapsUrl(name, lat, lng, city = "", address = "") {
     const parts = [name, address, city].filter((p) => p && p.trim());
@@ -107,8 +117,8 @@ function initMiniMap() {
 
         marker.bindPopup(`
             <div style="font-family: 'Inter', sans-serif; font-size: 12px; padding: 2px;">
-                <strong style="color: #002b5e; font-size: 13px; display: block; margin-bottom: 4px;">${hospitalName}</strong>
-                <a href="${navUrl}" target="_blank" style="color: #0b5ed7; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <strong style="color: #002b5e; font-size: 13px; display: block; margin-bottom: 4px;">${escapeHtml(hospitalName)}</strong>
+                <a href="${escapeHtml(navUrl)}" target="_blank" style="color: #0b5ed7; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
                     <i class="bi bi-sign-turn-right"></i> Buka Rute
                 </a>
             </div>
@@ -129,14 +139,16 @@ function initStarRating(pickerId, inputId, itemClass) {
     if (!starPicker || !starInput) return;
 
     const stars = starPicker.querySelectorAll(itemClass);
+    const sizeClass =
+        pickerId === "editInteractiveStarPicker" ? "fs-3" : "fs-4";
 
     function highlight(count) {
         stars.forEach((star) => {
             const val = parseInt(star.getAttribute("data-rating") || "0", 10);
             if (val <= count) {
-                star.className = `bi bi-star-fill fs-4 ${itemClass.replace(".", "")} text-warning`;
+                star.className = `bi bi-star-fill ${sizeClass} ${itemClass.replace(".", "")} text-warning`;
             } else {
-                star.className = `bi bi-star fs-4 ${itemClass.replace(".", "")} text-muted`;
+                star.className = `bi bi-star ${sizeClass} ${itemClass.replace(".", "")} text-muted`;
             }
         });
     }
@@ -157,8 +169,8 @@ function initStarRating(pickerId, inputId, itemClass) {
     });
 
     // Initial highlight if value preset
-    if (starInput.value && parseInt(starInput.value) > 0) {
-        highlight(parseInt(starInput.value));
+    if (starInput.value && parseInt(starInput.value, 10) > 0) {
+        highlight(parseInt(starInput.value, 10));
     }
 }
 
@@ -193,20 +205,26 @@ function initReviewActions() {
         return html;
     }
 
-    // Helper to update global rating displays across the page
-    function updateRatingScoresUI(avgRating, totalReviews) {
+    // Helper to update global rating displays & breakdown bars across the page
+    function updateRatingScoresUI(
+        avgRating,
+        totalReviews,
+        ratingPercentages = null,
+    ) {
+        const count = Number(totalReviews || 0);
         const hasRating =
             avgRating !== null &&
+            avgRating !== undefined &&
             avgRating !== "0.0" &&
             avgRating !== "0" &&
-            totalReviews > 0;
+            count > 0;
         const ratingStr = hasRating ? parseFloat(avgRating).toFixed(1) : "-";
 
         // 1. Big Score in Box
         const hugeScoreEl = document.getElementById("ratingHugeScoreText");
         if (hugeScoreEl) hugeScoreEl.textContent = ratingStr;
 
-        // 2. Stars in Score Box
+        // 2. Stars in Score Box (if present)
         const hugeStarsEl = document.getElementById("ratingHugeStarsContainer");
         if (hugeStarsEl) {
             hugeStarsEl.innerHTML = generateStarsHtml(
@@ -228,14 +246,14 @@ function initReviewActions() {
         );
         if (verifiedSubtitleEl) {
             verifiedSubtitleEl.innerHTML = hasRating
-                ? `Berdasarkan <span class="total-reviews-num">${totalReviews}</span> ulasan dari pasien terverifikasi.`
+                ? `Berdasarkan <span class="total-reviews-num">${count}</span> ulasan dari pasien terverifikasi.`
                 : `Fasilitas ini belum memiliki ulasan rating.`;
         }
 
         // 5. Total reviews counts
         document
             .querySelectorAll(".total-reviews-num")
-            .forEach((el) => (el.textContent = totalReviews));
+            .forEach((el) => (el.textContent = count));
 
         // 6. Hero Badges
         const desktopHeroBadge = document.getElementById(
@@ -243,7 +261,7 @@ function initReviewActions() {
         );
         if (desktopHeroBadge) {
             desktopHeroBadge.innerHTML = hasRating
-                ? `<i class="bi bi-star-fill text-warning me-1"></i> <strong>${ratingStr}</strong> (<span class="total-reviews-num">${totalReviews}</span> Ulasan)`
+                ? `<i class="bi bi-star-fill text-warning me-1"></i> <strong>${ratingStr}</strong> (<span class="total-reviews-num">${count}</span> ulasan)`
                 : `<i class="bi bi-star text-muted me-1"></i> <span>Belum dirating</span>`;
         }
 
@@ -254,6 +272,21 @@ function initReviewActions() {
             mobileHeroBadge.innerHTML = hasRating
                 ? `<i class="bi bi-star-fill text-warning me-1"></i> ${ratingStr}`
                 : `<i class="bi bi-star text-white-50 me-1"></i> Belum dirating`;
+        }
+
+        // 7. Rating Breakdown Progress Bars (5..1)
+        const percentages =
+            ratingPercentages ||
+            (count === 0 ? { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } : null);
+        if (percentages) {
+            [5, 4, 3, 2, 1].forEach((star) => {
+                const bar = document.getElementById(`ratingBar${star}`);
+                if (bar) {
+                    const pct = Number(percentages[star] ?? 0);
+                    bar.style.width = `${pct}%`;
+                    bar.setAttribute("aria-valuenow", pct);
+                }
+            });
         }
     }
 
@@ -303,8 +336,11 @@ function initReviewActions() {
 
             if (resp.ok) {
                 const commentData = result.data || {};
+                const commentId =
+                    commentData.id || commentData.comment?.id || Date.now();
+
                 currentMyComment = {
-                    id: commentData.id,
+                    id: commentId,
                     rating: rating,
                     body: comment,
                     created_at_human: "Baru saja",
@@ -337,15 +373,14 @@ function initReviewActions() {
                 document.getElementById("desktopEmptyReviewsNotice")?.remove();
                 document.getElementById("mobileEmptyReviewsNotice")?.remove();
 
+                const safeComment = escapeHtml(comment);
+
                 // Prepend or update pinned card in desktop & mobile lists
-                const myDesktopCard = document.getElementById(
-                    `desktop-review-${commentData.id}`,
-                );
-                if (myDesktopCard) {
-                    myDesktopCard.remove();
-                }
+                document
+                    .getElementById(`desktop-review-${commentId}`)
+                    ?.remove();
                 const newDesktopCard = document.createElement("div");
-                newDesktopCard.id = `desktop-review-${commentData.id}`;
+                newDesktopCard.id = `desktop-review-${commentId}`;
                 newDesktopCard.className =
                     "desktop-review-card p-3 bg-light rounded-4 border animate-fade-in mb-2";
                 newDesktopCard.innerHTML = `
@@ -360,19 +395,14 @@ function initReviewActions() {
                         ${generateStarsHtml(rating)}
                     </div>
                     <p class="text-secondary mb-0" style="font-size: 0.84rem; line-height: 1.55;">
-                        ${comment}
+                        ${safeComment}
                     </p>
                 `;
                 desktopContainer?.prepend(newDesktopCard);
 
-                const myMobileCard = document.getElementById(
-                    `mobile-review-${commentData.id}`,
-                );
-                if (myMobileCard) {
-                    myMobileCard.remove();
-                }
+                document.getElementById(`mobile-review-${commentId}`)?.remove();
                 const newMobileCard = document.createElement("div");
-                newMobileCard.id = `mobile-review-${commentData.id}`;
+                newMobileCard.id = `mobile-review-${commentId}`;
                 newMobileCard.className =
                     "mobile-review-item py-2 bg-light p-2 rounded-3 mb-2 animate-fade-in";
                 newMobileCard.innerHTML = `
@@ -387,7 +417,7 @@ function initReviewActions() {
                         ${generateStarsHtml(rating)}
                     </div>
                     <p class="text-secondary mb-0" style="font-size: 0.82rem; line-height: 1.5;">
-                        ${comment}
+                        ${safeComment}
                     </p>
                 `;
                 mobileContainer?.prepend(newMobileCard);
@@ -396,6 +426,7 @@ function initReviewActions() {
                 updateRatingScoresUI(
                     commentData.avg_rating,
                     commentData.total_reviews,
+                    commentData.rating_percentages || null,
                 );
                 showSuccessToast("Ulasan dan rating berhasil dikirim!");
             } else {
@@ -440,7 +471,7 @@ function initReviewActions() {
         });
 
         if (typeof bootstrap !== "undefined" && modalEditEl) {
-            const modal = new bootstrap.Modal(modalEditEl);
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEditEl);
             modal.show();
         }
     });
@@ -499,24 +530,30 @@ function initReviewActions() {
                     `desktop-review-${commentId}`,
                 );
                 if (desktopCard) {
-                    desktopCard.querySelector(
+                    const starEl = desktopCard.querySelector(
                         ".d-flex.text-warning",
-                    ).innerHTML = generateStarsHtml(rating);
-                    desktopCard.querySelector("p").textContent = comment;
+                    );
+                    const pEl = desktopCard.querySelector("p");
+                    if (starEl) starEl.innerHTML = generateStarsHtml(rating);
+                    if (pEl) pEl.textContent = comment;
                 }
                 const mobileCard = document.getElementById(
                     `mobile-review-${commentId}`,
                 );
                 if (mobileCard) {
-                    mobileCard.querySelector(".d-flex.text-warning").innerHTML =
-                        generateStarsHtml(rating);
-                    mobileCard.querySelector("p").textContent = comment;
+                    const starEl = mobileCard.querySelector(
+                        ".d-flex.text-warning",
+                    );
+                    const pEl = mobileCard.querySelector("p");
+                    if (starEl) starEl.innerHTML = generateStarsHtml(rating);
+                    if (pEl) pEl.textContent = comment;
                 }
 
                 // Update ratings
                 updateRatingScoresUI(
                     commentData.avg_rating,
                     commentData.total_reviews,
+                    commentData.rating_percentages || null,
                 );
 
                 // Close modal
@@ -591,7 +628,11 @@ function initReviewActions() {
                 document.getElementById(`mobile-review-${commentId}`)?.remove();
 
                 // Update ratings
-                updateRatingScoresUI(resData.avg_rating, resData.total_reviews);
+                updateRatingScoresUI(
+                    resData.avg_rating,
+                    resData.total_reviews,
+                    resData.rating_percentages || null,
+                );
                 showSuccessToast("Ulasan berhasil dihapus.");
             } else {
                 alert(result.message || "Gagal menghapus ulasan.");
@@ -668,6 +709,10 @@ function initLoadMoreComments() {
                     if (document.getElementById(`desktop-review-${c.id}`))
                         return;
 
+                    const safeReviewer = escapeHtml(c.reviewer_name);
+                    const safeTime = escapeHtml(c.created_at_human);
+                    const safeBody = escapeHtml(c.body || c.comment || "");
+
                     // Desktop card
                     const deskCard = document.createElement("div");
                     deskCard.id = `desktop-review-${c.id}`;
@@ -675,15 +720,15 @@ function initLoadMoreComments() {
                     deskCard.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <div class="d-flex align-items-center gap-1-5">
-                                <span class="fw-bold text-dark" style="font-size: 0.9rem;">${c.reviewer_name}</span>
+                                <span class="fw-bold text-dark" style="font-size: 0.9rem;">${safeReviewer}</span>
                                 ${c.is_my_comment ? '<span class="badge bg-medigo-primary text-white rounded-pill px-2 py-0-5" style="font-size: 0.68rem;">Ulasan Anda</span>' : ""}
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="text-muted" style="font-size: 0.75rem;">${c.created_at_human}</span>
+                                <span class="text-muted" style="font-size: 0.75rem;">${safeTime}</span>
                                 ${
                                     !c.is_my_comment
                                         ? `
-                                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none btn-trigger-report" data-comment-id="${c.id}" data-reviewer="${c.reviewer_name}" title="Laporkan ulasan tidak sopan">
+                                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none btn-trigger-report" data-comment-id="${c.id}" data-reviewer="${safeReviewer}" title="Laporkan ulasan tidak sopan">
                                         <i class="bi bi-flag text-danger opacity-75" style="font-size: 0.78rem;"></i>
                                     </button>
                                 `
@@ -695,7 +740,7 @@ function initLoadMoreComments() {
                             ${renderStarsHtml(c.rating)}
                         </div>
                         <p class="text-secondary mb-0" style="font-size: 0.84rem; line-height: 1.55;">
-                            ${c.body || c.comment || ""}
+                            ${safeBody}
                         </p>
                     `;
                     desktopContainer?.appendChild(deskCard);
@@ -707,15 +752,15 @@ function initLoadMoreComments() {
                     mobCard.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <div class="d-flex align-items-center gap-1-5">
-                                <span class="fw-bold text-dark" style="font-size: 0.88rem;">${c.reviewer_name}</span>
+                                <span class="fw-bold text-dark" style="font-size: 0.88rem;">${safeReviewer}</span>
                                 ${c.is_my_comment ? '<span class="badge bg-medigo-primary text-white rounded-pill px-2 py-0-5" style="font-size: 0.65rem;">Anda</span>' : ""}
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="text-muted" style="font-size: 0.72rem;">${c.created_at_human}</span>
+                                <span class="text-muted" style="font-size: 0.72rem;">${safeTime}</span>
                                 ${
                                     !c.is_my_comment
                                         ? `
-                                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none btn-trigger-report" data-comment-id="${c.id}" data-reviewer="${c.reviewer_name}" title="Laporkan ulasan ini">
+                                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none btn-trigger-report" data-comment-id="${c.id}" data-reviewer="${safeReviewer}" title="Laporkan ulasan ini">
                                         <i class="bi bi-flag text-danger opacity-75"></i>
                                     </button>
                                 `
@@ -727,7 +772,7 @@ function initLoadMoreComments() {
                             ${renderStarsHtml(c.rating)}
                         </div>
                         <p class="text-secondary mb-0" style="font-size: 0.82rem; line-height: 1.5;">
-                            ${c.body || c.comment || ""}
+                            ${safeBody}
                         </p>
                     `;
                     mobileContainer?.appendChild(mobCard);
@@ -737,9 +782,13 @@ function initLoadMoreComments() {
 
                 // Toggle visibility of load more wrapper if no more items
                 if (!hasMore) {
-                    document
-                        .getElementById("desktopLoadMoreWrapper")
-                        ?.classList.add("d-none");
+                    const deskWrap = document.getElementById(
+                        "desktopLoadMoreWrapper",
+                    );
+                    if (deskWrap) {
+                        deskWrap.classList.remove("d-lg-block");
+                        deskWrap.classList.add("d-none", "d-lg-none");
+                    }
                     document
                         .getElementById("mobileLoadMoreWrapper")
                         ?.classList.add("d-none");
@@ -778,6 +827,12 @@ function initMobileAboutToggle() {
     let isExpanded = false;
     aboutText.classList.add("about-text-clamped");
 
+    // Sembunyikan tombol jika teks memang pendek dan tidak ter-clamp
+    if (aboutText.scrollHeight <= aboutText.clientHeight + 2) {
+        btnToggle.classList.add("d-none");
+        return;
+    }
+
     btnToggle.addEventListener("click", () => {
         isExpanded = !isExpanded;
         if (isExpanded) {
@@ -801,7 +856,7 @@ function showSuccessToast(message) {
     toast.innerHTML = `
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-check-circle-fill text-success fs-5"></i>
-            <span class="fw-semibold text-dark" style="font-size: 0.85rem;">${message}</span>
+            <span class="fw-semibold text-dark" style="font-size: 0.85rem;">${escapeHtml(message)}</span>
         </div>
     `;
     document.body.appendChild(toast);

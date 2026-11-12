@@ -2927,3 +2927,755 @@ body {
 .page-item.active .page-link {
     z-index: 3;
 }
+
+/* =========================================================================
+   FASKES DETAIL PAGE (Bento Gallery, Tabs, Feature Cards & Sticky Sidebar)
+   ========================================================================= */
+
+/* Bento Photo Gallery */
+.faskes-detail-wrapper .bento-gallery-main {
+    height: 340px;
+}
+
+.faskes-detail-wrapper .bento-gallery-sub {
+    height: 162px;
+}
+
+.faskes-detail-wrapper .bento-gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+
+.faskes-detail-wrapper .bento-gallery-item:hover img {
+    transform: scale(1.03);
+}
+
+@media (max-width: 991.98px) {
+    .faskes-detail-wrapper .bento-gallery-main {
+        height: 220px;
+    }
+
+    .faskes-detail-wrapper .bento-gallery-sub {
+        height: 96px;
+    }
+}
+
+/* Header Pill Badges */
+.faskes-detail-wrapper .badge-faskes-kelas {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+}
+
+.faskes-detail-wrapper .badge-faskes-bpjs {
+    background-color: #dcfce7;
+    color: #15803d;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+}
+
+.faskes-detail-wrapper .badge-faskes-nonbpjs {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+}
+
+/* Navigation Tabs (Tentang, Fasilitas, Spesialisasi) */
+.faskes-detail-wrapper .detail-tabs-nav {
+    border-bottom: 1px solid #e2e8f0;
+    gap: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.faskes-detail-wrapper .detail-tabs-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.faskes-detail-wrapper .detail-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.65rem 0.25rem;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    margin-bottom: -1px;
+}
+
+.faskes-detail-wrapper .detail-tab-btn:hover,
+.faskes-detail-wrapper .detail-tab-btn.active {
+    color: #002b5e;
+}
+
+.faskes-detail-wrapper .detail-tab-btn.active {
+    border-bottom-color: #002b5e;
+}
+
+/* Rating & Review Section */
+.faskes-detail-wrapper .rating-huge-score {
+    font-size: 2.75rem;
+    line-height: 1;
+    color: #f59e0b;
+    letter-spacing: -0.02em;
+}
+
+.faskes-detail-wrapper .review-textarea {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    resize: none;
+}
+
+.faskes-detail-wrapper .review-textarea:focus {
+    background-color: #ffffff;
+    border-color: #002b5e;
+    box-shadow: 0 0 0 0.2rem rgba(0, 43, 94, 0.1);
+}
+
+/* Feature & Specialty Cards */
+.faskes-detail-wrapper .faskes-feature-card {
+    background-color: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    padding: 1rem;
+    height: 100%;
+    transition: all 0.2s ease;
+}
+
+.faskes-detail-wrapper .faskes-feature-card:hover {
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+}
+
+.faskes-detail-wrapper .feature-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* Icon Soft Tints */
+.faskes-detail-wrapper .tint-red {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+.faskes-detail-wrapper .tint-blue {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+.faskes-detail-wrapper .tint-green {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+.faskes-detail-wrapper .tint-purple {
+    background-color: #ede9fe;
+    color: #7c3aed;
+}
+.faskes-detail-wrapper .tint-amber {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+.faskes-detail-wrapper .tint-pink {
+    background-color: #fce7f3;
+    color: #db2777;
+}
+.faskes-detail-wrapper .tint-teal {
+    background-color: #ccfbf1;
+    color: #0d9488;
+}
+
+/* Persistent Contact Sidebar & Mini Map */
+.faskes-detail-wrapper .contact-sidebar-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    position: sticky;
+    top: 1.5rem;
+}
+
+.faskes-detail-wrapper .detail-mini-map {
+    height: 175px;
+    width: 100%;
+    z-index: 1;
+}
+
+.faskes-detail-wrapper .map-caption-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    z-index: 500;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #1e293b;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* =========================================================================
+   FASKES DETAIL PAGE (Hero Icon Banner, Tabs, Scrollable Cards & Sidebar)
+   ========================================================================= */
+
+/* Hero Icon Banner */
+.faskes-detail-wrapper .detail-hero-banner {
+    height: 210px;
+    background: linear-gradient(135deg, #002b5e 0%, #0b4a94 100%);
+    box-shadow: 0 4px 16px rgba(0, 43, 94, 0.12);
+}
+
+.faskes-detail-wrapper .detail-hero-banner::before,
+.faskes-detail-wrapper .detail-hero-banner::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+}
+
+.faskes-detail-wrapper .detail-hero-banner::before {
+    width: 240px;
+    height: 240px;
+    top: -80px;
+    right: -40px;
+}
+
+.faskes-detail-wrapper .detail-hero-banner::after {
+    width: 180px;
+    height: 180px;
+    bottom: -70px;
+    left: -30px;
+}
+
+.faskes-detail-wrapper .detail-hero-icon-circle {
+    width: 78px;
+    height: 78px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 2.25rem;
+}
+
+.faskes-detail-wrapper .detail-hero-type-pill {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.28rem 0.85rem;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+@media (max-width: 991.98px) {
+    .faskes-detail-wrapper .detail-hero-banner {
+        height: 165px;
+    }
+
+    .faskes-detail-wrapper .detail-hero-icon-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        font-size: 1.85rem;
+    }
+}
+
+/* Header Pill Badges */
+.faskes-detail-wrapper .badge-faskes-kelas {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+}
+
+.faskes-detail-wrapper .badge-faskes-bpjs {
+    background-color: #dcfce7;
+    color: #15803d;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+}
+
+.faskes-detail-wrapper .badge-faskes-nonbpjs {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+}
+
+/* Navigation Tabs (Tentang, Fasilitas, Spesialisasi) */
+.faskes-detail-wrapper .detail-tabs-nav {
+    border-bottom: 1px solid #e2e8f0;
+    gap: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.faskes-detail-wrapper .detail-tabs-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.faskes-detail-wrapper .detail-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.65rem 0.25rem;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    margin-bottom: -1px;
+}
+
+.faskes-detail-wrapper .detail-tab-btn:hover,
+.faskes-detail-wrapper .detail-tab-btn.active {
+    color: #002b5e;
+}
+
+.faskes-detail-wrapper .detail-tab-btn.active {
+    border-bottom-color: #002b5e;
+}
+
+/* Rating & Review Section */
+.faskes-detail-wrapper .rating-huge-score {
+    font-size: 2.75rem;
+    line-height: 1;
+    color: #f59e0b;
+    letter-spacing: -0.02em;
+}
+
+.faskes-detail-wrapper .review-textarea {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    resize: none;
+}
+
+.faskes-detail-wrapper .review-textarea:focus {
+    background-color: #ffffff;
+    border-color: #002b5e;
+    box-shadow: 0 0 0 0.2rem rgba(0, 43, 94, 0.1);
+}
+
+/* Scrollable Container & Compact Cards for Fasilitas & Spesialisasi */
+.faskes-detail-wrapper .faskes-scrollable-list {
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.35rem;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.faskes-detail-wrapper .faskes-scrollable-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.faskes-detail-wrapper .faskes-scrollable-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.faskes-detail-wrapper .faskes-scrollable-list::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 999px;
+}
+
+.faskes-detail-wrapper .faskes-feature-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.75rem 0.95rem;
+    min-height: 46px;
+    height: 100%;
+    transition: all 0.2s ease;
+}
+
+.faskes-detail-wrapper .faskes-feature-card:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Persistent Contact Sidebar & Mini Map */
+.faskes-detail-wrapper .contact-sidebar-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    position: sticky;
+    top: 1.5rem;
+}
+
+.faskes-detail-wrapper .detail-mini-map {
+    height: 175px;
+    width: 100%;
+    z-index: 1;
+}
+
+.faskes-detail-wrapper .map-caption-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    z-index: 500;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #1e293b;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* Mobile About Line Clamp */
+.faskes-detail-wrapper .about-text-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Custom Utility Helpers used in detail.js */
+.gap-1-5 {
+    gap: 0.375rem;
+}
+
+.py-0-5 {
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+}
+
+@keyframes detailFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: detailFadeIn 0.25s ease forwards;
+}
+
+/* Floating Toast Alert */
+.detail-toast-alert {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #16a34a;
+    border-radius: 12px;
+    padding: 0.85rem 1.15rem;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: all 0.28s ease;
+}
+
+.detail-toast-alert.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* =========================================================================
+   FASKES DETAIL PAGE (Hero Banners, Tabs, Scrollable Lists & Sidebar)
+   ========================================================================= */
+
+/* Type Avatar Background Gradients */
+.faskes-avatar-hospital {
+    background: linear-gradient(135deg, #002b5e 0%, #0d47a1 100%);
+}
+
+.faskes-avatar-clinic {
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+}
+
+.faskes-avatar-puskesmas {
+    background: linear-gradient(135deg, #15803d 0%, #16a34a 100%);
+}
+
+.faskes-avatar-other {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+}
+
+/* Mobile Hero Banner */
+.faskes-detail-hero-mobile .faskes-hero-logo-circle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.badge-hero-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    backdrop-filter: blur(4px);
+}
+
+.badge-hero-bpjs {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-hero-nonbpjs {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+/* Desktop Hero Showcase Banner */
+.faskes-desktop-logo-box {
+    width: 84px;
+    height: 84px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    flex-shrink: 0;
+}
+
+.badge-custom-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.32rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* Navigation Tabs (Tentang, Fasilitas, Spesialisasi) */
+.faskes-detail-wrapper .detail-tabs-nav {
+    border-bottom: 1px solid #e2e8f0;
+    gap: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.faskes-detail-wrapper .detail-tabs-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.faskes-detail-wrapper .detail-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.65rem 0.25rem;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    margin-bottom: -1px;
+}
+
+.faskes-detail-wrapper .detail-tab-btn:hover,
+.faskes-detail-wrapper .detail-tab-btn.active {
+    color: #002b5e;
+}
+
+.faskes-detail-wrapper .detail-tab-btn.active {
+    border-bottom-color: #002b5e;
+}
+
+/* Rating & Review Section */
+.faskes-detail-wrapper .rating-huge-score {
+    font-size: 2.75rem;
+    line-height: 1;
+    color: #f59e0b;
+    letter-spacing: -0.02em;
+}
+
+.faskes-detail-wrapper .review-textarea {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    resize: none;
+}
+
+.faskes-detail-wrapper .review-textarea:focus {
+    background-color: #ffffff;
+    border-color: #002b5e;
+    box-shadow: 0 0 0 0.2rem rgba(0, 43, 94, 0.1);
+}
+
+/* Scrollable Container & Compact Cards for Fasilitas & Spesialisasi */
+.faskes-detail-wrapper .faskes-scrollable-list {
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.35rem;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.faskes-detail-wrapper .faskes-scrollable-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.faskes-detail-wrapper .faskes-scrollable-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.faskes-detail-wrapper .faskes-scrollable-list::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 999px;
+}
+
+.faskes-detail-wrapper .faskes-feature-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.75rem 0.95rem;
+    min-height: 46px;
+    height: 100%;
+    transition: all 0.2s ease;
+}
+
+.faskes-detail-wrapper .faskes-feature-card:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Persistent Contact Sidebar & Mini Map */
+.faskes-detail-wrapper .contact-sidebar-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    position: sticky;
+    top: 1.5rem;
+}
+
+.faskes-detail-wrapper .detail-mini-map {
+    height: 175px;
+    width: 100%;
+    z-index: 1;
+}
+
+.faskes-detail-wrapper .map-caption-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    z-index: 500;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #1e293b;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* Mobile About Line Clamp */
+.faskes-detail-wrapper .about-text-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Custom Utility Helpers used in detail.js */
+.gap-1-5 {
+    gap: 0.375rem;
+}
+
+.py-0-5 {
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+}
+
+.px-2-5 {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+}
+
+@keyframes detailFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: detailFadeIn 0.25s ease forwards;
+}
+
+/* Floating Toast Alert */
+.detail-toast-alert {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #16a34a;
+    border-radius: 12px;
+    padding: 0.85rem 1.15rem;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: all 0.28s ease;
+}
+
+.detail-toast-alert.show {
+    opacity: 1;
+    transform: translateY(0);
+}
