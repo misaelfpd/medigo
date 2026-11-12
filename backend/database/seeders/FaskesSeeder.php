@@ -113,7 +113,7 @@ class FaskesSeeder extends Seeder
                 'latitude' => $lat,
                 'longitude' => $lng,
                 'link_maps' => $linkMaps,
-                '_support_bpjs' => true,
+                '_support_bpjs' => isset($row['support_bpjs']) ? ((string) $row['support_bpjs'] === '1') : true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
