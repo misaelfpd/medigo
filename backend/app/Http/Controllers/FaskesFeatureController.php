@@ -175,5 +175,115 @@ class FaskesFeatureController extends Controller
             'data' => $specialties,
         ]);
     }
+
+    /**
+     * Tambah master jenis fasilitas baru ke sistem.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function storeFacility(Request $request): JsonResponse
+    {
+        $request->validate([
+            'nama_fasilitas' => 'required|string|max:150',
+        ], [
+            'nama_fasilitas.required' => 'Nama fasilitas wajib diisi.',
+            'nama_fasilitas.max' => 'Nama fasilitas maksimal 150 karakter.',
+        ]);
+
+        $nama = trim($request->input('nama_fasilitas'));
+
+        // Cek apakah fasilitas sudah ada (case-insensitive)
+        $existing = DB::table('fasilitas')
+            ->whereRaw('LOWER(TRIM(nama_fasilitas)) = ?', [mb_strtolower($nama, 'UTF-8')])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Fasilitas dengan nama tersebut sudah terdaftar di sistem',
+                'is_new' => false,
+                'data' => $existing,
+            ], 200);
+        }
+
+        $id = DB::table('fasilitas')->insertGetId([
+            'nama_fasilitas' => $nama,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $newFacility = DB::table('fasilitas')->where('id_fasilitas', $id)->first();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Jenis fasilitas baru berhasil ditambahkan',
+            'is_new' => true,
+            'data' => $newFacility,
+        ], 201);
+    }
+
+    /**
+     * Alias method untuk storeFacility.
+     */
+    public function storeFasilitas(Request $request): JsonResponse
+    {
+        return $this->storeFacility($request);
+    }
+
+    /**
+     * Tambah master jenis spesialisasi baru ke sistem.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function storeSpecialty(Request $request): JsonResponse
+    {
+        $request->validate([
+            'nama_spesialisasi' => 'required|string|max:100',
+        ], [
+            'nama_spesialisasi.required' => 'Nama spesialisasi wajib diisi.',
+            'nama_spesialisasi.max' => 'Nama spesialisasi dokter maksimal 100 karakter.',
+        ]);
+
+        $nama = trim($request->input('nama_spesialisasi'));
+
+        // Cek apakah spesialisasi sudah ada (case-insensitive)
+        $existing = DB::table('spesialisasi')
+            ->whereRaw('LOWER(TRIM(nama_spesialisasi)) = ?', [mb_strtolower($nama, 'UTF-8')])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Spesialisasi dengan nama tersebut sudah terdaftar di sistem',
+                'is_new' => false,
+                'data' => $existing,
+            ], 200);
+        }
+
+        $id = DB::table('spesialisasi')->insertGetId([
+            'nama_spesialisasi' => $nama,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $newSpecialty = DB::table('spesialisasi')->where('id_spesialisasi', $id)->first();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Jenis spesialisasi baru berhasil ditambahkan',
+            'is_new' => true,
+            'data' => $newSpecialty,
+        ], 201);
+    }
+
+    /**
+     * Alias method untuk storeSpecialty.
+     */
+    public function storeSpesialisasi(Request $request): JsonResponse
+    {
+        return $this->storeSpecialty($request);
+    }
 }
 

@@ -335,9 +335,12 @@
                             </div>
                             <span class="badge bg-light text-dark border" id="createFasilitasCountBadge">0 dipilih</span>
                         </div>
-                        {{-- Search Input for Facilities --}}
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm rounded-3 filter-item-search" data-target="#createFasilitasList" placeholder="Cari fasilitas medis (misal: IGD, Laboratorium, Radiologi)...">
+                        {{-- Search & Add Input for Facilities --}}
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" class="form-control rounded-start-3 filter-item-search" data-target="#createFasilitasList" placeholder="Cari fasilitas medis (misal: IGD, Laboratorium, Radiologi)...">
+                            <button type="button" class="btn btn-outline-primary rounded-end-3 btn-add-new-feature" data-type="fasilitas" title="Tambah jenis fasilitas medis baru ke sistem">
+                                <i class="bi bi-plus-circle me-1"></i> Tambah Baru
+                            </button>
                         </div>
                         {{-- Scrollable Checkbox Box --}}
                         <div class="border rounded-3 p-3 bg-light overflow-auto" id="createFasilitasList" style="max-height: 180px;">
@@ -367,9 +370,12 @@
                             </div>
                             <span class="badge bg-light text-dark border" id="createSpesialisasiCountBadge">0 dipilih</span>
                         </div>
-                        {{-- Search Input for Specialties --}}
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm rounded-3 filter-item-search" data-target="#createSpesialisasiList" placeholder="Cari spesialisasi dokter (misal: Anak, Jantung, Bedah, Gigi)...">
+                        {{-- Search & Add Input for Specialties --}}
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" class="form-control rounded-start-3 filter-item-search" data-target="#createSpesialisasiList" placeholder="Cari spesialisasi dokter (misal: Anak, Jantung, Bedah, Gigi)...">
+                            <button type="button" class="btn btn-outline-primary rounded-end-3 btn-add-new-feature" data-type="spesialisasi" title="Tambah jenis spesialisasi dokter baru ke sistem">
+                                <i class="bi bi-plus-circle me-1"></i> Tambah Baru
+                            </button>
                         </div>
                         {{-- Scrollable Checkbox Box --}}
                         <div class="border rounded-3 p-3 bg-light overflow-auto" id="createSpesialisasiList" style="max-height: 180px;">
@@ -516,9 +522,12 @@
                             </div>
                             <span class="badge bg-light text-dark border" id="editFasilitasCountBadge">0 dipilih</span>
                         </div>
-                        {{-- Search Input for Facilities --}}
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm rounded-3 filter-item-search" data-target="#editFasilitasList" placeholder="Cari fasilitas medis...">
+                        {{-- Search & Add Input for Facilities --}}
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" class="form-control rounded-start-3 filter-item-search" data-target="#editFasilitasList" placeholder="Cari fasilitas medis...">
+                            <button type="button" class="btn btn-outline-primary rounded-end-3 btn-add-new-feature" data-type="fasilitas" title="Tambah jenis fasilitas medis baru ke sistem">
+                                <i class="bi bi-plus-circle me-1"></i> Tambah Baru
+                            </button>
                         </div>
                         {{-- Scrollable Checkbox Box --}}
                         <div class="border rounded-3 p-3 bg-light overflow-auto" id="editFasilitasList" style="max-height: 180px;">
@@ -548,9 +557,12 @@
                             </div>
                             <span class="badge bg-light text-dark border" id="editSpesialisasiCountBadge">0 dipilih</span>
                         </div>
-                        {{-- Search Input for Specialties --}}
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm rounded-3 filter-item-search" data-target="#editSpesialisasiList" placeholder="Cari spesialisasi dokter...">
+                        {{-- Search & Add Input for Specialties --}}
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" class="form-control rounded-start-3 filter-item-search" data-target="#editSpesialisasiList" placeholder="Cari spesialisasi dokter...">
+                            <button type="button" class="btn btn-outline-primary rounded-end-3 btn-add-new-feature" data-type="spesialisasi" title="Tambah jenis spesialisasi dokter baru ke sistem">
+                                <i class="bi bi-plus-circle me-1"></i> Tambah Baru
+                            </button>
                         </div>
                         {{-- Scrollable Checkbox Box --}}
                         <div class="border rounded-3 p-3 bg-light overflow-auto" id="editSpesialisasiList" style="max-height: 180px;">
@@ -716,6 +728,110 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('Error fetching faskes data:', err);
                     editLoading.innerHTML = '<div class="text-danger small py-3"><i class="bi bi-exclamation-triangle-fill me-1"></i> Gagal memuat data faskes. Silakan coba lagi.</div>';
                 });
+        });
+    });
+
+    // 4. Quick Add New Facility or Specialty
+    document.querySelectorAll('.btn-add-new-feature').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var type = this.getAttribute('data-type');
+            var isFas = type === 'fasilitas';
+            var promptMsg = isFas ? 'Masukkan nama jenis fasilitas medis baru:' : 'Masukkan nama jenis spesialisasi dokter baru:';
+            var newName = prompt(promptMsg);
+            if (!newName || !newName.trim()) return;
+            newName = newName.trim();
+
+            var endpoint = isFas ? '{{ route("admin.fasilitas.store") }}' : '{{ route("admin.spesialisasi.store") }}';
+            var payload = isFas ? { nama_fasilitas: newName } : { nama_spesialisasi: newName };
+
+            var originalHtml = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+            var self = this;
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (res) {
+                self.disabled = false;
+                self.innerHTML = originalHtml;
+
+                if (res.status === 'success' && res.data) {
+                    var item = res.data;
+                    var itemId = isFas ? item.id_fasilitas : item.id_spesialisasi;
+                    var itemName = isFas ? item.nama_fasilitas : item.nama_spesialisasi;
+
+                    // Append to Create modal list if not present
+                    var createListId = isFas ? 'createFasilitasList' : 'createSpesialisasiList';
+                    var createList = document.querySelector('#' + createListId + ' .row');
+                    var createPrefix = isFas ? 'create_fas_' : 'create_spec_';
+                    var createClass = isFas ? 'check-fasilitas-item' : 'check-spesialisasi-item';
+                    var createInputName = isFas ? 'fasilitas[]' : 'spesialisasi[]';
+
+                    if (createList && !document.getElementById(createPrefix + itemId)) {
+                        var colDiv = document.createElement('div');
+                        colDiv.className = 'col-md-6 filter-item-box';
+                        colDiv.setAttribute('data-text', itemName.toLowerCase());
+                        colDiv.innerHTML = '<div class="form-check form-check-sm">' +
+                            '<input class="form-check-input ' + createClass + '" type="checkbox" name="' + createInputName + '" value="' + itemId + '" id="' + createPrefix + itemId + '" checked>' +
+                            '<label class="form-check-label small text-dark fw-bold" for="' + createPrefix + itemId + '">' +
+                            itemName + ' <span class="badge bg-success-subtle text-success ms-1" style="font-size:0.65rem;">Baru</span>' +
+                            '</label></div>';
+                        createList.prepend(colDiv);
+                        colDiv.querySelector('input').addEventListener('change', function () {
+                            updateCount('.' + createClass, isFas ? 'createFasilitasCountBadge' : 'createSpesialisasiCountBadge');
+                        });
+                    }
+
+                    // Append to Edit modal list if not present
+                    var editListId = isFas ? 'editFasilitasList' : 'editSpesialisasiList';
+                    var editList = document.querySelector('#' + editListId + ' .row');
+                    var editPrefix = isFas ? 'edit_fas_' : 'edit_spec_';
+                    var editClass = isFas ? 'edit-check-fasilitas-item' : 'edit-check-spesialisasi-item';
+                    var editInputName = isFas ? 'fasilitas[]' : 'spesialisasi[]';
+
+                    if (editList && !document.getElementById(editPrefix + itemId)) {
+                        var colDiv2 = document.createElement('div');
+                        colDiv2.className = 'col-md-6 filter-item-box';
+                        colDiv2.setAttribute('data-text', itemName.toLowerCase());
+                        colDiv2.innerHTML = '<div class="form-check form-check-sm">' +
+                            '<input class="form-check-input ' + editClass + '" type="checkbox" name="' + editInputName + '" value="' + itemId + '" id="' + editPrefix + itemId + '" checked>' +
+                            '<label class="form-check-label small text-dark fw-bold" for="' + editPrefix + itemId + '">' +
+                            itemName + ' <span class="badge bg-success-subtle text-success ms-1" style="font-size:0.65rem;">Baru</span>' +
+                            '</label></div>';
+                        editList.prepend(colDiv2);
+                        colDiv2.querySelector('input').addEventListener('change', function () {
+                            updateCount('.' + editClass, isFas ? 'editFasilitasCountBadge' : 'editSpesialisasiCountBadge');
+                        });
+                    }
+
+                    // Ensure checked in active modal
+                    var cbCreate = document.getElementById(createPrefix + itemId);
+                    if (cbCreate) cbCreate.checked = true;
+                    var cbEdit = document.getElementById(editPrefix + itemId);
+                    if (cbEdit) cbEdit.checked = true;
+
+                    updateCount('.' + createClass, isFas ? 'createFasilitasCountBadge' : 'createSpesialisasiCountBadge');
+                    updateCount('.' + editClass, isFas ? 'editFasilitasCountBadge' : 'editSpesialisasiCountBadge');
+
+                    alert(res.message + ': ' + itemName);
+                } else {
+                    alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
+                }
+            })
+            .catch(function (err) {
+                self.disabled = false;
+                self.innerHTML = originalHtml;
+                console.error('Error adding feature:', err);
+                alert('Gagal menambahkan data: ' + err.message);
+            });
         });
     });
 });

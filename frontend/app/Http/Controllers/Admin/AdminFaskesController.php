@@ -387,4 +387,88 @@ class AdminFaskesController extends Controller
 
         return redirect()->route('admin.faskes')->with('success', 'Rumah Sakit berhasil dihapus dari direktori.');
     }
+
+    /**
+     * Tambah jenis fasilitas baru via Admin (AJAX / Form)
+     */
+    public function storeFasilitas(Request $request)
+    {
+        if (!session('admin_logged_in')) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'nama_fasilitas' => 'required|string|max:150',
+        ]);
+
+        $backendUrl = $this->getBackendUrl();
+
+        try {
+            $http = Http::timeout(6);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+
+            $response = $http->post("{$backendUrl}/api/fasilitas", [
+                'nama_fasilitas' => trim($request->nama_fasilitas),
+            ]);
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $response->json()['message'] ?? 'Gagal menambahkan fasilitas di backend',
+            ], $response->status());
+        } catch (\Exception $e) {
+            Log::error('Error storeFasilitas: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan sistem saat menghubungi server backend: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Tambah jenis spesialisasi baru via Admin (AJAX / Form)
+     */
+    public function storeSpesialisasi(Request $request)
+    {
+        if (!session('admin_logged_in')) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'nama_spesialisasi' => 'required|string|max:100',
+        ]);
+
+        $backendUrl = $this->getBackendUrl();
+
+        try {
+            $http = Http::timeout(6);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+
+            $response = $http->post("{$backendUrl}/api/spesialisasi", [
+                'nama_spesialisasi' => trim($request->nama_spesialisasi),
+            ]);
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $response->json()['message'] ?? 'Gagal menambahkan spesialisasi di backend',
+            ], $response->status());
+        } catch (\Exception $e) {
+            Log::error('Error storeSpesialisasi: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan sistem saat menghubungi server backend: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

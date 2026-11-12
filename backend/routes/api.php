@@ -91,6 +91,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/faskes/{id}', [FaskesController::class, 'update']);
         Route::delete('/faskes/{id}', [FaskesController::class, 'destroy']);
 
+        // Admin Master Fasilitas & Spesialisasi
+        Route::post('/fasilitas', [FaskesFeatureController::class, 'storeFacility']);
+        Route::post('/admin/fasilitas', [FaskesFeatureController::class, 'storeFacility']);
+        Route::post('/spesialisasi', [FaskesFeatureController::class, 'storeSpecialty']);
+        Route::post('/admin/spesialisasi', [FaskesFeatureController::class, 'storeSpecialty']);
+
         Route::get('/admin/discussion-reports', [DiscussionReportController::class, 'indexAdmin']);
         Route::post('/admin/discussions/{id}/takedown', [DiscussionReportController::class, 'takedown']);
 

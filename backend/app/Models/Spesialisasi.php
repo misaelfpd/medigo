@@ -7,7 +7,8 @@ class Spesialisasi extends Model
 {
     protected $table = 'spesialisasi';
     protected $primaryKey = 'id_spesialisasi';
-    public $timestamps = false; // Karena sesuai skema, timestamp tidak ada
+    protected $guarded = [];
+    public $timestamps = true;
 
     public function faskes()
     {

@@ -68,6 +68,8 @@ Route::prefix('admin')->group(function () {
     Route::post('/faskes', [AdminFaskesController::class, 'store'])->name('admin.faskes.store');
     Route::put('/faskes/{id}', [AdminFaskesController::class, 'update'])->name('admin.faskes.update');
     Route::delete('/faskes/{id}', [AdminFaskesController::class, 'destroy'])->name('admin.faskes.destroy');
+    Route::post('/fasilitas', [AdminFaskesController::class, 'storeFasilitas'])->name('admin.fasilitas.store');
+    Route::post('/spesialisasi', [AdminFaskesController::class, 'storeSpesialisasi'])->name('admin.spesialisasi.store');
     
     Route::get('/discussion-reports', [AdminDiscussionReportController::class, 'index'])->name('admin.discussion-reports');
     Route::post('/discussions/{id}/takedown', [AdminDiscussionReportController::class, 'takedown'])->name('admin.discussions.takedown');
