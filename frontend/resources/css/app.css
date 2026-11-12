@@ -683,7 +683,7 @@ body {
 }
 
 .avatar-bot::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: -2px;
     right: -2px;
@@ -868,7 +868,6 @@ body {
 }
 
 @keyframes wave {
-
     0%,
     60%,
     100% {
@@ -1602,7 +1601,6 @@ body {
    MOBILE FULL-VIEWPORT MAP UI (MATCHING SCREENSHOT)
    ========================================================================== */
 @media (max-width: 991.98px) {
-
     /* Prevent whole page from scrolling on mobile map */
     .map-page-body {
         overflow: hidden !important;
@@ -1664,7 +1662,7 @@ body {
 }
 
 /* Hide top search bar when bottom sheet is expanded to avoid obstructing cards */
-.mobile-bottom-sheet.is-expanded~.mobile-map-top-bar,
+.mobile-bottom-sheet.is-expanded ~ .mobile-map-top-bar,
 .map-display-wrapper:has(.mobile-bottom-sheet.is-expanded) .mobile-map-top-bar,
 .mobile-map-top-bar.is-hidden-by-sheet {
     opacity: 0 !important;
@@ -1989,6 +1987,23 @@ body {
     line-height: 1.25;
 }
 
+.btn-medigo-primary {
+    background-color: #002b5e !important;
+    border: 1.5px solid #002b5e !important;
+    color: #ffffff !important;
+    border-radius: 50px !important;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 9px 16px;
+    transition: all 0.2s ease;
+}
+
+.btn-medigo-primary:hover {
+    background-color: #001f44 !important;
+    border-color: #001f44 !important;
+    color: #ffffff !important;
+}
+
 .btn-medigo-navigasi {
     background-color: #002b5e !important;
     border: 1.5px solid #002b5e !important;
@@ -2103,7 +2118,7 @@ body {
 
 /* Hide generic navbar on mobile when on detail page so mobile topbar is shown */
 @media (max-width: 991.98px) {
-    .faskes-detail-page>nav.navbar {
+    .faskes-detail-page > nav.navbar {
         display: none !important;
     }
 }

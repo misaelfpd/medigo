@@ -1,161 +1,183 @@
-@extends('layouts.app')
+@extends('layouts.auth')
 
 @section('title', 'Masuk ke Akun Anda - MediGO')
 
 @section('content')
-<div class="auth-page-wrapper py-5">
+  <div class="auth-page-wrapper d-flex align-items-center h-100 w-100"
+    style="background-color: #f8f9fa;">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-md-8 col-lg-5">
-                
-                <!-- Auth Card -->
-                <div class="card auth-card border-0 rounded-4 shadow-sm p-4 p-md-5 bg-white position-relative overflow-hidden">
-                    
-                    <!-- Decorative top accent bar -->
-                    <div class="auth-card-accent"></div>
+      <!-- Mengurangi gap antar kolom dari g-5 menjadi g-4 -->
+      <div class="row w-100 g-4 align-items-center justify-content-center m-0">
 
-                    <!-- Header / Logo -->
-                    <div class="text-center mb-4 pt-2">
-                        <div class="auth-icon-badge mx-auto mb-3">
-                            <i class="bi bi-hospital"></i>
-                        </div>
-                        <h4 class="fw-bold text-dark mb-1">Selamat Datang Kembali</h4>
-                        <p class="text-muted" style="font-size: 0.88rem;">
-                            Masuk untuk mengakses forum diskusi, ulasan faskes, dan fitur personal lainnya.
-                        </p>
-                    </div>
+        <!-- Kolom Kiri: Auth Card (Form Login) -->
+        <div class="col-12 col-md-8 col-lg-5 order-2 order-lg-1">
+          <!-- Padding card diperkecil menjadi p-3 p-md-4 -->
+          <div
+            class="card auth-card border-0 rounded-4 shadow-sm p-3 p-md-4 bg-white position-relative overflow-hidden mx-auto"
+            style="max-width: 400px;">
 
-                    <!-- Alert Errors -->
-                    @if (isset($errors) && $errors->any())
-                        <div class="alert alert-danger rounded-3 py-2 px-3 mb-4 d-flex align-items-center gap-2" role="alert" style="font-size: 0.84rem;">
-                            <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-                            <div>
-                                @foreach ($errors->all() as $error)
-                                    <div>{{ $error }}</div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    @if (session('success'))
-                        <div class="alert alert-success rounded-3 py-2 px-3 mb-4 d-flex align-items-center gap-2" role="alert" style="font-size: 0.84rem;">
-                            <i class="bi bi-check-circle-fill flex-shrink-0"></i>
-                            <div>{{ session('success') }}</div>
-                        </div>
-                    @endif
-
-                    <!-- Login Form -->
-                    <form action="{{ route('login.post') }}" method="POST" id="userLoginForm">
-                        @csrf
-                        @if(request('redirect'))
-                            <input type="hidden" name="redirect" value="{{ request('redirect') }}">
-                        @endif
-
-                        <!-- Email Input -->
-                        <div class="mb-3">
-                            <label for="email" class="form-label fw-semibold text-dark" style="font-size: 0.86rem;">
-                                Alamat Email
-                            </label>
-                            <div class="input-group auth-input-group">
-                                <span class="input-group-text bg-light border-end-0 text-muted">
-                                    <i class="bi bi-envelope"></i>
-                                </span>
-                                <input type="email" 
-                                       class="form-control bg-light border-start-0 @error('email') is-invalid @enderror" 
-                                       id="email" 
-                                       name="email" 
-                                       value="{{ old('email') }}" 
-                                       placeholder="nama@email.com" 
-                                       required 
-                                       autocomplete="email" 
-                                       autofocus>
-                            </div>
-                        </div>
-
-                        <!-- Password Input -->
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="password" class="form-label fw-semibold text-dark mb-0" style="font-size: 0.86rem;">
-                                    Kata Sandi
-                                </label>
-                            </div>
-                            <div class="input-group auth-input-group">
-                                <span class="input-group-text bg-light border-end-0 text-muted">
-                                    <i class="bi bi-lock"></i>
-                                </span>
-                                <input type="password" 
-                                       class="form-control bg-light border-start-0 border-end-0 @error('password') is-invalid @enderror" 
-                                       id="password" 
-                                       name="password" 
-                                       placeholder="••••••••" 
-                                       required 
-                                       autocomplete="current-password">
-                                <button type="button" class="input-group-text bg-light border-start-0 text-muted btn-toggle-password" id="btnTogglePassword" tabindex="-1">
-                                    <i class="bi bi-eye" id="togglePasswordIcon"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Remember Me -->
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
-                                <label class="form-check-label text-muted" for="remember" style="font-size: 0.84rem;">
-                                    Ingat saya
-                                </label>
-                            </div>
-                            <a href="#" class="text-medigo-primary text-decoration-none fw-semibold" style="font-size: 0.82rem;" onclick="alert('Silakan hubungi administrator atau buat akun baru.'); return false;">
-                                Lupa kata sandi?
-                            </a>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <button type="submit" class="btn btn-medigo-primary w-100 rounded-pill py-2-5 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm text-white mb-3">
-                            <i class="bi bi-box-arrow-in-right"></i>
-                            <span>Masuk Sekarang</span>
-                        </button>
-                    </form>
-
-                    <!-- Divider -->
-                    <div class="d-flex align-items-center my-3">
-                        <hr class="flex-grow-1 my-0 text-muted opacity-25">
-                        <span class="px-3 text-muted" style="font-size: 0.8rem;">atau</span>
-                        <hr class="flex-grow-1 my-0 text-muted opacity-25">
-                    </div>
-
-                    <!-- Register Link -->
-                    <div class="text-center">
-                        <p class="text-muted mb-0" style="font-size: 0.88rem;">
-                            Belum memiliki akun? 
-                            <a href="{{ route('register') }}" class="text-medigo-primary fw-bold text-decoration-none">
-                                Daftar Akun Baru
-                            </a>
-                        </p>
-                    </div>
-
-                </div>
-
+            <!-- Tombol Kembali -->
+            <div class="mb-3">
+              <a href="{{ url('/') }}" class="text-decoration-none text-muted fw-semibold"
+                style="font-size: 0.8rem;">
+                <i class="bi bi-arrow-left me-1"></i>
+              </a>
             </div>
-        </div>
-    </div>
-</div>
 
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
+            <!-- Header / Logo -->
+            <div class="text-center mb-3">
+              <div class="d-flex align-items-center justify-content-center gap-2 mb-3 text-primary">
+                <img class="w-50" src="{{ asset('images/medigo_logo.png') }}" alt="Logo Faskes">
+              </div>
+              <h5 class="fw-bold mb-1" style="color: #0d2342; font-size: 1.1rem;">Selamat Datang di
+                Medigo</h5>
+              <p class="text-muted mb-0" style="font-size: 0.75rem;">
+                Masukkan username dan password yang terdaftar
+              </p>
+            </div>
+
+            <!-- Alert Errors -->
+            @if (isset($errors) && $errors->any())
+              <div class="alert alert-danger rounded-3 py-1 px-2 mb-3 d-flex align-items-center gap-2"
+                role="alert" style="font-size: 0.75rem;">
+                <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
+                <div>
+                  @foreach ($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                  @endforeach
+                </div>
+              </div>
+            @endif
+
+            @if (session('success'))
+              <div
+                class="alert alert-success rounded-3 py-1 px-2 mb-3 d-flex align-items-center gap-2"
+                role="alert" style="font-size: 0.75rem;">
+                <i class="bi bi-check-circle-fill flex-shrink-0"></i>
+                <div>{{ session('success') }}</div>
+              </div>
+            @endif
+
+            <!-- Login Form -->
+            <form action="{{ route('login.post') }}" method="POST" id="userLoginForm">
+              @csrf
+              @if (request('redirect'))
+                <input type="hidden" name="redirect" value="{{ request('redirect') }}">
+              @endif
+
+              <!-- Username / Email Input -->
+              <div class="mb-2">
+                <label for="email" class="form-label fw-bold text-dark mb-1"
+                  style="font-size: 0.75rem;">
+                  Username
+                </label>
+                <div class="input-group input-group-sm auth-input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-person"></i>
+                  </span>
+                  <input type="email"
+                    class="form-control border-start-0 @error('email') is-invalid @enderror"
+                    id="email" name="email" value="{{ old('email') }}"
+                    placeholder="Masukkan nama pengguna" required autocomplete="email" autofocus
+                    style="font-size: 0.8rem;">
+                </div>
+              </div>
+
+              <!-- Password Input -->
+              <div class="mb-2">
+                <label for="password" class="form-label fw-bold text-dark mb-1"
+                  style="font-size: 0.75rem;">
+                  Kata Sandi
+                </label>
+                <div class="input-group input-group-sm auth-input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-lock"></i>
+                  </span>
+                  <input type="password"
+                    class="form-control border-start-0 border-end-0 @error('password') is-invalid @enderror"
+                    id="password" name="password" placeholder="Masukkan kata sandi" required
+                    autocomplete="current-password" style="font-size: 0.8rem;">
+                  <button type="button"
+                    class="input-group-text bg-white border-start-0 text-muted btn-toggle-password"
+                    id="btnTogglePassword" tabindex="-1">
+                    <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Lupa Kata Sandi -->
+              <div class="mb-3 mt-1">
+                <a href="#" class="text-dark text-decoration-none fw-bold"
+                  style="font-size: 0.75rem;"
+                  onclick="alert('Silakan hubungi administrator.'); return false;">
+                  Lupa Kata Sandi?
+                </a>
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" class="btn btn-sm w-100 rounded-3 py-1 fw-bold text-white mb-3"
+                style="background-color: #0b2b52; font-size: 0.85rem;">
+                Masuk
+              </button>
+            </form>
+
+            <!-- Register Link -->
+            <div class="text-center">
+              <p class="text-muted mb-0" style="font-size: 0.75rem;">
+                Belum punya akun?
+                <a href="{{ route('register') }}"
+                  class="fw-bold text-decoration-none text-medigo-primary">
+                  Daftar Sekarang
+                </a>
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Kolom Kanan: Hero Section (Ukuran teks diperkecil) -->
+        <div class="col-12 col-lg-6 d-none d-lg-block order-1 order-lg-2 ps-lg-4">
+          <h1 class="fw-bold mb-2" style="font-size: 2.25rem; color: #0d2342; line-height: 1.1;">
+            Temukan Layanan<br>Kesehatan Terdekat
+          </h1>
+          <p class="text-muted" style="max-width: 450px; font-size: 0.85rem;">
+            Temukan rumah sakit dan klinik terbaik di dekat Anda dengan cepat. Akses berbagai fitur
+            eksklusif untuk membantu anda menemukan layanan kesehatan yang dapat diandalkan saat Anda
+            sangat membutuhkannya.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  @push('scripts')
+    <style>
+      .auth-input-group .form-control:focus {
+        box-shadow: none;
+        border-color: #dee2e6;
+      }
+
+      .auth-input-group:focus-within {
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        border-radius: 0.25rem;
+      }
+    </style>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
         const toggleBtn = document.getElementById('btnTogglePassword');
         const passwordInput = document.getElementById('password');
         const toggleIcon = document.getElementById('togglePasswordIcon');
 
         if (toggleBtn && passwordInput && toggleIcon) {
-            toggleBtn.addEventListener('click', function () {
-                const isPassword = passwordInput.getAttribute('type') === 'password';
-                passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-                toggleIcon.classList.toggle('bi-eye', !isPassword);
-                toggleIcon.classList.toggle('bi-eye-slash', isPassword);
-            });
+          toggleBtn.addEventListener('click', function() {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            toggleIcon.classList.toggle('bi-eye', !isPassword);
+            toggleIcon.classList.toggle('bi-eye-slash', isPassword);
+          });
         }
-    });
-</script>
-@endpush
+      });
+    </script>
+  @endpush
 @endsection

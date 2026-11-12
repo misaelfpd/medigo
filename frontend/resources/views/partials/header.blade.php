@@ -1,9 +1,9 @@
 <!-- Navbar / Top Header -->
 <nav class="navbar navbar-expand-lg sticky-top">
-    <div class="container d-flex justify-content-between align-items-center">
+    <div class="container d-flex justify-content-between gap-5 align-items-center">
         <!-- Logo Section -->
-        <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="/faskes">
-            <img class="w-50" src="{{ asset('images/medigo_logo.png') }}" alt="Logo Faskes">
+        <a class="navbar-brand d-flex align-items-center m-0" href="/faskes">
+            <img style="max-height: 40px; width: auto;" src="{{ asset('images/medigo_logo.png') }}" alt="Logo Faskes">
         </a>
 
         <!-- Desktop Navigation Links -->
@@ -13,6 +13,10 @@
                     <i class="bi bi-house-door-fill"></i> Beranda
                 </x-navbar.nav-link>
 
+                <x-navbar.nav-link href="/chat" :active="request()->is('chat*')">
+                    <i class="bi bi-robot"></i> MediBot
+                </x-navbar.nav-link>
+
                 <x-navbar.nav-link href="/map" :active="request()->is('map*')">
                     <i class="bi bi-map"></i> Peta
                 </x-navbar.nav-link>
@@ -20,6 +24,7 @@
                 <x-navbar.nav-link href="/discussions" :active="request()->is('discussions*')">
                     <i class="bi bi-chat-left-text"></i> Forum
                 </x-navbar.nav-link>
+
             </ul>
         </div>
 
@@ -46,7 +51,15 @@
 
         <!-- Mobile Top Right Action -->
         <div class="d-flex d-lg-none align-items-center gap-2">
-            @if(!Auth::check())
+            @if(Auth::check())
+                <!-- Tampilan jika SUDAH login di Mobile -->
+                <a href="{{ route('profile') }}" class="btn btn-sm user-nav-btn rounded-circle p-0 {{ request()->is('profile*') ? 'btn-medigo-primary border-0' : 'border' }}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                    <div class="bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 100%; height: 100%; font-size: 0.8rem;">
+                        {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                    </div>
+                </a>
+            @else
+                <!-- Tampilan jika BELUM login di Mobile -->
                 <a href="{{ route('login') }}" class="btn btn-sm btn-medigo-primary rounded-pill px-3 py-1 fw-semibold text-white text-decoration-none" style="font-size: 0.82rem;">
                     Masuk
                 </a>
