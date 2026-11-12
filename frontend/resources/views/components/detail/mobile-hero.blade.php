@@ -34,8 +34,8 @@
             {{ !empty($faskes['is_support_bpjs']) ? 'BPJS' : 'Non-BPJS' }}
         </span>
         <!-- Distance Badge -->
-        <span class="badge-hero-pill badge-hero-distance">
-            <i class="bi bi-geo-alt-fill me-1"></i> {{ $faskes['distance'] ?? '-' }}
+        <span class="badge-hero-pill badge-hero-distance" id="mobileHeroDistanceBadge">
+            <i class="bi bi-geo-alt-fill me-1"></i> <span class="faskes-distance-display">{{ $faskes['distance'] ?? 'Menghitung jarak...' }}</span>
         </span>
     </div>
 </div>

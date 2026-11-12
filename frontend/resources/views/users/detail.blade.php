@@ -78,6 +78,8 @@
         nama_faskes: @json($faskes['nama_faskes']),
         lat: {{ $faskes['lat'] ?? -6.2758 }},
         lng: {{ $faskes['lng'] ?? 106.7820 }},
+        distance: @json($faskes['distance'] ?? null),
+        distance_km: @json($faskes['distance_km'] ?? null),
         navigasi_url: @json($faskes['navigasi_url']),
         alamat: @json($faskes['alamat'] ?? ''),
         kota_kabupaten: @json($faskes['kota_kabupaten'] ?? ''),

@@ -7,6 +7,19 @@
 @endpush
 
 @section('content')
+@php
+    $formatChatMessage = function($text) {
+        if (empty($text)) return '';
+        $safe = e($text);
+        // Bold: **text**
+        $safe = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $safe);
+        // Markdown Links: [text](url)
+        $safe = preg_replace_callback('/\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/', function($m) {
+            return '<a href="' . $m[2] . '" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill my-1 text-decoration-none d-inline-flex align-items-center gap-1" style="font-size:0.8rem;"><i class="bi bi-geo-alt-fill text-danger"></i> ' . $m[1] . '</a>';
+        }, $safe);
+        return nl2br($safe);
+    };
+@endphp
 <div class="container chat-wrapper">
     <!-- Header -->
     <div class="chat-header bg-medigo-subtle d-flex align-items-center">
@@ -31,6 +44,27 @@
                     <div class="timestamp">MediBot AI • <span class="time-now"></span></div>
                 </div>
             </div>
+
+            @foreach($chatHistory ?? [] as $chat)
+                <div class="msg-row {{ ($chat['role'] ?? '') === 'user' ? 'user' : 'bot' }}">
+                    @if(($chat['role'] ?? '') === 'user')
+                        <div class="avatar-user"><i class="bi bi-person-fill"></i></div>
+                        <div class="bubble-wrap">
+                            <div class="bubble">{!! nl2br(e($chat['message'] ?? '')) !!}</div>
+                            <div class="timestamp">Anda • {{ !empty($chat['created_at']) ? \Carbon\Carbon::parse($chat['created_at'])->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : '' }}</div>
+                        </div>
+                    @else
+                        <div class="avatar-bot"><i class="bi bi-stars"></i></div>
+                        <div class="bubble-wrap">
+                            <div class="bubble">{!! $formatChatMessage($chat['message'] ?? '') !!}</div>
+                            @if(!empty($chat['faskes']) && is_array($chat['faskes']))
+                                <div class="faskes-cards-container" data-faskes='@json($chat['faskes'])'></div>
+                            @endif
+                            <div class="timestamp">MediBot AI • {{ !empty($chat['created_at']) ? \Carbon\Carbon::parse($chat['created_at'])->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : '' }}</div>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
         </div>
 
         <!-- Input Area -->
@@ -61,7 +95,7 @@
                     Kamu sudah mencoba MediBot AI sebanyak 6 kali! Yuk, login atau daftar akun MediGo secara gratis untuk menikmati akses chat tanpa batas dan fitur unggulan lainnya.
                 </p>
                 <div class="d-flex flex-column gap-2">
-                    <a href="{{ route('login') }}" class="btn btn-medigo-primary py-2 w-100 fw-bold rounded-pill">Login Sekarang</a>
+                    <a href="{{ route('login', ['redirect' => route('chat')]) }}" class="btn btn-medigo-primary py-2 w-100 fw-bold rounded-pill">Login Sekarang</a>
                     <button type="button" class="btn btn-medigo-outline py-2 w-100 fw-bold rounded-pill" data-bs-dismiss="modal">Nanti Saja</button>
                 </div>
             </div>

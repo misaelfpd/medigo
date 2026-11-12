@@ -54,6 +54,10 @@
             <form action="{{ route('register.post') }}" method="POST" id="userRegisterForm">
               @csrf
 
+              @if (request('redirect'))
+                <input type="hidden" name="redirect" value="{{ request('redirect') }}">
+              @endif
+
               <!-- Nama Lengkap Input -->
               <div class="mb-2">
                 <label for="name" class="form-label fw-bold text-dark mb-1"
@@ -146,7 +150,7 @@
             <div class="text-center mt-2">
               <p class="text-muted mb-0" style="font-size: 0.75rem;">
                 Sudah punya akun?
-                <a href="{{ route('login') }}"
+                <a href="{{ route('login', request('redirect') ? ['redirect' => request('redirect')] : []) }}"
                   class="text-medigo-primary fw-bold text-decoration-none">
                   Masuk
                 </a>

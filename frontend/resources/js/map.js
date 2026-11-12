@@ -90,6 +90,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const newPos = e.target.getLatLng();
         userState.lat = newPos.lat;
         userState.lng = newPos.lng;
+        try {
+            sessionStorage.setItem("medigo_user_lat", userState.lat);
+            sessionStorage.setItem("medigo_user_lng", userState.lng);
+        } catch (_) {}
         userCircle.setLatLng(newPos);
 
         const coordsText = document.getElementById("userCoordinatesText");
@@ -281,6 +285,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Helper to build detail URL with user coordinates and distance
+    function buildMapDetailUrl(item) {
+        const baseId = item.id || item.id_faskes || "";
+        let url = item.detail_url && item.detail_url !== "#" ? item.detail_url : `/faskes/${baseId}`;
+        if (baseId && userState.lat && userState.lng && !url.includes("lat=")) {
+            const sep = url.includes("?") ? "&" : "?";
+            const distParam = (item.currentDistance !== null && item.currentDistance !== undefined && item.currentDistance !== 999)
+                ? `&distance=${encodeURIComponent(item.currentDistance + ' km')}`
+                : (item.distance ? `&distance=${encodeURIComponent(item.distance)}` : '');
+            url += `${sep}lat=${userState.lat}&lng=${userState.lng}${distParam}`;
+        }
+        return url;
+    }
+
     // 7. Leaflet Popup HTML
     function createPopupHtml(item, distance) {
         const classBadge = item.hospital_class
@@ -307,10 +325,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const ratingHtml = ratingVal
             ? `<i class="bi bi-star-fill text-warning me-1"></i><span class="fw-bold">${ratingVal}</span>`
             : `<i class="bi bi-star text-muted me-1"></i><span class="text-muted" style="font-size:0.75rem;">Belum dirating</span>`;
-        const detailUrl =
-            item.detail_url && item.detail_url !== "#"
-                ? item.detail_url
-                : `/faskes/${item.id}`;
+        const detailUrl = buildMapDetailUrl(item);
 
         let displayName = (
             item.name ||
@@ -391,10 +406,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? `${item.currentDistance} km`
                 : item.distance || "";
         const typeSlug = item.type_slug || "hospital";
-        const detailUrl =
-            item.detail_url && item.detail_url !== "#"
-                ? item.detail_url
-                : `/faskes/${item.id}`;
+        const detailUrl = buildMapDetailUrl(item);
 
         let displayName = (
             item.name ||
@@ -486,10 +498,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? `${item.currentDistance} km`
                 : item.distance || "Rating ★";
         const typeSlug = item.type_slug || "hospital";
-        const detailUrl =
-            item.detail_url && item.detail_url !== "#"
-                ? item.detail_url
-                : `/faskes/${item.id}`;
+        const detailUrl = buildMapDetailUrl(item);
 
         let displayName = (
             item.name ||
@@ -1305,6 +1314,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 userState.lat = pos.coords.latitude;
                 userState.lng = pos.coords.longitude;
                 userState.isDetected = true;
+                try {
+                    sessionStorage.setItem("medigo_user_lat", userState.lat);
+                    sessionStorage.setItem("medigo_user_lng", userState.lng);
+                } catch (_) {}
 
                 const acc = Math.round(pos.coords.accuracy || 15);
                 const coordsText = document.getElementById(

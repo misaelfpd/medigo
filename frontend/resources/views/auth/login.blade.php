@@ -125,7 +125,7 @@
             <div class="text-center">
               <p class="text-muted mb-0" style="font-size: 0.75rem;">
                 Belum punya akun?
-                <a href="{{ route('register') }}"
+                <a href="{{ route('register', request('redirect') ? ['redirect' => request('redirect')] : []) }}"
                   class="fw-bold text-decoration-none text-medigo-primary">
                   Daftar Sekarang
                 </a>

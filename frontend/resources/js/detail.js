@@ -5,6 +5,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     initMiniMap();
+    initDistanceCalculation();
     initStarRating(
         "interactiveStarPicker",
         "selectedStarValue",
@@ -20,6 +21,135 @@ document.addEventListener("DOMContentLoaded", () => {
     initMobileAboutToggle();
     initFeedbackAndReporting();
 });
+
+// Helper to calculate Haversine distance in km
+function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 10) / 10;
+}
+
+// Calculate road distance via OSRM table API
+async function calculateRoadDistanceKm(origLat, origLng, destLat, destLng) {
+    if (!origLat || !origLng || !destLat || !destLng) return null;
+    try {
+        const coords = `${origLng},${origLat};${destLng},${destLat}`;
+        const res = await fetch(
+            `https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&annotations=distance`
+        );
+        if (res.ok) {
+            const data = await res.json();
+            const meters = data?.distances?.[0]?.[1];
+            if (typeof meters === "number" && meters > 0) {
+                return Math.round((meters / 1000) * 10) / 10;
+            }
+        }
+    } catch (e) {
+        console.warn("OSRM road distance calculation error, falling back to Haversine:", e);
+    }
+    return getHaversineDistanceKm(origLat, origLng, destLat, destLng);
+}
+
+function updateDistanceBadges(distanceStr) {
+    const displays = document.querySelectorAll(".faskes-distance-display");
+    displays.forEach((el) => {
+        el.textContent = distanceStr;
+    });
+}
+
+function initDistanceCalculation() {
+    const data = window.detailFaskesData || {};
+    const destLat = parseFloat(data.lat);
+    const destLng = parseFloat(data.lng);
+
+    // Read URL query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlLat = urlParams.get("lat") || urlParams.get("latitude");
+    const urlLng = urlParams.get("lng") || urlParams.get("longitude");
+    const urlDistance = urlParams.get("distance");
+
+    if (urlLat && urlLng) {
+        try {
+            sessionStorage.setItem("medigo_user_lat", urlLat);
+            sessionStorage.setItem("medigo_user_lng", urlLng);
+        } catch (_) {}
+    }
+
+    if (data.distance && typeof data.distance === "string" && data.distance.trim() && data.distance !== "Menghitung jarak..." && data.distance !== "-") {
+        updateDistanceBadges(data.distance);
+        return;
+    }
+
+    if (urlDistance && urlDistance.trim() && urlDistance !== "-") {
+        updateDistanceBadges(urlDistance);
+        return;
+    }
+
+    // Attempt to resolve coordinates from sessionStorage or navigator.geolocation
+    let userLat = null;
+    let userLng = null;
+    try {
+        const savedLat = sessionStorage.getItem("medigo_user_lat");
+        const savedLng = sessionStorage.getItem("medigo_user_lng");
+        if (savedLat && savedLng) {
+            userLat = parseFloat(savedLat);
+            userLng = parseFloat(savedLng);
+        }
+    } catch (_) {}
+
+    const computeAndApply = async (lat, lng) => {
+        if (!destLat || !destLng || isNaN(destLat) || isNaN(destLng)) return;
+        const km = await calculateRoadDistanceKm(lat, lng, destLat, destLng);
+        if (km !== null && !isNaN(km)) {
+            const formatted = `${km} km`;
+            window.detailFaskesData.distance = formatted;
+            window.detailFaskesData.distance_km = km;
+            updateDistanceBadges(formatted);
+        }
+    };
+
+    if (userLat && userLng) {
+        computeAndApply(userLat, userLng);
+    } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                try {
+                    sessionStorage.setItem("medigo_user_lat", lat);
+                    sessionStorage.setItem("medigo_user_lng", lng);
+                } catch (_) {}
+                computeAndApply(lat, lng);
+            },
+            (err) => {
+                console.warn("Detail geolocation denied or failed:", err);
+                const displays = document.querySelectorAll(".faskes-distance-display");
+                displays.forEach((el) => {
+                    if (el.textContent === "Menghitung jarak...") {
+                        el.textContent = "-";
+                    }
+                });
+            },
+            { timeout: 8000, enableHighAccuracy: true }
+        );
+    } else {
+        const displays = document.querySelectorAll(".faskes-distance-display");
+        displays.forEach((el) => {
+            if (el.textContent === "Menghitung jarak...") {
+                el.textContent = "-";
+            }
+        });
+    }
+}
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return "";

@@ -50,6 +50,74 @@ PROMPT;
     private const GUEST_PROMPT_LIMIT = 6;  // Jatah prompt tamu (tidak reset, sampai session tamu habis)
     private const UNAVAILABLE = 'Maaf, Asisten Medigo sedang tidak tersedia. Coba lagi beberapa saat ya.';
 
+    /**
+     * Migrasikan riwayat chat tamu ke akun pengguna yang baru login jika ada.
+     */
+    private function migrateGuestChats(?int $userId, ?string $rawGuestId): void
+    {
+        if (! $userId || empty($rawGuestId)) {
+            return;
+        }
+
+        $existingUserChat = GeminiChat::where('id_user', $userId)
+            ->whereNotNull('sesi_mulai')
+            ->where('sesi_mulai', '>', now()->subHours(self::SESSION_HOURS))
+            ->orderByDesc('id')
+            ->first();
+
+        $targetSession = $existingUserChat ? $existingUserChat->sesi_mulai : null;
+
+        $guestChatsQuery = GeminiChat::whereNull('id_user')->where('guest_id', $rawGuestId);
+        if ($targetSession) {
+            $guestChatsQuery->update([
+                'id_user' => $userId,
+                'sesi_mulai' => $targetSession,
+            ]);
+        } else {
+            $guestChatsQuery->update([
+                'id_user' => $userId,
+            ]);
+        }
+    }
+
+    /**
+     * Ambil riwayat chat pada sesi aktif (baik untuk user login maupun tamu).
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum');
+        $userId = $user ? $user->id_user : null;
+        $rawGuestId = $request->input('guest_id');
+
+        $this->migrateGuestChats($userId, $rawGuestId);
+
+        $guestId = $userId ? null : $rawGuestId;
+
+        $ownerQuery = fn () => GeminiChat::query()
+            ->when($userId, fn ($q) => $q->where('id_user', $userId))
+            ->when(! $userId && $guestId, fn ($q) => $q->whereNull('id_user')->where('guest_id', $guestId))
+            ->when(! $userId && ! $guestId, fn ($q) => $q->whereRaw('1 = 0'));
+
+        $lastChat = $ownerQuery()->whereNotNull('sesi_mulai')->orderByDesc('id')->first();
+        $sessionStart = ($lastChat && $lastChat->sesi_mulai > now()->subHours(self::SESSION_HOURS))
+            ? $lastChat->sesi_mulai
+            : null;
+
+        if (! $sessionStart) {
+            return response()->json(['messages' => []]);
+        }
+
+        $messages = $ownerQuery()
+            ->where('sesi_mulai', $sessionStart)
+            ->orderBy('id', 'asc')
+            ->limit(self::HISTORY_LIMIT)
+            ->get(['id', 'role', 'message', 'faskes', 'created_at']);
+
+        return response()->json([
+            'messages' => $messages,
+        ]);
+    }
+
     public function chat(Request $request, GeminiClient $gemini): JsonResponse
     {
         $request->validate([
@@ -73,7 +141,11 @@ PROMPT;
         // agar Bearer token user login terbaca. Tanpa ini $request->user() selalu null.
         $user = $request->user('sanctum');
         $userId = $user ? $user->id_user : null;
-        $guestId = $userId ? null : $request->input('guest_id');
+        $rawGuestId = $request->input('guest_id');
+
+        $this->migrateGuestChats($userId, $rawGuestId);
+
+        $guestId = $userId ? null : $rawGuestId;
 
         if (! $userId && empty($guestId)) {
             $guestId = 'guest_'.substr(hash('sha256', ($request->ip() ?? '0.0.0.0').'|'.($request->userAgent() ?? 'unknown')), 0, 48);
@@ -144,11 +216,15 @@ PROMPT;
             return response()->json(['message' => self::UNAVAILABLE], 502);
         }
 
-        DB::transaction(function () use ($userId, $guestId, $sessionStart, $userMessage, $aiReply) {
+        DB::transaction(function () use ($userId, $guestId, $sessionStart, $userMessage, $aiReply, $faskesResults) {
             // Yang disimpan ke DB adalah pesan asli user, tanpa teks [INFO SISTEM]
             $owner = ['id_user' => $userId, 'guest_id' => $guestId, 'sesi_mulai' => $sessionStart];
             GeminiChat::create($owner + ['role' => 'user', 'message' => $userMessage]);
-            GeminiChat::create($owner + ['role' => 'model', 'message' => $aiReply]);
+            GeminiChat::create($owner + [
+                'role' => 'model',
+                'message' => $aiReply,
+                'faskes' => !empty($faskesResults) ? $faskesResults : null,
+            ]);
         });
 
         return response()->json([

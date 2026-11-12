@@ -62,43 +62,12 @@ class FaskesSeeder extends Seeder
         continue;
       }
 
-        foreach ($records as $row) {
-            if (! isset($row['id_faskes'], $row['nama_faskes'])) {
-                continue;
-            }
-
-            $lat = ! empty($row['latitude']) ? (float) $row['latitude'] : null;
-            $lng = ! empty($row['longitude']) ? (float) $row['longitude'] : null;
-            $nama = trim($row['nama_faskes']);
-            $kota = trim($row['kota_kabupaten'] ?? '');
-
-            if ($lat !== null && $lng !== null) {
-                $linkMaps = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
-            } else {
-                $linkMaps = 'https://www.google.com/maps/search/?api=1&query='.urlencode($nama.' '.$kota);
-            }
-
-            $data[] = [
-                'id_faskes' => (int) $row['id_faskes'],
-                'nama_faskes' => $nama,
-                'jenis_faskes' => trim($row['jenis_faskes'] ?? 'Klinik'),
-                'kelas' => ! empty($row['kelas_rs']) ? trim($row['kelas_rs']) : null,
-                'provinsi' => ! empty($row['provinsi']) ? trim($row['provinsi']) : 'DKI Jakarta',
-                'kota_kabupaten' => $kota ?: 'Jakarta Selatan',
-                'alamat_faskes' => trim($row['alamat'] ?? '-'),
-                'telepon' => ! empty($row['telepon']) ? trim($row['telepon']) : null,
-                'latitude' => $lat,
-                'longitude' => $lng,
-                'link_maps' => $linkMaps,
-                '_support_bpjs' => isset($row['support_bpjs']) ? ((string) $row['support_bpjs'] === '1') : true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-
-        foreach (array_chunk($data, 500) as $chunk) {
-            DB::table('faskes')->insertOrIgnore($chunk);
-        }
+      $data[] = [
+        'id_spesialisasi' => (int) $row['id_spesialisasi'],
+        'nama_spesialisasi' => trim($row['nama_spesialisasi']),
+        'created_at' => now(),
+        'updated_at' => now(),
+      ];
     }
 
     foreach (array_chunk($data, 500) as $chunk) {
@@ -145,7 +114,7 @@ class FaskesSeeder extends Seeder
         'latitude' => $lat,
         'longitude' => $lng,
         'link_maps' => $linkMaps,
-        '_support_bpjs' => true,
+        '_support_bpjs' => isset($row['support_bpjs']) ? ((string) $row['support_bpjs'] === '1') : true,
         'created_at' => now(),
         'updated_at' => now(),
       ];

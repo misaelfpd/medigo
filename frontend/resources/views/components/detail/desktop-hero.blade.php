@@ -34,8 +34,8 @@
                 <span class="badge-custom-pill bg-white {{ !empty($faskes['is_support_bpjs']) ? 'text-success' : 'text-danger' }} shadow-xs">
                     {{ !empty($faskes['is_support_bpjs']) ? 'BPJS' : 'Non-BPJS' }}
                 </span>
-                <span class="badge-custom-pill bg-white text-dark shadow-xs">
-                    <i class="bi bi-arrow-down-up me-1"></i> {{ $faskes['distance'] ?? '-' }}
+                <span class="badge-custom-pill bg-white text-dark shadow-xs" id="desktopHeroDistanceBadge">
+                    <i class="bi bi-arrow-down-up me-1"></i> <span class="faskes-distance-display">{{ $faskes['distance'] ?? 'Menghitung jarak...' }}</span>
                 </span>
                 <span class="badge-custom-pill bg-white text-dark shadow-xs" id="desktopHeroRatingBadge">
                     @if(!empty($faskes['avg_rating']))

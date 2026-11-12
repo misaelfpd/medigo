@@ -195,7 +195,19 @@ class FaskesDetailController extends Controller
         $backendUserId = $backendUser['id_user'] ?? $backendUser['id'] ?? null;
 
         try {
-            $response = Http::timeout(8)->get("{$backendUrl}/api/faskes/{$id}");
+            $faskesQueryParams = [];
+            if ($request->filled('lat')) {
+                $faskesQueryParams['lat'] = $request->query('lat');
+            } elseif ($request->filled('latitude')) {
+                $faskesQueryParams['lat'] = $request->query('latitude');
+            }
+            if ($request->filled('lng')) {
+                $faskesQueryParams['lng'] = $request->query('lng');
+            } elseif ($request->filled('longitude')) {
+                $faskesQueryParams['lng'] = $request->query('longitude');
+            }
+
+            $response = Http::timeout(8)->get("{$backendUrl}/api/faskes/{$id}", $faskesQueryParams);
             if ($response->successful()) {
                 $body = $response->json();
                 $item = $body['data']['faskes'] ?? ($body['data'] ?? null);
@@ -236,8 +248,26 @@ class FaskesDetailController extends Controller
 
                     $phone = !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : (!empty($item['telepon']) ? $item['telepon'] : '-'));
                     
-                    // Jarak murni dari parameter URL, tanpa fallback '2.4 km'
-                    $distance = $request->query('distance');
+                    // Ambil distance dari backend jika ada koordinat, atau dari URL query parameter
+                    $distance = $body['data']['distance']
+                        ?? $item['distance']
+                        ?? $body['data']['jarak_teks']
+                        ?? $item['jarak_teks']
+                        ?? $request->query('distance')
+                        ?? null;
+
+                    $distanceKm = $body['data']['distance_km']
+                        ?? $item['distance_km']
+                        ?? $body['data']['jarak_km']
+                        ?? $item['jarak_km']
+                        ?? null;
+
+                    if ($distanceKm !== null) {
+                        $distanceKm = (float) $distanceKm;
+                        if (!$distance) {
+                            $distance = number_format($distanceKm, 1, '.', '') . ' km';
+                        }
+                    }
 
                     $rawFasilitas = $body['data']['fasilitas'] ?? $item['fasilitas'] ?? [];
                     $rawSpesialisasi = $body['data']['spesialisasi'] ?? $item['spesialisasi'] ?? [];
@@ -258,6 +288,7 @@ class FaskesDetailController extends Controller
                         'avg_rating_display' => $avgRating ? $avgRating : 'Belum dirating',
                         'total_reviews' => $totalReviewsCount,
                         'distance' => $distance,
+                        'distance_km' => $distanceKm,
                         'lat' => $lat,
                         'lng' => $lng,
                         'navigasi_url' => $navUrl,

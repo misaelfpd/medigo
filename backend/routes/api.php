@@ -38,6 +38,7 @@ Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat sem
 Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat 1 diskusi spesifik
 
     // GEMINI AI
+    Route::get('/chat-ai/history', [GeminiController::class, 'history']);
     Route::post('/chat-ai', [GeminiController::class, 'chat']);
 
 // Rute Search

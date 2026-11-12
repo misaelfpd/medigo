@@ -16,6 +16,7 @@ class GeminiChat extends Model
 
     protected $casts = [
         'sesi_mulai' => 'datetime',
+        'faskes' => 'array',
     ];
 
     protected static function booted(): void

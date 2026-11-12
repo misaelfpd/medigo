@@ -131,6 +131,11 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
+        $redirectTo = $request->input('redirect');
+        if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
+            return redirect($redirectTo)->with('success', 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
+        }
+
         return redirect()->route('profile')->with('success', 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
     }
 
