@@ -34,9 +34,18 @@ document.addEventListener("DOMContentLoaded", function () {
         bpjsOnly: false, // When true, only shows BPJS supported facilities
     };
 
-    // 1. Haversine Distance Formula (Km)
+    // 1. Haversine Fallback & OSRM Road Distance Cache (Km)
+    const osrmRoadCache = new Map();
+
+    function getRoadCacheKey(lat1, lon1, lat2, lon2) {
+        return `${Number(lat1).toFixed(4)}_${Number(lon1).toFixed(4)}_${Number(lat2).toFixed(5)}_${Number(lon2).toFixed(5)}`;
+    }
+
     function getDistanceKm(lat1, lon1, lat2, lon2) {
         if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+        const cached = osrmRoadCache.get(getRoadCacheKey(lat1, lon1, lat2, lon2));
+        if (cached !== undefined) return cached;
+
         const R = 6371; // Earth radius in km
         const dLat = ((lat2 - lat1) * Math.PI) / 180;
         const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -48,6 +57,51 @@ document.addEventListener("DOMContentLoaded", function () {
             Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return Math.round(R * c * 10) / 10;
+    }
+
+    async function syncOsrmRoadDistances(origLat, origLng, items) {
+        if (!origLat || !origLng || !Array.isArray(items) || items.length === 0) return;
+
+        const uncached = items.filter((it) => {
+            if (!it.lat || !it.lng) return false;
+            return !osrmRoadCache.has(getRoadCacheKey(origLat, origLng, it.lat, it.lng));
+        });
+
+        if (uncached.length === 0) return;
+
+        try {
+            const batch = uncached.slice(0, 60);
+            const coords = [
+                `${origLng},${origLat}`,
+                ...batch.map((it) => `${it.lng},${it.lat}`),
+            ].join(";");
+            const res = await fetch(
+                `https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&annotations=distance`,
+            );
+            if (!res.ok) return;
+            const data = await res.json();
+            const row = data?.distances?.[0];
+            if (!Array.isArray(row)) return;
+
+            let updated = false;
+            batch.forEach((it, idx) => {
+                const meters = row[idx + 1];
+                if (typeof meters === "number" && meters > 0) {
+                    const km = Math.round((meters / 1000) * 10) / 10;
+                    osrmRoadCache.set(
+                        getRoadCacheKey(origLat, origLng, it.lat, it.lng),
+                        km,
+                    );
+                    updated = true;
+                }
+            });
+
+            if (updated) {
+                updateDistancesAndFilter(true);
+            }
+        } catch (e) {
+            console.warn("OSRM road distance fallback to existing distance:", e);
+        }
     }
 
     // Helper to generate Google Maps Search URL combining Name and Coordinates
@@ -269,7 +323,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 3. Apply Toggle Filters & Sort Cards
-    function updateDistancesAndFilter() {
+    function updateDistancesAndFilter(skipOsrmSync = false) {
         let visibleCount = 0;
 
         // Calculate distances
@@ -414,6 +468,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         updateLoadMoreButtonState();
+
+        if (!skipOsrmSync && userState.isDetected) {
+            syncOsrmRoadDistances(userState.lat, userState.lng, hospitalsData);
+        }
     }
 
     // 4. Live Fetch Nearest Faskes around GPS Coordinates (Initial batch of 12)
@@ -464,6 +522,13 @@ document.addEventListener("DOMContentLoaded", function () {
                             item.avg_rating && parseFloat(item.avg_rating) > 0
                                 ? parseFloat(item.avg_rating).toFixed(1)
                                 : null;
+
+                        if (item.distance_km !== undefined && item.distance_km !== null && !isNaN(parseFloat(item.distance_km))) {
+                            osrmRoadCache.set(
+                                getRoadCacheKey(lat, lng, itemLat, itemLng),
+                                Math.round(parseFloat(item.distance_km) * 10) / 10,
+                            );
+                        }
 
                         const distance = getDistanceKm(
                             lat,
@@ -623,6 +688,13 @@ document.addEventListener("DOMContentLoaded", function () {
                             item.avg_rating && parseFloat(item.avg_rating) > 0
                                 ? parseFloat(item.avg_rating).toFixed(1)
                                 : null;
+                        if (userState.isDetected && item.distance_km !== undefined && item.distance_km !== null && !isNaN(parseFloat(item.distance_km))) {
+                            osrmRoadCache.set(
+                                getRoadCacheKey(userState.lat, userState.lng, itemLat, itemLng),
+                                Math.round(parseFloat(item.distance_km) * 10) / 10,
+                            );
+                        }
+
                         const distance = userState.isDetected
                             ? getDistanceKm(
                                 userState.lat,
