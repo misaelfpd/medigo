@@ -127,5 +127,53 @@ class FaskesFeatureController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Ambil seluruh master daftar fasilitas (bisa difilter via ?search=).
+     * Digunakan untuk form Create & Edit di Admin Dashboard.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getAllFacilities(Request $request): JsonResponse
+    {
+        $query = DB::table('fasilitas')->select('id_fasilitas', 'nama_fasilitas');
+
+        if ($request->filled('search')) {
+            $query->where('nama_fasilitas', 'like', '%' . trim($request->search) . '%');
+        }
+
+        $facilities = $query->orderBy('nama_fasilitas', 'asc')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'total' => $facilities->count(),
+            'data' => $facilities,
+        ]);
+    }
+
+    /**
+     * Ambil seluruh master daftar spesialisasi dokter (bisa difilter via ?search=).
+     * Digunakan untuk form Create & Edit di Admin Dashboard.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getAllSpecialties(Request $request): JsonResponse
+    {
+        $query = DB::table('spesialisasi')->select('id_spesialisasi', 'nama_spesialisasi');
+
+        if ($request->filled('search')) {
+            $query->where('nama_spesialisasi', 'like', '%' . trim($request->search) . '%');
+        }
+
+        $specialties = $query->orderBy('nama_spesialisasi', 'asc')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'total' => $specialties->count(),
+            'data' => $specialties,
+        ]);
+    }
 }
 

@@ -173,9 +173,44 @@ class AdminFaskesController extends Controller
             usort($faskesList, fn($a, $b) => strcasecmp($b['nama_faskes'], $a['nama_faskes']));
         }
 
+        // Fetch all fasilitas and spesialisasi master data for modals
+        $allFasilitas = [];
+        $allSpesialisasi = [];
+        try {
+            $fasRes = Http::timeout(4)->get("{$backendUrl}/api/fasilitas");
+            if ($fasRes->successful()) {
+                $allFasilitas = $fasRes->json()['data'] ?? [];
+            }
+            $specRes = Http::timeout(4)->get("{$backendUrl}/api/spesialisasi");
+            if ($specRes->successful()) {
+                $allSpesialisasi = $specRes->json()['data'] ?? [];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch facilities or specialties for admin: ' . $e->getMessage());
+        }
+
         $totalCount = $paginationData['total'];
 
-        return view('admin.faskes', compact('faskesList', 'totalCount', 'paginationData', 'counts', 'filter', 'search', 'sort', 'provinsi', 'kota', 'lokasi', 'provincesList'));
+        return view('admin.faskes', compact('faskesList', 'totalCount', 'paginationData', 'counts', 'filter', 'search', 'sort', 'provinsi', 'kota', 'lokasi', 'provincesList', 'allFasilitas', 'allSpesialisasi'));
+    }
+
+    /**
+     * Return single faskes data along with current facilities & specialties in JSON.
+     * Used by AJAX for opening Edit Modal.
+     */
+    public function getFaskesJson($id)
+    {
+        $backendUrl = $this->getBackendUrl();
+        try {
+            $response = Http::timeout(6)->get("{$backendUrl}/api/faskes/{$id}");
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+        } catch (\Exception $e) {
+            Log::warning("Failed to fetch faskes json for id {$id}: " . $e->getMessage());
+        }
+
+        return response()->json(['status' => 'error', 'message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
     }
 
     public function store(Request $request)
@@ -204,6 +239,16 @@ class AdminFaskesController extends Controller
             $isBpjs = (int)$bpjsVal;
         }
 
+        $fasilitas = $request->input('fasilitas', []);
+        if (is_string($fasilitas)) {
+            $fasilitas = json_decode($fasilitas, true) ?: explode(',', $fasilitas);
+        }
+
+        $spesialisasi = $request->input('spesialisasi', []);
+        if (is_string($spesialisasi)) {
+            $spesialisasi = json_decode($spesialisasi, true) ?: explode(',', $spesialisasi);
+        }
+
         try {
             Http::timeout(6)->post("{$backendUrl}/api/faskes", [
                 'nama_faskes'    => $request->nama_faskes,
@@ -211,7 +256,7 @@ class AdminFaskesController extends Controller
                 'tipe'           => $request->tipe ?? $request->jenis_faskes,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
-                'provinsi'       => $request->provinsi,
+                'provinsi'       => $request->provinsi ?? 'DKI Jakarta',
                 'alamat_faskes'  => $request->alamat ?? $request->alamat_faskes,
                 'alamat'         => $request->alamat ?? $request->alamat_faskes,
                 '_support_bpjs'  => $isBpjs,
@@ -220,6 +265,9 @@ class AdminFaskesController extends Controller
                 'latitude'       => $request->latitude,
                 'longitude'      => $request->longitude,
                 'kontak'         => $request->kontak,
+                'telepon'        => $request->kontak,
+                'fasilitas'      => $fasilitas,
+                'spesialisasi'   => $spesialisasi,
             ]);
         } catch (\Exception $e) {
             Log::warning('Failed to store faskes to backend: ' . $e->getMessage());
@@ -254,6 +302,16 @@ class AdminFaskesController extends Controller
             $isBpjs = (int)$bpjsVal;
         }
 
+        $fasilitas = $request->input('fasilitas', []);
+        if (is_string($fasilitas)) {
+            $fasilitas = json_decode($fasilitas, true) ?: explode(',', $fasilitas);
+        }
+
+        $spesialisasi = $request->input('spesialisasi', []);
+        if (is_string($spesialisasi)) {
+            $spesialisasi = json_decode($spesialisasi, true) ?: explode(',', $spesialisasi);
+        }
+
         try {
             Http::timeout(6)->put("{$backendUrl}/api/faskes/{$id}", [
                 'nama_faskes'    => $request->nama_faskes,
@@ -261,7 +319,7 @@ class AdminFaskesController extends Controller
                 'tipe'           => $request->tipe ?? $request->jenis_faskes,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
-                'provinsi'       => $request->provinsi,
+                'provinsi'       => $request->provinsi ?? 'DKI Jakarta',
                 'alamat_faskes'  => $request->alamat ?? $request->alamat_faskes,
                 'alamat'         => $request->alamat ?? $request->alamat_faskes,
                 '_support_bpjs'  => $isBpjs,
@@ -270,6 +328,9 @@ class AdminFaskesController extends Controller
                 'latitude'       => $request->latitude,
                 'longitude'      => $request->longitude,
                 'kontak'         => $request->kontak,
+                'telepon'        => $request->kontak,
+                'fasilitas'      => $fasilitas,
+                'spesialisasi'   => $spesialisasi,
             ]);
         } catch (\Exception $e) {
             Log::warning('Failed to update faskes in backend: ' . $e->getMessage());

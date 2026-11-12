@@ -361,6 +361,74 @@ class FaskesController extends Controller
             'updated_at' => now(),
         ]);
 
+        // Simpan Fasilitas Faskes jika dikirimkan
+        if ($request->has('fasilitas')) {
+            $fasilitasInput = $request->input('fasilitas');
+            if (is_string($fasilitasInput)) {
+                $decoded = json_decode($fasilitasInput, true);
+                $fasilitasInput = is_array($decoded) ? $decoded : explode(',', $fasilitasInput);
+            }
+            if (is_array($fasilitasInput)) {
+                $fasData = [];
+                foreach ($fasilitasInput as $fItem) {
+                    $fId = is_numeric($fItem) ? (int) $fItem : null;
+                    if (! $fId && is_string($fItem) && trim($fItem) !== '') {
+                        $fRow = DB::table('fasilitas')->where('nama_fasilitas', trim($fItem))->first();
+                        $fId = $fRow ? $fRow->id_fasilitas : DB::table('fasilitas')->insertGetId([
+                            'nama_fasilitas' => trim($fItem),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                    if ($fId) {
+                        $fasData[] = [
+                            'id_faskes' => $id,
+                            'id_fasilitas' => $fId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+                if (! empty($fasData)) {
+                    DB::table('fasilitas_faskes')->insertOrIgnore($fasData);
+                }
+            }
+        }
+
+        // Simpan Spesialisasi Faskes jika dikirimkan
+        if ($request->has('spesialisasi')) {
+            $spesialisasiInput = $request->input('spesialisasi');
+            if (is_string($spesialisasiInput)) {
+                $decoded = json_decode($spesialisasiInput, true);
+                $spesialisasiInput = is_array($decoded) ? $decoded : explode(',', $spesialisasiInput);
+            }
+            if (is_array($spesialisasiInput)) {
+                $specData = [];
+                foreach ($spesialisasiInput as $sItem) {
+                    $sId = is_numeric($sItem) ? (int) $sItem : null;
+                    if (! $sId && is_string($sItem) && trim($sItem) !== '') {
+                        $sRow = DB::table('spesialisasi')->where('nama_spesialisasi', trim($sItem))->first();
+                        $sId = $sRow ? $sRow->id_spesialisasi : DB::table('spesialisasi')->insertGetId([
+                            'nama_spesialisasi' => trim($sItem),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                    if ($sId) {
+                        $specData[] = [
+                            'id_faskes' => $id,
+                            'id_spesialisasi' => $sId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+                if (! empty($specData)) {
+                    DB::table('spesialisasi_faskes')->insertOrIgnore($specData);
+                }
+            }
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Fasilitas kesehatan berhasil ditambahkan',
@@ -469,6 +537,76 @@ class FaskesController extends Controller
         $updateData['updated_at'] = now();
 
         DB::table('faskes')->where('id_faskes', $id)->update($updateData);
+
+        // Update Fasilitas Faskes jika dikirimkan
+        if ($request->has('fasilitas')) {
+            $fasilitasInput = $request->input('fasilitas');
+            if (is_string($fasilitasInput)) {
+                $decoded = json_decode($fasilitasInput, true);
+                $fasilitasInput = is_array($decoded) ? $decoded : explode(',', $fasilitasInput);
+            }
+            if (is_array($fasilitasInput)) {
+                DB::table('fasilitas_faskes')->where('id_faskes', $id)->delete();
+                $fasData = [];
+                foreach ($fasilitasInput as $fItem) {
+                    $fId = is_numeric($fItem) ? (int) $fItem : null;
+                    if (! $fId && is_string($fItem) && trim($fItem) !== '') {
+                        $fRow = DB::table('fasilitas')->where('nama_fasilitas', trim($fItem))->first();
+                        $fId = $fRow ? $fRow->id_fasilitas : DB::table('fasilitas')->insertGetId([
+                            'nama_fasilitas' => trim($fItem),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                    if ($fId) {
+                        $fasData[] = [
+                            'id_faskes' => $id,
+                            'id_fasilitas' => $fId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+                if (! empty($fasData)) {
+                    DB::table('fasilitas_faskes')->insertOrIgnore($fasData);
+                }
+            }
+        }
+
+        // Update Spesialisasi Faskes jika dikirimkan
+        if ($request->has('spesialisasi')) {
+            $spesialisasiInput = $request->input('spesialisasi');
+            if (is_string($spesialisasiInput)) {
+                $decoded = json_decode($spesialisasiInput, true);
+                $spesialisasiInput = is_array($decoded) ? $decoded : explode(',', $spesialisasiInput);
+            }
+            if (is_array($spesialisasiInput)) {
+                DB::table('spesialisasi_faskes')->where('id_faskes', $id)->delete();
+                $specData = [];
+                foreach ($spesialisasiInput as $sItem) {
+                    $sId = is_numeric($sItem) ? (int) $sItem : null;
+                    if (! $sId && is_string($sItem) && trim($sItem) !== '') {
+                        $sRow = DB::table('spesialisasi')->where('nama_spesialisasi', trim($sItem))->first();
+                        $sId = $sRow ? $sRow->id_spesialisasi : DB::table('spesialisasi')->insertGetId([
+                            'nama_spesialisasi' => trim($sItem),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                    if ($sId) {
+                        $specData[] = [
+                            'id_faskes' => $id,
+                            'id_spesialisasi' => $sId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+                if (! empty($specData)) {
+                    DB::table('spesialisasi_faskes')->insertOrIgnore($specData);
+                }
+            }
+        }
 
         return response()->json([
             'status' => 'success',

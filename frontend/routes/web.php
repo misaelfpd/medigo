@@ -64,6 +64,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     
     Route::get('/faskes', [AdminFaskesController::class, 'index'])->name('admin.faskes');
+    Route::get('/faskes/{id}/json', [AdminFaskesController::class, 'getFaskesJson'])->name('admin.faskes.json');
     Route::post('/faskes', [AdminFaskesController::class, 'store'])->name('admin.faskes.store');
     Route::put('/faskes/{id}', [AdminFaskesController::class, 'update'])->name('admin.faskes.update');
     Route::delete('/faskes/{id}', [AdminFaskesController::class, 'destroy'])->name('admin.faskes.destroy');

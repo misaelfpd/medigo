@@ -27,6 +27,8 @@ Route::get('/faskes/{id}', [FaskesController::class, 'show']);
 Route::get('/faskes/{id}/features', [FaskesFeatureController::class, 'getFacilitiesAndSpecialties']);
 Route::get('/faskes/{id}/fasilitas', [FaskesFeatureController::class, 'getFacilities']);
 Route::get('/faskes/{id}/spesialisasi', [FaskesFeatureController::class, 'getSpecialties']);
+Route::get('/fasilitas', [FaskesFeatureController::class, 'getAllFacilities']);
+Route::get('/spesialisasi', [FaskesFeatureController::class, 'getAllSpecialties']);
 Route::get('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'index']);
 Route::post('/faskes/{faskes_id}/feedback', [FaskesFeedbackController::class, 'store']);
 
