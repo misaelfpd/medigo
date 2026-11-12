@@ -62,14 +62,6 @@ class FaskesSeeder extends Seeder
         continue;
       }
 
-<<<<<<< HEAD
-      $data[] = [
-        'id_spesialisasi' => (int) $row['id_spesialisasi'],
-        'nama_spesialisasi' => trim($row['nama_spesialisasi']),
-        'created_at' => now(),
-        'updated_at' => now(),
-      ];
-=======
         foreach ($records as $row) {
             if (! isset($row['id_faskes'], $row['nama_faskes'])) {
                 continue;
@@ -107,7 +99,6 @@ class FaskesSeeder extends Seeder
         foreach (array_chunk($data, 500) as $chunk) {
             DB::table('faskes')->insertOrIgnore($chunk);
         }
->>>>>>> 0a0b2de63d284338b317c7346c35156022ed1b67
     }
 
     foreach (array_chunk($data, 500) as $chunk) {

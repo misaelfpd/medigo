@@ -182,11 +182,11 @@ class AuthController extends Controller
                 ]);
             } else {
                 // JEBAKAN KITA: Tampilkan apa alasan backend menolak login!
-                dd('API BE Gagal Login. Status: ' . $response->status(), 'Response BE:', $response->json());
+                // dd('API BE Gagal Login. Status: ' . $response->status(), 'Response BE:', $response->json());
             }
         } catch (\Exception $e) {
             // JEBAKAN KITA: Tampilkan jika FE sama sekali tidak bisa konek ke BE
-            dd('Koneksi dari FE ke BE Terputus. Pesan Error:', $e->getMessage());
+            // dd('Koneksi dari FE ke BE Terputus. Pesan Error:', $e->getMessage());
         }
     }
 
