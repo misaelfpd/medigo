@@ -15,7 +15,10 @@
                     <!-- Update Nama -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark small">Nama Lengkap</label>
-                        <input type="text" name="name" class="form-control rounded-3" value="{{ old('name', $user->name) }}" required>
+                        <input type="text" name="name" class="form-control rounded-3 @error('name') is-invalid @enderror" value="{{ old('name', $user->name) }}" required>
+                        @error('name')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
 
                     <!-- Email (Disabled) -->
@@ -29,10 +32,16 @@
                     <!-- Update Password -->
                     <h6 class="fw-bold text-dark small mb-2">Ubah Kata Sandi (Opsional)</h6>
                     <div class="mb-2">
-                        <input type="password" name="current_password" class="form-control rounded-3 small" placeholder="Kata sandi saat ini">
+                        <input type="password" name="current_password" class="form-control rounded-3 small @error('current_password') is-invalid @enderror" placeholder="Kata sandi saat ini">
+                        @error('current_password')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-2">
-                        <input type="password" name="new_password" class="form-control rounded-3 small" placeholder="Kata sandi baru (min. 8 karakter)">
+                        <input type="password" name="new_password" class="form-control rounded-3 small @error('new_password') is-invalid @enderror" placeholder="Kata sandi baru (min. 8 karakter)">
+                        @error('new_password')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-2">
                         <input type="password" name="new_password_confirmation" class="form-control rounded-3 small" placeholder="Konfirmasi kata sandi baru">
@@ -46,3 +55,15 @@
         </div>
     </div>
 </div>
+
+@if($errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var settingsModalEl = document.getElementById('settingsModal');
+            if (settingsModalEl && typeof bootstrap !== 'undefined') {
+                var modal = new bootstrap.Modal(settingsModalEl);
+                modal.show();
+            }
+        });
+    </script>
+@endif

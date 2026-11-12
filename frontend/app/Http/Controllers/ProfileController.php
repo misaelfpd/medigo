@@ -32,7 +32,7 @@ class ProfileController extends Controller
         $totalReviews = 0;
 
         if ($isLoggedIn && $user) {
-            $token = session('user_backend_token');
+            $token = $this->getBackendToken();
             $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
             $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
@@ -143,7 +143,7 @@ class ProfileController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
-        $token = session('user_backend_token');
+        $token = $this->getBackendToken();
         $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
         $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
@@ -232,6 +232,48 @@ class ProfileController extends Controller
     }
 
     /**
+     * Get or refresh user Sanctum token from Backend API
+     */
+    private function getBackendToken()
+    {
+        $token = session('user_backend_token');
+        if ($token) {
+            return $token;
+        }
+
+        if (!Auth::check()) {
+            return null;
+        }
+
+        try {
+            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+
+            $response = Http::timeout(5)
+                ->withHeaders(['X-Service-Key' => (string) config('services.medigo.service_key')])
+                ->post("{$backendUrl}/api/auth/token-by-email", [
+                    'email' => Auth::user()->email,
+                ]);
+
+            if ($response->successful()) {
+                $token = $response->json('access_token');
+                $userData = $response->json('user');
+                if ($token) {
+                    session([
+                        'user_backend_token' => $token,
+                        'user_backend_data'  => $userData,
+                    ]);
+                    return $token;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed obtaining backend token in ProfileController: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
      * Update user profile information
      */
     public function update(Request $request)
@@ -252,15 +294,55 @@ class ProfileController extends Controller
             'new_password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
         ]);
 
-        $user->name = $validated['name'];
-
         if (!empty($validated['new_password'])) {
             if (!Hash::check($validated['current_password'], $user->password)) {
                 return back()->withErrors(['current_password' => 'Kata sandi saat ini tidak sesuai.'])->withInput();
             }
-            $user->password = Hash::make($validated['new_password']);
         }
 
+        // Sinkronisasi pembaruan profil ke Backend API
+        $token = $this->getBackendToken();
+        if ($token) {
+            try {
+                $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+                $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+
+                $payload = [
+                    'name' => $validated['name'],
+                ];
+                if (!empty($validated['new_password'])) {
+                    $payload['current_password'] = $validated['current_password'];
+                    $payload['new_password'] = $validated['new_password'];
+                }
+
+                $beResponse = Http::timeout(5)
+                    ->withToken($token)
+                    ->put("{$backendUrl}/api/user", $payload);
+
+                if ($beResponse->failed()) {
+                    $errData = $beResponse->json();
+                    if (!empty($errData['errors']['current_password'])) {
+                        return back()->withErrors(['current_password' => $errData['errors']['current_password'][0]])->withInput();
+                    }
+                    if (!empty($errData['message'])) {
+                        Log::warning('Backend profile update failed: ' . $errData['message']);
+                    }
+                } else {
+                    $updatedBeUser = $beResponse->json('data');
+                    if ($updatedBeUser) {
+                        session(['user_backend_data' => $updatedBeUser]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Backend profile sync error: ' . $e->getMessage());
+            }
+        }
+
+        // Simpan perubahan ke database lokal Frontend
+        $user->name = $validated['name'];
+        if (!empty($validated['new_password'])) {
+            $user->password = Hash::make($validated['new_password']);
+        }
         $user->save();
 
         return redirect()->route('profile')->with('success', 'Profil Anda berhasil diperbarui!');

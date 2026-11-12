@@ -109,4 +109,96 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
+
+    // 5. Ambil data profil user yang sedang login
+    public function profile(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Berhasil mengambil data profil user',
+            'data' => $user,
+        ]);
+    }
+
+    // 6. Fungsi Update Profile (Nama, Email, dan/atau Password)
+    public function updateProfile(Request $request)
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        $request->validate([
+            'name' => 'sometimes|nullable|string|max:150',
+            'nama_user' => 'sometimes|nullable|string|max:150',
+            'email' => 'sometimes|nullable|email|max:150|unique:user,email_user,'.$user->id_user.',id_user',
+            'email_user' => 'sometimes|nullable|email|max:150|unique:user,email_user,'.$user->id_user.',id_user',
+            'current_password' => 'nullable|string',
+            'password_lama' => 'nullable|string',
+            'new_password' => 'nullable|string|min:8',
+            'password_baru' => 'nullable|string|min:8',
+            'password' => 'nullable|string|min:8',
+        ], [
+            'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
+            'email_user.unique' => 'Email sudah digunakan oleh pengguna lain.',
+            'new_password.min' => 'Kata sandi baru minimal 8 karakter.',
+            'password_baru.min' => 'Kata sandi baru minimal 8 karakter.',
+            'password.min' => 'Kata sandi baru minimal 8 karakter.',
+        ]);
+
+        // 1. Update Nama jika ada
+        $newName = $request->input('nama_user') ?? $request->input('name');
+        if (! empty($newName)) {
+            $user->nama_user = trim($newName);
+        }
+
+        // 2. Update Email jika ada dan berbeda
+        $newEmail = $request->input('email_user') ?? $request->input('email');
+        if (! empty($newEmail) && $newEmail !== $user->email_user) {
+            $user->email_user = trim($newEmail);
+        }
+
+        // 3. Update Password jika ada
+        $newPassword = $request->input('new_password') ?? $request->input('password_baru') ?? $request->input('password');
+        if (! empty($newPassword)) {
+            $currentPassword = $request->input('current_password') ?? $request->input('password_lama');
+
+            if (empty($currentPassword)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
+                    'errors' => [
+                        'current_password' => ['Kata sandi saat ini wajib diisi untuk mengubah kata sandi.'],
+                    ],
+                ], 422);
+            }
+
+            if (! Hash::check($currentPassword, $user->password_user)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Kata sandi saat ini tidak sesuai.',
+                    'errors' => [
+                        'current_password' => ['Kata sandi saat ini tidak sesuai.'],
+                    ],
+                ], 422);
+            }
+
+            $user->password_user = Hash::make($newPassword);
+        }
+
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profil berhasil diperbarui!',
+            'data' => $user,
+        ]);
+    }
 }

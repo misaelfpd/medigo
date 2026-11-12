@@ -49,6 +49,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::get('/user/profile', [AuthController::class, 'profile']);
+    Route::put('/user', [AuthController::class, 'updateProfile']);
+    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/user/profile', [AuthController::class, 'updateProfile']);
 
     Route::get('/user/discussions', [DiscussionController::class, 'myDiscussions']);
     Route::get('/user/comments', [DiscussionController::class, 'myComments']);
