@@ -103,9 +103,18 @@ document.addEventListener("DOMContentLoaded", function () {
         fetchNearbyFaskes(true);
     });
 
-    // 5. Haversine Formula (Distance in Km)
+    // 5. Haversine Fallback & OSRM Road Distance Cache (Distance in Km)
+    const osrmRoadCache = new Map();
+
+    function getRoadCacheKey(lat1, lon1, lat2, lon2) {
+        return `${Number(lat1).toFixed(4)}_${Number(lon1).toFixed(4)}_${Number(lat2).toFixed(5)}_${Number(lon2).toFixed(5)}`;
+    }
+
     function getDistanceKm(lat1, lon1, lat2, lon2) {
         if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+        const cached = osrmRoadCache.get(getRoadCacheKey(lat1, lon1, lat2, lon2));
+        if (cached !== undefined) return cached;
+
         const R = 6371; // Earth radius in km
         const dLat = ((lat2 - lat1) * Math.PI) / 180;
         const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -117,6 +126,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return Math.round(R * c * 10) / 10;
+    }
+
+    async function syncOsrmRoadDistances(origLat, origLng, items) {
+        if (!origLat || !origLng || !Array.isArray(items) || items.length === 0) return;
+
+        const uncached = items.filter((it) => {
+            if (!it.lat || !it.lng) return false;
+            return !osrmRoadCache.has(getRoadCacheKey(origLat, origLng, it.lat, it.lng));
+        });
+
+        if (uncached.length === 0) return;
+
+        try {
+            const batch = uncached.slice(0, 60);
+            const coords = [
+                `${origLng},${origLat}`,
+                ...batch.map((it) => `${it.lng},${it.lat}`),
+            ].join(";");
+            const res = await fetch(
+                `https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&annotations=distance`,
+            );
+            if (!res.ok) return;
+            const data = await res.json();
+            const row = data?.distances?.[0];
+            if (!Array.isArray(row)) return;
+
+            let updated = false;
+            batch.forEach((it, idx) => {
+                const meters = row[idx + 1];
+                if (typeof meters === "number" && meters > 0) {
+                    const km = Math.round((meters / 1000) * 10) / 10;
+                    osrmRoadCache.set(
+                        getRoadCacheKey(origLat, origLng, it.lat, it.lng),
+                        km,
+                    );
+                    updated = true;
+                }
+            });
+
+            if (updated) {
+                updateFaskesDistancesAndFilter(false, true);
+            }
+        } catch (e) {
+            console.warn("OSRM road distance fallback on map:", e);
+        }
     }
 
     // Helper to generate Google Maps Search URL combining Name, Address, and Coordinates
@@ -781,6 +835,13 @@ document.addEventListener("DOMContentLoaded", function () {
                                 ? parseFloat(item.avg_rating).toFixed(1)
                                 : null;
 
+                        if (item.distance_km !== undefined && item.distance_km !== null && !isNaN(parseFloat(item.distance_km))) {
+                            osrmRoadCache.set(
+                                getRoadCacheKey(userState.lat, userState.lng, lat, lng),
+                                Math.round(parseFloat(item.distance_km) * 10) / 10,
+                            );
+                        }
+
                         const distance = getDistanceKm(
                             userState.lat,
                             userState.lng,
@@ -883,7 +944,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 14. Distance Recalculation, Multi-Filter & UI List Update
-    function updateFaskesDistancesAndFilter(shouldFit = false) {
+    function updateFaskesDistancesAndFilter(shouldFit = false, skipOsrmSync = false) {
         let insideRadiusCount = 0;
         let visibleCount = 0;
         const visibleBounds = [];
@@ -1045,6 +1106,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 padding: [25, 25],
                 maxZoom: 14,
             });
+        }
+
+        if (!skipOsrmSync && userState.lat && userState.lng) {
+            syncOsrmRoadDistances(userState.lat, userState.lng, faskesData);
         }
     }
 

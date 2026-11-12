@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faskes;
+use App\Services\RoadDistanceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -173,6 +174,10 @@ class FaskesController extends Controller
                 return $item;
             });
 
+            if ($request->filled('lat') && $request->filled('lng')) {
+                $faskes = RoadDistanceService::applyToCollection($faskes, (float) $request->lat, (float) $request->lng);
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Berhasil mengambil data faskes',
@@ -204,6 +209,12 @@ class FaskesController extends Controller
 
             return $item;
         });
+
+        if ($request->filled('lat') && $request->filled('lng')) {
+            $paginated->setCollection(
+                RoadDistanceService::applyToCollection($paginated->getCollection(), (float) $request->lat, (float) $request->lng)
+            );
+        }
 
         return response()->json([
             'status' => 'success',
@@ -701,11 +712,11 @@ class FaskesController extends Controller
         $radius = $params['radius'] ?? 5; // Default radius 5 km jika tidak diisi
 
         if ($lat && $lng) {
-            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latittude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latittude))))";
+            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
 
             $query->select('faskes.*')
                 ->selectRaw("{$haversine} AS distance_km")
-                ->whereNotNull('faskes.latittude')
+                ->whereNotNull('faskes.latitude')
                 ->whereNotNull('faskes.longitude');
 
             if (isset($params['radius'])) {
@@ -768,6 +779,10 @@ class FaskesController extends Controller
 
             return $item;
         });
+
+        if ($lat && $lng) {
+            $faskesList = RoadDistanceService::applyToCollection($faskesList, (float) $lat, (float) $lng);
+        }
 
         return response()->json([
             'status' => 'success',
