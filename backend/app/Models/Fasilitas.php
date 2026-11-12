@@ -1,21 +1,20 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Faskes extends Model
+class Fasilitas extends Model
 {
-    protected $table = 'faskes';
-    protected $primaryKey = 'id_faskes';
-    public $timestamps = false;
+    use HasFactory;
 
-    public function spesialisasi()
-    {
-        return $this->belongsToMany(Spesialisasi::class, 'spesialisasi_faskes', 'id_faskes', 'id_spesialisasi');
-    }
+    protected $table = 'fasilitas';
+    protected $primaryKey = 'id_fasilitas';
+    protected $guarded = [];
 
-    public function fasilitas()
+    public function faskes()
     {
-        return $this->belongsToMany(Fasilitas::class, 'fasilitas_faskes', 'id_faskes', 'id_fasilitas');
+        return $this->belongsToMany(Faskes::class, 'fasilitas_faskes', 'id_fasilitas', 'id_faskes');
     }
 }

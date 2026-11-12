@@ -1,0 +1,131 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Faskes;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class FaskesFeatureController extends Controller
+{
+    /**
+     * Ambil daftar fasilitas dan spesialisasi yang dimiliki oleh suatu faskes sekaligus.
+     * Cocok dipanggil saat membuka halaman detail faskes.
+     *
+     * @param int|string $id
+     * @return JsonResponse
+     */
+    public function getFacilitiesAndSpecialties($id): JsonResponse
+    {
+        $faskes = DB::table('faskes')
+            ->select('id_faskes', 'nama_faskes', 'jenis_faskes')
+            ->where('id_faskes', $id)
+            ->first();
+
+        if (! $faskes) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Fasilitas kesehatan tidak ditemukan',
+            ], 404);
+        }
+
+        $fasilitas = DB::table('fasilitas_faskes')
+            ->join('fasilitas', 'fasilitas.id_fasilitas', '=', 'fasilitas_faskes.id_fasilitas')
+            ->where('fasilitas_faskes.id_faskes', $id)
+            ->select('fasilitas.id_fasilitas', 'fasilitas.nama_fasilitas')
+            ->orderBy('fasilitas.nama_fasilitas', 'asc')
+            ->get();
+
+        $spesialisasi = DB::table('spesialisasi_faskes')
+            ->join('spesialisasi', 'spesialisasi.id_spesialisasi', '=', 'spesialisasi_faskes.id_spesialisasi')
+            ->where('spesialisasi_faskes.id_faskes', $id)
+            ->select('spesialisasi.id_spesialisasi', 'spesialisasi.nama_spesialisasi')
+            ->orderBy('spesialisasi.nama_spesialisasi', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Berhasil mengambil daftar fasilitas dan spesialisasi faskes',
+            'data' => [
+                'id_faskes' => (int) $id,
+                'nama_faskes' => $faskes->nama_faskes,
+                'total_fasilitas' => $fasilitas->count(),
+                'total_spesialisasi' => $spesialisasi->count(),
+                'fasilitas' => $fasilitas,
+                'spesialisasi' => $spesialisasi,
+            ],
+        ]);
+    }
+
+    /**
+     * Ambil hanya daftar fasilitas yang dimiliki oleh suatu faskes.
+     *
+     * @param int|string $id
+     * @return JsonResponse
+     */
+    public function getFacilities($id): JsonResponse
+    {
+        $faskesExists = DB::table('faskes')->where('id_faskes', $id)->exists();
+
+        if (! $faskesExists) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Fasilitas kesehatan tidak ditemukan',
+            ], 404);
+        }
+
+        $fasilitas = DB::table('fasilitas_faskes')
+            ->join('fasilitas', 'fasilitas.id_fasilitas', '=', 'fasilitas_faskes.id_fasilitas')
+            ->where('fasilitas_faskes.id_faskes', $id)
+            ->select('fasilitas.id_fasilitas', 'fasilitas.nama_fasilitas')
+            ->orderBy('fasilitas.nama_fasilitas', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Berhasil mengambil daftar fasilitas faskes',
+            'data' => [
+                'id_faskes' => (int) $id,
+                'total' => $fasilitas->count(),
+                'fasilitas' => $fasilitas,
+            ],
+        ]);
+    }
+
+    /**
+     * Ambil hanya daftar spesialisasi dokter yang dimiliki oleh suatu faskes.
+     *
+     * @param int|string $id
+     * @return JsonResponse
+     */
+    public function getSpecialties($id): JsonResponse
+    {
+        $faskesExists = DB::table('faskes')->where('id_faskes', $id)->exists();
+
+        if (! $faskesExists) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Fasilitas kesehatan tidak ditemukan',
+            ], 404);
+        }
+
+        $spesialisasi = DB::table('spesialisasi_faskes')
+            ->join('spesialisasi', 'spesialisasi.id_spesialisasi', '=', 'spesialisasi_faskes.id_spesialisasi')
+            ->where('spesialisasi_faskes.id_faskes', $id)
+            ->select('spesialisasi.id_spesialisasi', 'spesialisasi.nama_spesialisasi')
+            ->orderBy('spesialisasi.nama_spesialisasi', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Berhasil mengambil daftar spesialisasi faskes',
+            'data' => [
+                'id_faskes' => (int) $id,
+                'total' => $spesialisasi->count(),
+                'spesialisasi' => $spesialisasi,
+            ],
+        ]);
+    }
+}
+

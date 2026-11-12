@@ -259,12 +259,34 @@ class FaskesController extends Controller
             ->orderBy('komentar.created_at', 'desc')
             ->get();
 
+        // 3. Ambil daftar fasilitas medis yang terhubung ke faskes ini
+        $fasilitas = DB::table('fasilitas_faskes')
+            ->join('fasilitas', 'fasilitas.id_fasilitas', '=', 'fasilitas_faskes.id_fasilitas')
+            ->where('fasilitas_faskes.id_faskes', $id)
+            ->select('fasilitas.id_fasilitas', 'fasilitas.nama_fasilitas')
+            ->orderBy('fasilitas.nama_fasilitas', 'asc')
+            ->get();
+
+        // 4. Ambil daftar spesialisasi dokter yang terhubung ke faskes ini
+        $spesialisasi = DB::table('spesialisasi_faskes')
+            ->join('spesialisasi', 'spesialisasi.id_spesialisasi', '=', 'spesialisasi_faskes.id_spesialisasi')
+            ->where('spesialisasi_faskes.id_faskes', $id)
+            ->select('spesialisasi.id_spesialisasi', 'spesialisasi.nama_spesialisasi')
+            ->orderBy('spesialisasi.nama_spesialisasi', 'asc')
+            ->get();
+
+        // Pasang juga ke objek $faskes untuk backward compatibility
+        $faskes->fasilitas = $fasilitas;
+        $faskes->spesialisasi = $spesialisasi;
+
         return response()->json([
             'status' => 'success',
             'message' => 'Berhasil mengambil detail faskes',
             'data' => [
                 'faskes' => $faskes,
                 'reviews' => $reviews,
+                'fasilitas' => $fasilitas,
+                'spesialisasi' => $spesialisasi,
             ],
         ]);
     }

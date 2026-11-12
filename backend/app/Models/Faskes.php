@@ -14,4 +14,14 @@ class Faskes extends Model
     protected $primaryKey = 'id_faskes';
 
     protected $guarded = [];
+
+    public function fasilitas()
+    {
+        return $this->belongsToMany(Fasilitas::class, 'fasilitas_faskes', 'id_faskes', 'id_fasilitas');
+    }
+
+    public function spesialisasi()
+    {
+        return $this->belongsToMany(Spesialisasi::class, 'spesialisasi_faskes', 'id_faskes', 'id_spesialisasi');
+    }
 }

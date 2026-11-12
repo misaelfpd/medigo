@@ -7,6 +7,7 @@ use App\Http\Controllers\DiscussionController;
 use App\Http\Controllers\DiscussionReportController;
 use App\Http\Controllers\FaskesCommentController;
 use App\Http\Controllers\FaskesController;
+use App\Http\Controllers\FaskesFeatureController;
 use App\Http\Controllers\FaskesFeedbackController;
 use App\Http\Controllers\GeminiController;
 use App\Http\Middleware\AdminMiddleware;
@@ -23,6 +24,9 @@ Route::post('/auth/token-by-email', [AuthController::class, 'tokenByEmail']);
 
 Route::get('/faskes', [FaskesController::class, 'index']);
 Route::get('/faskes/{id}', [FaskesController::class, 'show']);
+Route::get('/faskes/{id}/features', [FaskesFeatureController::class, 'getFacilitiesAndSpecialties']);
+Route::get('/faskes/{id}/fasilitas', [FaskesFeatureController::class, 'getFacilities']);
+Route::get('/faskes/{id}/spesialisasi', [FaskesFeatureController::class, 'getSpecialties']);
 Route::get('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'index']);
 Route::post('/faskes/{faskes_id}/feedback', [FaskesFeedbackController::class, 'store']);
 
