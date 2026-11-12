@@ -148,7 +148,11 @@ class AdminFaskesController extends Controller
         // Global stats for filter pills counts
         $totalStats = $paginationData['total'];
         try {
-            $statsRes = Http::timeout(3)->get("{$backendUrl}/api/admin/stats");
+            $http = Http::timeout(3);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+            $statsRes = $http->get("{$backendUrl}/api/admin/stats");
             if ($statsRes->successful()) {
                 $totalStats = $statsRes->json()['data']['total_faskes'] ?? $totalStats;
             }
@@ -200,9 +204,17 @@ class AdminFaskesController extends Controller
      */
     public function getFaskesJson($id)
     {
+        if (!session('admin_logged_in')) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
         $backendUrl = $this->getBackendUrl();
         try {
-            $response = Http::timeout(6)->get("{$backendUrl}/api/faskes/{$id}");
+            $http = Http::timeout(6);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+            $response = $http->get("{$backendUrl}/api/faskes/{$id}");
             if ($response->successful()) {
                 return response()->json($response->json());
             }
@@ -215,6 +227,10 @@ class AdminFaskesController extends Controller
 
     public function store(Request $request)
     {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
         $request->validate([
             'nama_faskes'    => 'required|string|max:255',
             'tipe'           => 'required|string|max:100',
@@ -250,7 +266,11 @@ class AdminFaskesController extends Controller
         }
 
         try {
-            Http::timeout(6)->post("{$backendUrl}/api/faskes", [
+            $http = Http::timeout(6);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+            $http->post("{$backendUrl}/api/faskes", [
                 'nama_faskes'    => $request->nama_faskes,
                 'jenis_faskes'   => $request->tipe ?? $request->jenis_faskes,
                 'tipe'           => $request->tipe ?? $request->jenis_faskes,
@@ -278,6 +298,10 @@ class AdminFaskesController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
         $request->validate([
             'nama_faskes'    => 'required|string|max:255',
             'tipe'           => 'required|string|max:100',
@@ -313,7 +337,11 @@ class AdminFaskesController extends Controller
         }
 
         try {
-            Http::timeout(6)->put("{$backendUrl}/api/faskes/{$id}", [
+            $http = Http::timeout(6);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+            $http->put("{$backendUrl}/api/faskes/{$id}", [
                 'nama_faskes'    => $request->nama_faskes,
                 'jenis_faskes'   => $request->tipe ?? $request->jenis_faskes,
                 'tipe'           => $request->tipe ?? $request->jenis_faskes,
@@ -341,10 +369,18 @@ class AdminFaskesController extends Controller
 
     public function destroy($id)
     {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
         $backendUrl = $this->getBackendUrl();
 
         try {
-            Http::timeout(6)->delete("{$backendUrl}/api/faskes/{$id}");
+            $http = Http::timeout(6);
+            if ($token = session('admin_token')) {
+                $http = $http->withToken($token);
+            }
+            $http->delete("{$backendUrl}/api/faskes/{$id}");
         } catch (\Exception $e) {
             Log::warning('Failed to delete faskes in backend: ' . $e->getMessage());
         }
