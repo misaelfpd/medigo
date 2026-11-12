@@ -68,7 +68,10 @@ class DiscussionController extends Controller
                 $body = $response->json();
                 $rawItems = $body['data']['data'] ?? [];
                 
-                $discussions = collect($rawItems)->map(function ($item) {
+                // Ambil mapping avatar pengguna dari database lokal frontend berdasarkan email
+                $userAvatarsByEmail = \App\Models\User::whereNotNull('avatar')->pluck('avatar', 'email')->all();
+
+                $discussions = collect($rawItems)->map(function ($item) use ($userAvatarsByEmail) {
                     $item = (array) $item;
                     $id_diskusi = $item['id_diskusi'] ?? $item['id'] ?? null;
                     $judul = $item['judul_diskusi'] ?? $item['title'] ?? '';
@@ -76,6 +79,17 @@ class DiscussionController extends Controller
                     $kategori = $item['kategori'] ?? $item['category'] ?? 'Umum';
                     $gambar = $item['gambar_diskusi'] ?? $item['image_path'] ?? $item['image'] ?? null;
                     $id_user = $item['id_user'] ?? $item['user_id'] ?? null;
+                    $authorEmail = $item['author_email'] ?? $item['email_user'] ?? $item['email'] ?? null;
+
+                    // Resolusi avatar penulis diskusi
+                    $authorAvatar = null;
+                    if (Auth::check() && !empty(Auth::user()->email) && strtolower(Auth::user()->email) === strtolower($authorEmail ?? '')) {
+                        $authorAvatar = Auth::user()->avatar;
+                    } elseif ($authorEmail && isset($userAvatarsByEmail[$authorEmail])) {
+                        $authorAvatar = $userAvatarsByEmail[$authorEmail];
+                    } else {
+                        $authorAvatar = $item['author_avatar'] ?? ($item['avatar'] ?? null);
+                    }
 
                     return array_merge($item, [
                         'id_diskusi' => $id_diskusi,
@@ -96,6 +110,8 @@ class DiscussionController extends Controller
                         
                         'id_user' => $id_user,
                         'user_id' => $id_user,
+                        
+                        'author_avatar' => $authorAvatar,
                     ]);
                 })->all();
 
@@ -288,6 +304,8 @@ class DiscussionController extends Controller
                 $rawDiscussion = $data['discussion'] ?? null;
                 $rawComments = $data['comments'] ?? [];
 
+                $userAvatarsByEmail = \App\Models\User::whereNotNull('avatar')->pluck('avatar', 'email')->all();
+
                 if ($rawDiscussion) {
                     $d = (array) $rawDiscussion;
                     $idVal = $d['id_diskusi'] ?? $d['id'] ?? $id_diskusi;
@@ -298,6 +316,16 @@ class DiscussionController extends Controller
                     $usrVal = $d['id_user'] ?? $d['user_id'] ?? null;
                     $authorNameVal = $d['nama_user'] ?? $d['author_name'] ?? 'Pengguna';
                     $authorEmailVal = $d['email_user'] ?? $d['author_email'] ?? null;
+
+                    // Resolusi avatar pembuat diskusi
+                    $authorAvatarVal = null;
+                    if (Auth::check() && !empty(Auth::user()->email) && strtolower(Auth::user()->email) === strtolower($authorEmailVal ?? '')) {
+                        $authorAvatarVal = Auth::user()->avatar;
+                    } elseif ($authorEmailVal && isset($userAvatarsByEmail[$authorEmailVal])) {
+                        $authorAvatarVal = $userAvatarsByEmail[$authorEmailVal];
+                    } else {
+                        $authorAvatarVal = $d['author_avatar'] ?? ($d['avatar'] ?? null);
+                    }
 
                     $discussion = array_merge($d, [
                         'id_diskusi' => $idVal,
@@ -316,6 +344,7 @@ class DiscussionController extends Controller
                         'author_name' => $authorNameVal,
                         'email_user' => $authorEmailVal,
                         'author_email' => $authorEmailVal,
+                        'author_avatar' => $authorAvatarVal,
                     ]);
                 }
 
@@ -332,6 +361,16 @@ class DiscussionController extends Controller
                     $cImage = $c['gambar_tanggapan'] ?? $c['image_path'] ?? null;
                     $cName = $c['nama_user'] ?? $c['commentator_name'] ?? 'Pengguna';
                     $cEmail = $c['email_user'] ?? $c['commentator_email'] ?? null;
+
+                    // Resolusi avatar komentator
+                    $cAvatar = null;
+                    if (Auth::check() && !empty(Auth::user()->email) && strtolower(Auth::user()->email) === strtolower($cEmail ?? '')) {
+                        $cAvatar = Auth::user()->avatar;
+                    } elseif ($cEmail && isset($userAvatarsByEmail[$cEmail])) {
+                        $cAvatar = $userAvatarsByEmail[$cEmail];
+                    } else {
+                        $cAvatar = $c['commentator_avatar'] ?? ($c['avatar'] ?? null);
+                    }
 
                     $c['id_tanggapan'] = $cId;
                     $c['id'] = $cId;
@@ -357,6 +396,8 @@ class DiscussionController extends Controller
                     
                     $c['email_user'] = $cEmail;
                     $c['commentator_email'] = $cEmail;
+                    $c['commentator_avatar'] = $cAvatar;
+                    $c['avatar'] = $cAvatar;
                     
                     $c['replies'] = []; 
                     

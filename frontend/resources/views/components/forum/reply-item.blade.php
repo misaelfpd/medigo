@@ -4,6 +4,7 @@
     $replyId = $reply['id_tanggapan'] ?? ($reply['id'] ?? null);
     $commenterName = $reply['nama_user'] ?? ($reply['commentator_name'] ?? 'Pengguna');
     $commenterEmail = $reply['email_user'] ?? ($reply['commentator_email'] ?? ($reply['email'] ?? null));
+    $commenterAvatar = $reply['commentator_avatar'] ?? ($reply['avatar'] ?? null);
     $replyBody = $reply['isi_tanggapan'] ?? ($reply['body'] ?? ($reply['content'] ?? ''));
     $replyImage = $reply['gambar_tanggapan'] ?? ($reply['image_path'] ?? null);
     
@@ -12,11 +13,35 @@
     
     // Bisa report jika sudah login DAN BUKAN pemilik komentar sendiri
     $canReportReply = Auth::check() && !$isReplyOwner;
+
+    // Resolusi avatar balasan
+    $replyAvatarUrl = null;
+    if ($isReplyOwner && Auth::check() && !empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar))) {
+        $replyAvatarUrl = asset(Auth::user()->avatar);
+    } elseif (!empty($commenterAvatar)) {
+        if (str_starts_with($commenterAvatar, 'http')) {
+            $replyAvatarUrl = $commenterAvatar;
+        } elseif (file_exists(public_path($commenterAvatar))) {
+            $replyAvatarUrl = asset($commenterAvatar);
+        }
+    }
 @endphp
 
 <div class="bg-light p-3 rounded-3" id="comment-item-{{ $replyId }}">
     <div class="d-flex justify-content-between align-items-center mb-1">
-        <div class="fw-semibold text-dark">{{ $commenterName }}</div>
+        <div class="d-flex align-items-center gap-2">
+            @if($replyAvatarUrl)
+                <img src="{{ $replyAvatarUrl }}" 
+                     alt="{{ $commenterName }}" 
+                     class="rounded-circle object-fit-cover border shadow-2xs" 
+                     style="width: 26px; height: 26px;">
+            @else
+                <div class="avatar-circle-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 26px; height: 26px; font-size: 0.72rem;">
+                    {{ strtoupper(substr($commenterName, 0, 1)) }}
+                </div>
+            @endif
+            <div class="fw-semibold text-dark">{{ $commenterName }}</div>
+        </div>
         <div class="d-flex align-items-center gap-2">
             <span class="text-muted small">{{ \Carbon\Carbon::parse($reply['created_at'] ?? now())->diffForHumans() }}</span>
             

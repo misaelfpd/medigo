@@ -1,7 +1,7 @@
 <!-- Desktop User Profile Sidebar -->
 <div class="card border rounded-4 bg-white p-4 shadow-2xs mb-4 text-center">
     <div class="mb-3 mx-auto" style="width: 80px; height: 80px;">
-        <img src="{{ asset('images/user_avatar.jpg') }}" alt="{{ $user->name ?? $user->nama_user }}" class="rounded-circle w-100 h-100 object-fit-cover shadow-xs border">
+        <img src="{{ $user->avatar_url }}" alt="{{ $user->name ?? $user->nama_user }}" class="rounded-circle w-100 h-100 object-fit-cover shadow-xs border">
     </div>
     <h5 class="fw-bold text-dark mb-1">{{ $user->name ?? $user->nama_user }}</h5>
     <p class="text-muted small mb-0">{{ $user->email ?? $user->email_user }}</p>
@@ -32,7 +32,7 @@
 <!-- Settings & Navigation Card -->
 <div class="card border rounded-4 bg-white shadow-2xs overflow-hidden mb-4">
     <div class="list-group list-group-flush profile-menu-list">
-        <a href="#settingsModal" data-bs-toggle="modal" class="list-group-item list-group-item-action p-3 d-flex align-items-center gap-2">
+        <a href="{{ route('profile.edit') }}" class="list-group-item list-group-item-action p-3 d-flex align-items-center gap-2">
             <i class="bi bi-gear fs-5 text-secondary"></i>
             <span class="fw-medium text-dark">Pengaturan Akun</span>
         </a>

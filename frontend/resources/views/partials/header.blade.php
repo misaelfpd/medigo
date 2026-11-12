@@ -25,6 +25,12 @@
                     <i class="bi bi-chat-left-text"></i> Forum
                 </x-navbar.nav-link>
 
+                @if(Auth::check())
+                    <x-navbar.nav-link href="/profile" :active="request()->is('profile*')">
+                        <i class="bi bi-person"></i> Profil
+                    </x-navbar.nav-link>
+                @endif
+
             </ul>
         </div>
 
@@ -33,9 +39,13 @@
             @if(Auth::check())
                 <!-- Authenticated User Profile Link -->
                 <a href="{{ route('profile') }}" class="btn user-nav-btn d-flex align-items-center gap-2 rounded-pill px-3 py-1 text-decoration-none {{ request()->is('profile*') ? 'btn-medigo-primary border-0' : 'border' }}">
-                    <div class="avatar-circle-sm bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.8rem;">
-                        {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                    </div>
+                    @if(!empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar)))
+                        <img src="{{ asset(Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}" class="rounded-circle object-fit-cover shadow-2xs" style="width: 28px; height: 28px;">
+                    @else
+                        <div class="avatar-circle-sm bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.8rem;">
+                            {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                        </div>
+                    @endif
                     <span class="user-nav-name fw-semibold text-truncate {{ request()->is('profile*') ? 'text-white' : 'text-dark' }}" style="max-width: 130px; font-size: 0.88rem;">
                         {{ Auth::user()->name }}
                     </span>
@@ -53,10 +63,14 @@
         <div class="d-flex d-lg-none align-items-center gap-2">
             @if(Auth::check())
                 <!-- Tampilan jika SUDAH login di Mobile -->
-                <a href="{{ route('profile') }}" class="btn btn-sm user-nav-btn rounded-circle p-0 {{ request()->is('profile*') ? 'btn-medigo-primary border-0' : 'border' }}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
-                    <div class="bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 100%; height: 100%; font-size: 0.8rem;">
-                        {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                    </div>
+                <a href="{{ route('profile') }}" class="btn btn-sm user-nav-btn rounded-circle p-0 {{ request()->is('profile*') ? 'btn-medigo-primary border-0' : 'border' }} overflow-hidden" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                    @if(!empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar)))
+                        <img src="{{ asset(Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}" class="rounded-circle object-fit-cover w-100 h-100">
+                    @else
+                        <div class="bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 100%; height: 100%; font-size: 0.8rem;">
+                            {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                        </div>
+                    @endif
                 </a>
             @else
                 <!-- Tampilan jika BELUM login di Mobile -->

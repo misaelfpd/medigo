@@ -11,7 +11,8 @@ export default defineConfig({
                 'resources/js/map.js',
                 'resources/js/beranda.js',
                 'resources/js/detail.js',
-                'resources/js/chat.js'
+                'resources/js/chat.js',
+                'resources/js/search.js'
             ],
             refresh: true,
         }),

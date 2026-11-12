@@ -22,6 +22,10 @@ Route::post('/login', [AuthController::class, 'login']);
 // token. Requires the shared X-Service-Key header (see AuthController).
 Route::post('/auth/token-by-email', [AuthController::class, 'tokenByEmail']);
 
+// Rute Search & Filter Faskes (Harus didefinisikan sebelum /faskes/{id})
+Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
+Route::get('/faskes/filter-options', [FaskesController::class, 'getFilterOptions']);
+
 Route::get('/faskes', [FaskesController::class, 'index']);
 Route::get('/faskes/{id}', [FaskesController::class, 'show']);
 Route::get('/faskes/{id}/features', [FaskesFeatureController::class, 'getFacilitiesAndSpecialties']);
@@ -40,9 +44,6 @@ Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat
     // GEMINI AI
     Route::get('/chat-ai/history', [GeminiController::class, 'history']);
     Route::post('/chat-ai', [GeminiController::class, 'chat']);
-
-// Rute Search
-Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
 
 // Rute Terproteksi (Wajib punya Token / udah Login)
 Route::middleware('auth:sanctum')->group(function () {

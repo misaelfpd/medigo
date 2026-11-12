@@ -170,8 +170,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const timeString = getCurrentTime();
         
         if (sender === 'user') {
+            const avatarHtml = window.MedigoConfig?.currentUserAvatar 
+                ? `<div class="avatar-user overflow-hidden p-0 border" style="width: 36px; height: 36px; border-radius: 50%;"><img src="${window.MedigoConfig.currentUserAvatar}" class="w-100 h-100 object-fit-cover rounded-circle"></div>`
+                : `<div class="avatar-user"><i class="bi bi-person-fill"></i></div>`;
             rowDiv.innerHTML = `
-                <div class="avatar-user"><i class="bi bi-person-fill"></i></div>
+                ${avatarHtml}
                 <div class="bubble-wrap">
                     <div class="bubble">${formattedText}</div>
                     <div class="timestamp">Anda • ${timeString}</div>

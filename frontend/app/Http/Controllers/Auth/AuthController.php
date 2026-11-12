@@ -105,7 +105,6 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'terms' => ['accepted'],
         ], [
             'name.required' => 'Nama lengkap wajib diisi.',
             'email.required' => 'Alamat email wajib diisi.',
@@ -114,7 +113,6 @@ class AuthController extends Controller
             'password.required' => 'Kata sandi wajib diisi.',
             'password.min' => 'Kata sandi minimal 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
-            'terms.accepted' => 'Anda harus menyetujui syarat & ketentuan MediGO.',
         ]);
 
         // 1. Create local user
@@ -216,6 +214,8 @@ class AuthController extends Controller
                     'user_backend_token' => $body['access_token'] ?? null,
                     'user_backend_data' => $body['data'] ?? null,
                 ]);
+            } else {
+                $this->syncBackendLogin($email, $password);
             }
         } catch (\Exception $e) {
             Log::info('Backend register sync bypassed: ' . $e->getMessage());

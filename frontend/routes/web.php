@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BerandaController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\FaskesDetailController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\Route;
 // Public User Routes
 Route::get('/', function () {
     return view('landing');
+});
+Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+Route::get('/search/data', [SearchController::class, 'searchData'])->name('search.data');
+Route::get('/faskes/search', function () {
+    return redirect()->route('search.index', request()->query());
 });
 Route::get('/faskes', [BerandaController::class, 'index'])->name('faskes.index');
 Route::get('/faskes/load-more', [BerandaController::class, 'loadMore'])->name('faskes.loadMore');
@@ -42,6 +48,7 @@ Route::get('/chat', [ChatWebController::class, 'index'])->name('chat');
 Route::post('/chat', [ChatWebController::class, 'sendChat']);
 // User Profile & Community Routes
 Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
 Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 Route::get('/profile/comments', [ProfileController::class, 'getComments'])->name('profile.comments');
 Route::get('/discussions', [DiscussionController::class, 'index'])->name('discussions');

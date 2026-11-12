@@ -39,6 +39,7 @@ return [
     // user's API token (POST /api/auth/token-by-email). Must match the
     // backend's MEDIGO_SERVICE_KEY.
     'medigo' => [
+        'url' => env('MEDIGO_BE', 'http://127.0.0.1:8000'),
         'service_key' => env('MEDIGO_SERVICE_KEY'),
     ],
 

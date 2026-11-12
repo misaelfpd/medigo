@@ -961,6 +961,18 @@ document.addEventListener("DOMContentLoaded", function () {
         .getElementById("btnHomeLoadMore")
         ?.addEventListener("click", loadMoreHomeFaskes);
 
+    // Floating Compact Search Pill visibility on scroll
+    const floatingSearchPill = document.getElementById("floatingHomeSearchPill");
+    if (floatingSearchPill) {
+        window.addEventListener("scroll", function () {
+            if (window.scrollY > 280) {
+                floatingSearchPill.classList.add("is-visible");
+            } else {
+                floatingSearchPill.classList.remove("is-visible");
+            }
+        }, { passive: true });
+    }
+
     // Auto-detect location on load
     detectHomeLocation(true);
 });

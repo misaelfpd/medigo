@@ -48,7 +48,13 @@
             @foreach($chatHistory ?? [] as $chat)
                 <div class="msg-row {{ ($chat['role'] ?? '') === 'user' ? 'user' : 'bot' }}">
                     @if(($chat['role'] ?? '') === 'user')
-                        <div class="avatar-user"><i class="bi bi-person-fill"></i></div>
+                        @if(Auth::check() && !empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar)))
+                            <div class="avatar-user overflow-hidden p-0 border" style="width: 36px; height: 36px; border-radius: 50%;">
+                                <img src="{{ asset(Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}" class="w-100 h-100 object-fit-cover rounded-circle">
+                            </div>
+                        @else
+                            <div class="avatar-user"><i class="bi bi-person-fill"></i></div>
+                        @endif
                         <div class="bubble-wrap">
                             <div class="bubble">{!! nl2br(e($chat['message'] ?? '')) !!}</div>
                             <div class="timestamp">Anda • {{ !empty($chat['created_at']) ? \Carbon\Carbon::parse($chat['created_at'])->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : '' }}</div>
@@ -110,7 +116,8 @@
         window.MedigoConfig = {
             chatUrl: '{{ url('/chat') }}',
             loginUrl: '{{ route('login') }}',
-            csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            currentUserAvatar: @json(Auth::check() && !empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar)) ? asset(Auth::user()->avatar) : null)
         };
     </script>
     @vite('resources/js/chat.js')

@@ -134,6 +134,7 @@
                             $discImage = $discussion['gambar_diskusi'] ?? $discussion['image_path'] ?? null;
                             $discUserId = $discussion['id_user'] ?? $discussion['user_id'] ?? 0;
                             $discAuthor = $discussion['author_name'] ?? $discussion['nama_user'] ?? 'Pengguna MediGO';
+                            $discAuthorAvatar = $discussion['author_avatar'] ?? null;
                             $discCommentsCount = $discussion['comments_count'] ?? 0;
 
                             $currentUserEmail = Auth::check() ? (Auth::user()->email_user ?? Auth::user()->email ?? null) : null;
@@ -143,6 +144,18 @@
                                 (!empty($discussion['author_email']) && $currentUserEmail === $discussion['author_email']) ||
                                 ($currentUserId == $discUserId)
                             );
+
+                            // Resolusi avatar penulis
+                            $authorAvatarUrl = null;
+                            if ($isMyDisc && Auth::check() && !empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar))) {
+                                $authorAvatarUrl = asset(Auth::user()->avatar);
+                            } elseif (!empty($discAuthorAvatar)) {
+                                if (str_starts_with($discAuthorAvatar, 'http')) {
+                                    $authorAvatarUrl = $discAuthorAvatar;
+                                } elseif (file_exists(public_path($discAuthorAvatar))) {
+                                    $authorAvatarUrl = asset($discAuthorAvatar);
+                                }
+                            }
                         @endphp
 
                         <div class="col-12">
@@ -194,10 +207,17 @@
 
                                 <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                                     <div class="d-flex align-items-center gap-2">
-                                        <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
-                                             style="width: 28px; height: 28px; font-size: 0.75rem; background-color: #002b5e;">
-                                            {{ strtoupper(substr($discAuthor, 0, 1)) }}
-                                        </div>
+                                        @if($authorAvatarUrl)
+                                            <img src="{{ $authorAvatarUrl }}" 
+                                                 alt="{{ $discAuthor }}" 
+                                                 class="rounded-circle object-fit-cover border shadow-2xs" 
+                                                 style="width: 28px; height: 28px;">
+                                        @else
+                                            <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                                                 style="width: 28px; height: 28px; font-size: 0.75rem; background-color: #002b5e;">
+                                                {{ strtoupper(substr($discAuthor, 0, 1)) }}
+                                            </div>
+                                        @endif
                                         <span class="fw-semibold text-dark" style="font-size: 0.82rem;">
                                             {{ $discAuthor }}
                                         </span>

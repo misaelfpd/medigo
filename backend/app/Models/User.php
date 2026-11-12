@@ -21,8 +21,11 @@ class User extends Authenticatable
     protected $fillable = [
         'nama_user',
         'email_user',
+        'no_telp',
+        'tanggal_lahir',
         'password_user',
         'role_user',
+        'avatar',
     ];
 
     // 5. Sembunyikan password saat data user dipanggil API

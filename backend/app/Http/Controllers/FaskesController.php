@@ -714,6 +714,41 @@ class FaskesController extends Controller
      * @param  array  $params  Parameter pencarian (bisa dari $request->all() atau dari AI Function Call)
      * @return JsonResponse
      */
+    public function getFilterOptions(): JsonResponse
+    {
+        $kota = DB::table('faskes')
+            ->whereNotNull('kota_kabupaten')
+            ->where('kota_kabupaten', '!=', '')
+            ->distinct()
+            ->orderBy('kota_kabupaten', 'asc')
+            ->pluck('kota_kabupaten');
+
+        $kelas = DB::table('faskes')
+            ->whereNotNull('kelas')
+            ->where('kelas', '!=', '')
+            ->distinct()
+            ->orderBy('kelas', 'asc')
+            ->pluck('kelas');
+
+        $fasilitas = DB::table('fasilitas')
+            ->orderBy('nama_fasilitas', 'asc')
+            ->get(['id_fasilitas', 'nama_fasilitas']);
+
+        $spesialisasi = DB::table('spesialisasi')
+            ->orderBy('nama_spesialisasi', 'asc')
+            ->get(['id_spesialisasi', 'nama_spesialisasi']);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'kota' => $kota,
+                'kelas' => $kelas,
+                'fasilitas' => $fasilitas,
+                'spesialisasi' => $spesialisasi,
+            ],
+        ]);
+    }
+
     public function searchFaskes(Request $request)
     {
         // Mendukung input dari Request HTTP biasa maupun array langsung dari AI Function Calling
@@ -724,7 +759,6 @@ class FaskesController extends Controller
         // 1. Filter Berdasarkan Daerah Saya (Koordinat GPS & Radius)
         $lat = $params['lat'] ?? null;
         $lng = $params['lng'] ?? null;
-        $radius = $params['radius'] ?? 5; // Default radius 5 km jika tidak diisi
 
         if ($lat && $lng) {
             $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
@@ -734,8 +768,8 @@ class FaskesController extends Controller
                 ->whereNotNull('faskes.latitude')
                 ->whereNotNull('faskes.longitude');
 
-            if (isset($params['radius'])) {
-                $query->having('distance_km', '<=', (float) $radius);
+            if (!empty($params['radius'])) {
+                $query->having('distance_km', '<=', (float) $params['radius']);
             }
 
             $query->orderBy('distance_km', 'asc');
@@ -743,49 +777,106 @@ class FaskesController extends Controller
             $query->select('faskes.*')->orderBy('faskes.id_faskes', 'asc');
         }
 
-        // 2. Filter Berdasarkan Kota atau Kabupaten (Poin 2)
+        // 2. Filter Keyword / Nama Faskes (Pencarian Nama, Alamat, atau Wilayah)
+        if (! empty($params['q']) || ! empty($params['search']) || ! empty($params['nama']) || ! empty($params['nama_faskes'])) {
+            $keyword = trim($params['q'] ?? ($params['search'] ?? ($params['nama'] ?? $params['nama_faskes'])));
+            $cleanWords = array_values(array_filter(explode(' ', preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $keyword)), fn($w) => mb_strlen(trim($w)) >= 2));
+            
+            $query->where(function ($sub) use ($keyword, $cleanWords) {
+                $sub->where('faskes.nama_faskes', 'like', "%{$keyword}%")
+                    ->orWhere('faskes.alamat_faskes', 'like', "%{$keyword}%")
+                    ->orWhere('faskes.kota_kabupaten', 'like', "%{$keyword}%");
+
+                if (count($cleanWords) > 1) {
+                    $sub->orWhere(function ($wordSub) use ($cleanWords) {
+                        foreach ($cleanWords as $w) {
+                            $wordSub->where(function ($ws) use ($w) {
+                                $ws->where('faskes.nama_faskes', 'like', "%{$w}%")
+                                   ->orWhere('faskes.alamat_faskes', 'like', "%{$w}%")
+                                   ->orWhere('faskes.kota_kabupaten', 'like', "%{$w}%");
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // 3. Filter Berdasarkan Kota atau Kabupaten
         if (! empty($params['kota_kabupaten'])) {
             $query->where('faskes.kota_kabupaten', 'like', "%{$params['kota_kabupaten']}%");
         }
 
-        // 3. Filter Berdasarkan Spesialisasi Tertentu (Poin 3)
-        // Menerima nama spesialisasi (misal: "Anak", "Jantung", "Penyakit Dalam")
+        // 4. Filter Berdasarkan Spesialisasi Tertentu
         if (! empty($params['spesialisasi'])) {
-            $spesialisasi = $params['spesialisasi'];
-            $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
-                ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
-                ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spesialisasi}%");
+            $spesialisasiList = is_array($params['spesialisasi']) ? $params['spesialisasi'] : explode(',', $params['spesialisasi']);
+            $spesialisasiList = array_filter(array_map('trim', $spesialisasiList));
+            if (! empty($spesialisasiList)) {
+                $query->whereExists(function ($sub) use ($spesialisasiList) {
+                    $sub->select(DB::raw(1))
+                        ->from('spesialisasi_faskes')
+                        ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                        ->whereColumn('spesialisasi_faskes.id_faskes', 'faskes.id_faskes')
+                        ->where(function ($w) use ($spesialisasiList) {
+                            foreach ($spesialisasiList as $sp) {
+                                if (is_numeric($sp)) {
+                                    $w->orWhere('spesialisasi.id_spesialisasi', (int) $sp);
+                                } else {
+                                    $w->orWhere('spesialisasi.nama_spesialisasi', 'like', "%{$sp}%");
+                                }
+                            }
+                        });
+                });
+            }
         }
 
-        // 4. Filter Berdasarkan Fasilitas Penunjang Tertentu (Poin 4)
-        // Menerima nama fasilitas (misal: "IGD", "Laboratorium", "Radiologi", "ICU")
+        // 5. Filter Berdasarkan Fasilitas Penunjang Tertentu
         if (! empty($params['fasilitas'])) {
-            $fasilitas = $params['fasilitas'];
-            $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
-                ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
-                ->where('fasilitas.nama_fasilitas', 'like', "%{$fasilitas}%");
+            $fasilitasList = is_array($params['fasilitas']) ? $params['fasilitas'] : explode(',', $params['fasilitas']);
+            $fasilitasList = array_filter(array_map('trim', $fasilitasList));
+            if (! empty($fasilitasList)) {
+                $query->whereExists(function ($sub) use ($fasilitasList) {
+                    $sub->select(DB::raw(1))
+                        ->from('fasilitas_faskes')
+                        ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                        ->whereColumn('fasilitas_faskes.id_faskes', 'faskes.id_faskes')
+                        ->where(function ($w) use ($fasilitasList) {
+                            foreach ($fasilitasList as $fas) {
+                                if (is_numeric($fas)) {
+                                    $w->orWhere('fasilitas.id_fasilitas', (int) $fas);
+                                } else {
+                                    $w->orWhere('fasilitas.nama_fasilitas', 'like', "%{$fas}%");
+                                }
+                            }
+                        });
+                });
+            }
         }
 
-        // 5. Filter Support BPJS (Poin 6)
-        if (isset($params['is_support_bpjs']) && $params['is_support_bpjs'] !== '') {
-            $bpjsVal = filter_var($params['is_support_bpjs'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-            $query->where('faskes.is_support_bpjs', $bpjsVal);
+        // 6. Filter Support BPJS
+        $bpjsInput = $params['is_support_bpjs'] ?? ($params['_support_bpjs'] ?? ($params['bpjs'] ?? null));
+        if ($bpjsInput !== null && $bpjsInput !== '') {
+            $bpjsVal = filter_var($bpjsInput, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            $query->where('faskes._support_bpjs', $bpjsVal);
         }
 
-        // 7. Filter Kelas Faskes (Poin 7 - misal: Kelas A, B, C, D)
+        // 7. Filter Kelas Faskes (Kelas A, B, C, D)
         if (! empty($params['kelas'])) {
             $query->where('faskes.kelas', 'like', "%{$params['kelas']}%");
         }
 
-        // 8. Filter Jenis Faskes (Poin 8 - Rumah Sakit, Klinik, Puskesmas)
+        // 8. Filter Jenis Faskes (Rumah Sakit, Klinik, Puskesmas)
         if (! empty($params['jenis_faskes'])) {
             $jenis = $params['jenis_faskes'];
             $query->where('faskes.jenis_faskes', 'like', "%{$jenis}%");
         }
 
-        // Batasi hasil maksimal untuk AI / Filtering (default 10)
-        $limit = min((int) ($params['limit'] ?? 10), 50);
-        $faskesList = $query->distinct()->limit($limit)->get();
+        // Batasi hasil maksimal
+        $limit = min((int) ($params['limit'] ?? 30), 100);
+        $page = max((int) ($params['page'] ?? 1), 1);
+        $offset = ($page - 1) * $limit;
+
+        $total = $query->distinct()->count('faskes.id_faskes');
+        $faskesList = $query->distinct()->offset($offset)->limit($limit)->get();
 
         // Transformasi tambahan (slug, rating, dll)
         $faskesList->transform(function ($item) {
@@ -802,7 +893,10 @@ class FaskesController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Data faskes berhasil ditemukan',
-            'total' => $faskesList->count(),
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+            'has_more' => ($page * $limit) < $total,
             'data' => $faskesList,
         ]);
     }
