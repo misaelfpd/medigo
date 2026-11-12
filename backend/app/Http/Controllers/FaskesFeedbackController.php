@@ -15,9 +15,24 @@ class FaskesFeedbackController extends Controller
     public function store(Request $request, $faskes_id)
     {
         $faskes = DB::table('faskes')->where('id_faskes', $faskes_id)->first();
-        if (!$faskes) {
+        if (! $faskes) {
             return response()->json(['status' => 'error', 'message' => 'Fasilitas kesehatan tidak ditemukan.'], 404);
         }
+
+        // Support both English and Indonesian input names
+        $kategori = $request->input('category', $request->input('kategori'));
+        $catatan = $request->input('notes', $request->input('catatan'));
+        $saranKoreksi = $request->input('suggested_correction', $request->input('saran_koreksi'));
+        $userName = $request->input('user_name', $request->input('nama_pengguna'));
+        $userEmail = $request->input('user_email', $request->input('email_pengguna'));
+
+        $request->merge([
+            'category' => $kategori,
+            'notes' => $catatan,
+            'suggested_correction' => $saranKoreksi,
+            'user_name' => $userName,
+            'user_email' => $userEmail,
+        ]);
 
         $request->validate([
             'category' => 'required|string|max:100',
@@ -25,11 +40,12 @@ class FaskesFeedbackController extends Controller
             'suggested_correction' => 'nullable|string|max:1000',
             'user_name' => 'nullable|string|max:150',
             'user_email' => 'nullable|email|max:150',
+        ], [
+            'category.required' => 'Kategori masukan/laporan wajib dipilih.',
+            'notes.required' => 'Catatan laporan mengenai faskes wajib diisi.',
         ]);
 
         $userId = null;
-        $userName = $request->input('user_name');
-        $userEmail = $request->input('user_email');
 
         // Check if user is authenticated via Sanctum token
         if ($request->user()) {
@@ -51,9 +67,9 @@ class FaskesFeedbackController extends Controller
             'id_user' => $userId,
             'nama_pengguna' => $userName ?: 'Pengguna Anonim',
             'email_pengguna' => $userEmail,
-            'kategori' => $request->input('category'),
-            'catatan' => $request->input('notes'),
-            'saran_koreksi' => $request->input('suggested_correction'),
+            'kategori' => $kategori,
+            'catatan' => $catatan,
+            'saran_koreksi' => $saranKoreksi,
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),
@@ -64,7 +80,7 @@ class FaskesFeedbackController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Terima kasih! Masukan Anda mengenai data fasilitas kesehatan ini berhasil dikirim dan akan segera ditinjau oleh tim admin.',
-            'data' => $feedback
+            'data' => $feedback,
         ], 201);
     }
 
@@ -73,7 +89,7 @@ class FaskesFeedbackController extends Controller
      */
     public function indexAdmin(Request $request)
     {
-        $feedbacks = DB::table('feedback_faskes')
+        $query = DB::table('feedback_faskes')
             ->join('faskes', 'feedback_faskes.id_faskes', '=', 'faskes.id_faskes')
             ->leftJoin('user', 'feedback_faskes.id_user', '=', 'user.id_user')
             ->select(
@@ -86,38 +102,91 @@ class FaskesFeedbackController extends Controller
                 'faskes._support_bpjs as faskes_bpjs',
                 'user.nama_user as registered_user_name',
                 'user.email_user as registered_user_email'
-            )
-            ->orderBy('feedback_faskes.created_at', 'desc')
-            ->get();
+            );
+
+        if ($request->filled('status')) {
+            $query->where('feedback_faskes.status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('faskes.nama_faskes', 'like', "%{$s}%")
+                    ->orWhere('feedback_faskes.catatan', 'like', "%{$s}%")
+                    ->orWhere('feedback_faskes.nama_pengguna', 'like', "%{$s}%")
+                    ->orWhere('feedback_faskes.kategori', 'like', "%{$s}%");
+            });
+        }
+
+        $feedbacks = $query->orderBy('feedback_faskes.created_at', 'desc')->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => $feedbacks
+            'total' => $feedbacks->count(),
+            'data' => $feedbacks,
         ]);
     }
 
     /**
-     * Admin: Update status of a feedback (resolved, dismissed)
+     * Admin: Show detail of a single feedback
+     */
+    public function show($id)
+    {
+        $feedback = DB::table('feedback_faskes')
+            ->join('faskes', 'feedback_faskes.id_faskes', '=', 'faskes.id_faskes')
+            ->leftJoin('user', 'feedback_faskes.id_user', '=', 'user.id_user')
+            ->where('feedback_faskes.id_feedback_faskes', $id)
+            ->select(
+                'feedback_faskes.*',
+                'faskes.nama_faskes',
+                'faskes.jenis_faskes as faskes_tipe',
+                'faskes.kota_kabupaten',
+                'faskes.alamat_faskes as faskes_alamat',
+                'user.nama_user as registered_user_name',
+                'user.email_user as registered_user_email'
+            )
+            ->first();
+
+        if (! $feedback) {
+            return response()->json(['status' => 'error', 'message' => 'Masukan data faskes tidak ditemukan.'], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $feedback,
+        ]);
+    }
+
+    /**
+     * Admin: Update status of a feedback (resolved, dismissed, pending)
      */
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:pending,resolved,dismissed',
-            'catatan_admin' => 'nullable|string|max:1000'
-        ]);
-
         $feedback = DB::table('feedback_faskes')->where('id_feedback_faskes', $id)->first();
-        if (!$feedback) {
+        if (! $feedback) {
             return response()->json(['status' => 'error', 'message' => 'Feedback tidak ditemukan.'], 404);
         }
 
+        $request->validate([
+            'status' => 'required|string',
+            'catatan_admin' => 'nullable|string|max:1000',
+            'admin_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $statusInput = strtolower(trim($request->input('status')));
+        $mappedStatus = in_array($statusInput, ['resolved', 'applied', 'reviewed', 'selesai', 'diterima'])
+            ? 'resolved'
+            : (in_array($statusInput, ['dismissed', 'rejected', 'tolak', 'abaikan', 'ditolak']) ? 'dismissed' : 'pending');
+
+        $adminNotes = $request->input('catatan_admin', $request->input('admin_notes'));
+
         $updateData = [
-            'status' => $request->input('status'),
+            'status' => $mappedStatus,
             'updated_at' => now(),
         ];
 
-        if ($request->has('catatan_admin')) {
-            $updateData['catatan_admin'] = $request->input('catatan_admin');
+        if ($adminNotes !== null) {
+            $updateData['catatan_admin'] = $adminNotes;
         }
 
         DB::table('feedback_faskes')->where('id_feedback_faskes', $id)->update($updateData);
@@ -127,7 +196,25 @@ class FaskesFeedbackController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Status masukan data faskes berhasil diperbarui.',
-            'data' => $updatedFeedback
+            'data' => $updatedFeedback,
+        ]);
+    }
+
+    /**
+     * Admin: Delete a feedback
+     */
+    public function destroy(Request $request, $id)
+    {
+        $feedback = DB::table('feedback_faskes')->where('id_feedback_faskes', $id)->first();
+        if (! $feedback) {
+            return response()->json(['status' => 'error', 'message' => 'Feedback tidak ditemukan.'], 404);
+        }
+
+        DB::table('feedback_faskes')->where('id_feedback_faskes', $id)->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Masukan data faskes berhasil dihapus.',
         ]);
     }
 }

@@ -417,9 +417,15 @@ class FaskesCommentController extends Controller
      */
     public function report(Request $request, $id)
     {
+        $reason = $request->input('reason', $request->input('alasan_laporan'));
+        $notes = $request->input('notes', $request->input('catatan_tambahan'));
+        $request->merge(['reason' => $reason, 'notes' => $notes]);
+
         $request->validate([
             'reason' => 'required|string|max:150',
             'notes' => 'nullable|string|max:1000',
+        ], [
+            'reason.required' => 'Alasan laporan ulasan wajib diisi.',
         ]);
 
         $comment = DB::table('komentar')->where('id_komentar', $id)->first();
@@ -459,19 +465,22 @@ class FaskesCommentController extends Controller
             ]);
         }
 
-        DB::table('laporan_komentar')->insert([
+        $reportId = DB::table('laporan_komentar')->insertGetId([
             'id_komentar' => $id,
             'id_user' => $currentUserId,
-            'alasan_laporan' => $request->input('reason'),
-            'catatan_tambahan' => $request->input('notes'),
+            'alasan_laporan' => $reason,
+            'catatan_tambahan' => $notes,
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
+        $report = DB::table('laporan_komentar')->where('id_laporan_komentar', $reportId)->first();
+
         return response()->json([
             'status' => 'success',
             'message' => 'Laporan berhasil dikirim. Terima kasih atas bantuan Anda menjaga komunitas MediGO tetap aman dan sopan.',
+            'data' => $report,
         ], 201);
     }
 
@@ -480,7 +489,7 @@ class FaskesCommentController extends Controller
      */
     public function indexAdminReports(Request $request)
     {
-        $reports = DB::table('laporan_komentar')
+        $query = DB::table('laporan_komentar')
             ->join('user as reporter', 'laporan_komentar.id_user', '=', 'reporter.id_user')
             ->leftJoin('komentar', 'laporan_komentar.id_komentar', '=', 'komentar.id_komentar')
             ->leftJoin('faskes', 'komentar.id_faskes', '=', 'faskes.id_faskes')
@@ -496,13 +505,64 @@ class FaskesCommentController extends Controller
                 'komentar.created_at as comment_created_at',
                 'author.nama_user as author_name',
                 'author.email_user as author_email'
-            )
-            ->orderBy('laporan_komentar.created_at', 'desc')
-            ->get();
+            );
+
+        if ($request->filled('status')) {
+            $query->where('laporan_komentar.status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('komentar.isi_komentar', 'like', "%{$s}%")
+                    ->orWhere('laporan_komentar.alasan_laporan', 'like', "%{$s}%")
+                    ->orWhere('faskes.nama_faskes', 'like', "%{$s}%")
+                    ->orWhere('reporter.nama_user', 'like', "%{$s}%")
+                    ->orWhere('author.nama_user', 'like', "%{$s}%");
+            });
+        }
+
+        $reports = $query->orderBy('laporan_komentar.created_at', 'desc')->get();
 
         return response()->json([
             'status' => 'success',
+            'total' => $reports->count(),
             'data' => $reports,
+        ]);
+    }
+
+    /**
+     * Admin: Show detail of a single reported comment
+     */
+    public function showReportAdmin($id)
+    {
+        $report = DB::table('laporan_komentar')
+            ->join('user as reporter', 'laporan_komentar.id_user', '=', 'reporter.id_user')
+            ->leftJoin('komentar', 'laporan_komentar.id_komentar', '=', 'komentar.id_komentar')
+            ->leftJoin('faskes', 'komentar.id_faskes', '=', 'faskes.id_faskes')
+            ->leftJoin('user as author', 'komentar.id_user', '=', 'author.id_user')
+            ->where('laporan_komentar.id_laporan_komentar', $id)
+            ->select(
+                'laporan_komentar.*',
+                'reporter.nama_user as reporter_name',
+                'reporter.email_user as reporter_email',
+                'faskes.nama_faskes',
+                'faskes.kota_kabupaten',
+                'komentar.isi_komentar as comment_body',
+                'komentar.rating as comment_rating',
+                'komentar.created_at as comment_created_at',
+                'author.nama_user as author_name',
+                'author.email_user as author_email'
+            )
+            ->first();
+
+        if (! $report) {
+            return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $report,
         ]);
     }
 
@@ -512,20 +572,18 @@ class FaskesCommentController extends Controller
     public function takedownReportAdmin(Request $request, $id)
     {
         $report = DB::table('laporan_komentar')->where('id_laporan_komentar', $id)->first();
-        if (! $report) {
-            return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
-        }
+        $komentarId = $report ? $report->id_komentar : $id;
 
-        $comment = DB::table('komentar')->where('id_komentar', $report->id_komentar)->first();
+        $comment = DB::table('komentar')->where('id_komentar', $komentarId)->first();
         if ($comment) {
             $faskesId = $comment->id_faskes;
-            DB::table('komentar')->where('id_komentar', $report->id_komentar)->delete();
+            DB::table('komentar')->where('id_komentar', $komentarId)->delete();
             $this->getRatingBreakdownStats($faskesId);
         }
 
         // Mark all reports for this comment as resolved
         DB::table('laporan_komentar')
-            ->where('id_komentar', $report->id_komentar)
+            ->where('id_komentar', $komentarId)
             ->update([
                 'status' => 'resolved',
                 'updated_at' => now(),
@@ -534,9 +592,9 @@ class FaskesCommentController extends Controller
         // Optional activity log
         try {
             DB::table('log_aktivitas')->insert([
-                'id_user' => $request->user() ? ($request->user()->id_user ?? $request->user()->id) : $report->id_user,
+                'id_user' => $request->user() ? ($request->user()->id_user ?? $request->user()->id) : ($report->id_user ?? null),
                 'tipe_aksi' => 'Takedown Komentar Faskes',
-                'deskripsi' => 'Admin menghapus komentar ulasan faskes ID: '.$report->id_komentar.' karena laporan pengguna.',
+                'deskripsi' => 'Admin menghapus komentar ulasan faskes ID: '.$komentarId.' karena laporan pengguna.',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -545,7 +603,7 @@ class FaskesCommentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Komentar berhasil di-takedown dan dihapus dari fasilitas kesehatan.',
+            'message' => 'Komentar ulasan faskes berhasil di-takedown dan dihapus dari fasilitas kesehatan.',
         ]);
     }
 
@@ -556,6 +614,19 @@ class FaskesCommentController extends Controller
     {
         $report = DB::table('laporan_komentar')->where('id_laporan_komentar', $id)->first();
         if (! $report) {
+            $count = DB::table('laporan_komentar')->where('id_komentar', $id)->count();
+            if ($count > 0) {
+                DB::table('laporan_komentar')->where('id_komentar', $id)->update([
+                    'status' => 'dismissed',
+                    'updated_at' => now(),
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Semua laporan ulasan faskes terkait berhasil diabaikan/ditandai tidak melanggar aturan.',
+                ]);
+            }
+
             return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
         }
 
@@ -566,7 +637,7 @@ class FaskesCommentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Laporan berhasil diabaikan/ditandai tidak melanggar aturan.',
+            'message' => 'Laporan ulasan faskes berhasil diabaikan/ditandai tidak melanggar aturan.',
         ]);
     }
 }

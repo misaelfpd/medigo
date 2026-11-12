@@ -6,6 +6,7 @@ use App\Models\TanggapanDiskusi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class DiscussionCommentController extends Controller
 {
@@ -19,7 +20,7 @@ class DiscussionCommentController extends Controller
 
         $discussionExists = DB::table('diskusi')
             ->where('id_diskusi', $discussion_id)
-            ->where('status_diskusi', 'active') // Asumsi pakai 'status_diskusi' di tabel baru
+            ->where('status_diskusi', 'active')
             ->exists();
 
         if (! $discussionExists) {
@@ -54,17 +55,34 @@ class DiscussionCommentController extends Controller
 
     public function report(Request $request, $id)
     {
+        $reason = $request->input('reason', $request->input('alasan_laporan'));
+        $request->merge(['reason' => $reason]);
+
         $request->validate([
             'reason' => 'required|string|max:1000',
+        ], [
+            'reason.required' => 'Alasan laporan komentar wajib diisi.',
         ]);
 
         $comment = DB::table('tanggapan_diskusi')->where('id_tanggapan', $id)->first();
 
         if (! $comment) {
-            return response()->json(['message' => 'Komentar tidak ditemukan'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Komentar tidak ditemukan.'], 404);
         }
 
-        $currentUserId = $request->user()->id_user ?? $request->user()->id;
+        $currentUser = $request->user();
+        if (! $currentUser && ($bearer = $request->bearerToken())) {
+            $tokenObj = PersonalAccessToken::findToken($bearer);
+            if ($tokenObj && $tokenObj->tokenable) {
+                $currentUser = $tokenObj->tokenable;
+            }
+        }
+
+        if (! $currentUser) {
+            return response()->json(['status' => 'error', 'message' => 'Silakan masuk terlebih dahulu untuk melaporkan komentar.'], 401);
+        }
+
+        $currentUserId = $currentUser->id_user ?? $currentUser->id;
 
         if ((int) $comment->id_user === (int) $currentUserId) {
             return response()->json([
@@ -81,28 +99,31 @@ class DiscussionCommentController extends Controller
         if ($alreadyReported) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Anda sudah pernah melaporkan komentar ini sebelumnya. Laporan Anda sedang dalam antrean peninjauan.',
+                'message' => 'Anda sudah pernah melaporkan komentar ini sebelumnya. Laporan Anda sedang dalam antrean peninjauan admin.',
             ]);
         }
 
-        DB::table('laporan_tanggapan')->insert([
+        $reportId = DB::table('laporan_tanggapan')->insertGetId([
             'id_tanggapan' => $id,
             'id_user' => $currentUserId,
-            'alasan_laporan' => $request->input('reason'),
+            'alasan_laporan' => $reason,
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
+        $report = DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $reportId)->first();
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Laporan komentar berhasil dikirim dan akan segera ditinjau.',
+            'message' => 'Laporan komentar diskusi berhasil dikirim dan akan segera ditinjau oleh admin.',
+            'data' => $report,
         ], 201);
     }
 
     public function destroy(Request $request, $id)
     {
-        $comment = TanggapanDiskusi::find($id); // Modelnya wajib disesuaikan dengan tabel tanggapan_diskusi
+        $comment = TanggapanDiskusi::find($id);
         if (! $comment) {
             return response()->json(['status' => 'error', 'message' => 'Komentar tidak ditemukan'], 404);
         }
@@ -124,5 +145,163 @@ class DiscussionCommentController extends Controller
         $comment->delete();
 
         return response()->json(['status' => 'success', 'message' => 'Balasan berhasil dihapus']);
+    }
+
+    /**
+     * Admin: List all reported discussion comments
+     */
+    public function indexAdminReports(Request $request)
+    {
+        $query = DB::table('laporan_tanggapan')
+            ->join('user as reporter', 'laporan_tanggapan.id_user', '=', 'reporter.id_user')
+            ->leftJoin('tanggapan_diskusi', 'laporan_tanggapan.id_tanggapan', '=', 'tanggapan_diskusi.id_tanggapan')
+            ->leftJoin('diskusi', 'tanggapan_diskusi.id_diskusi', '=', 'diskusi.id_diskusi')
+            ->leftJoin('user as author', 'tanggapan_diskusi.id_user', '=', 'author.id_user')
+            ->select(
+                'laporan_tanggapan.*',
+                'reporter.nama_user as reporter_name',
+                'reporter.email_user as reporter_email',
+                'diskusi.id_diskusi',
+                'diskusi.judul_diskusi as discussion_title',
+                'tanggapan_diskusi.isi_tanggapan as comment_body',
+                'tanggapan_diskusi.gambar_tanggapan as comment_image',
+                'tanggapan_diskusi.created_at as comment_created_at',
+                'author.nama_user as author_name',
+                'author.email_user as author_email'
+            );
+
+        if ($request->filled('status')) {
+            $query->where('laporan_tanggapan.status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('tanggapan_diskusi.isi_tanggapan', 'like', "%{$s}%")
+                    ->orWhere('laporan_tanggapan.alasan_laporan', 'like', "%{$s}%")
+                    ->orWhere('reporter.nama_user', 'like', "%{$s}%")
+                    ->orWhere('diskusi.judul_diskusi', 'like', "%{$s}%");
+            });
+        }
+
+        $reports = $query->orderBy('laporan_tanggapan.created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Berhasil mengambil daftar laporan komentar diskusi',
+            'total' => $reports->count(),
+            'data' => $reports,
+        ]);
+    }
+
+    /**
+     * Admin: Show detail of a single discussion comment report
+     */
+    public function showReportAdmin($id)
+    {
+        $report = DB::table('laporan_tanggapan')
+            ->join('user as reporter', 'laporan_tanggapan.id_user', '=', 'reporter.id_user')
+            ->leftJoin('tanggapan_diskusi', 'laporan_tanggapan.id_tanggapan', '=', 'tanggapan_diskusi.id_tanggapan')
+            ->leftJoin('diskusi', 'tanggapan_diskusi.id_diskusi', '=', 'diskusi.id_diskusi')
+            ->leftJoin('user as author', 'tanggapan_diskusi.id_user', '=', 'author.id_user')
+            ->where('laporan_tanggapan.id_laporan_tanggapan', $id)
+            ->select(
+                'laporan_tanggapan.*',
+                'reporter.nama_user as reporter_name',
+                'reporter.email_user as reporter_email',
+                'diskusi.id_diskusi',
+                'diskusi.judul_diskusi as discussion_title',
+                'tanggapan_diskusi.isi_tanggapan as comment_body',
+                'tanggapan_diskusi.created_at as comment_created_at',
+                'author.nama_user as author_name',
+                'author.email_user as author_email'
+            )
+            ->first();
+
+        if (! $report) {
+            return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $report,
+        ]);
+    }
+
+    /**
+     * Admin: Takedown/Delete a reported discussion comment
+     */
+    public function takedownReportAdmin(Request $request, $id)
+    {
+        $report = DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->first();
+        $tanggapanId = $report ? $report->id_tanggapan : $id;
+
+        $comment = DB::table('tanggapan_diskusi')->where('id_tanggapan', $tanggapanId)->first();
+        if ($comment) {
+            if ($comment->gambar_tanggapan) {
+                $path = str_replace(url('storage/'), '', $comment->gambar_tanggapan);
+                Storage::disk('public')->delete($path);
+            }
+            DB::table('tanggapan_diskusi')->where('id_tanggapan', $tanggapanId)->delete();
+        }
+
+        // Mark all reports for this discussion comment as resolved
+        DB::table('laporan_tanggapan')
+            ->where('id_tanggapan', $tanggapanId)
+            ->update([
+                'status' => 'resolved',
+                'updated_at' => now(),
+            ]);
+
+        $adminId = $request->user() ? ($request->user()->id_user ?? $request->user()->id) : null;
+        try {
+            DB::table('log_aktivitas')->insert([
+                'id_user' => $adminId,
+                'tipe_aksi' => 'Takedown Komentar Diskusi',
+                'deskripsi' => 'Admin menghapus tanggapan/komentar diskusi ID: '.$tanggapanId.' karena laporan pengguna.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Komentar diskusi berhasil di-takedown dan semua laporan terkait ditandai selesai.',
+        ]);
+    }
+
+    /**
+     * Admin: Dismiss a discussion comment report
+     */
+    public function dismissReportAdmin(Request $request, $id)
+    {
+        $report = DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->first();
+        if (! $report) {
+            $count = DB::table('laporan_tanggapan')->where('id_tanggapan', $id)->count();
+            if ($count > 0) {
+                DB::table('laporan_tanggapan')->where('id_tanggapan', $id)->update([
+                    'status' => 'dismissed',
+                    'updated_at' => now(),
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Laporan komentar diskusi berhasil diabaikan/ditandai tidak melanggar.',
+                ]);
+            }
+
+            return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
+        }
+
+        DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->update([
+            'status' => 'dismissed',
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Laporan komentar diskusi berhasil diabaikan/ditandai tidak melanggar.',
+        ]);
     }
 }

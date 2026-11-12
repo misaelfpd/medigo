@@ -31,6 +31,7 @@ Route::get('/fasilitas', [FaskesFeatureController::class, 'getAllFacilities']);
 Route::get('/spesialisasi', [FaskesFeatureController::class, 'getAllSpecialties']);
 Route::get('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'index']);
 Route::post('/faskes/{faskes_id}/feedback', [FaskesFeedbackController::class, 'store']);
+Route::post('/faskes/{faskes_id}/report', [FaskesFeedbackController::class, 'store']);
 
 // Rute Forum Diskusi (Public)
 Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat semua diskusi
@@ -78,8 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/discussion-comments/{id}', [DiscussionCommentController::class, 'destroy']);          // Hapus balasan diskusi sendiri / admin
     // Catatan integrasi frontend: '/comments/{id}/report' digunakan untuk melaporkan balasan DISKUSI (tabel tanggapan_diskusi)
     Route::post('/comments/{id}/report', [DiscussionCommentController::class, 'report']);
-
-
+    Route::post('/discussion-comments/{id}/report', [DiscussionCommentController::class, 'report']);
 
     // Rute Admin Dashboard Log (Wajib Login + Wajib Admin)
     Route::middleware(AdminMiddleware::class)->group(function () {
@@ -97,13 +97,32 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/spesialisasi', [FaskesFeatureController::class, 'storeSpecialty']);
         Route::post('/admin/spesialisasi', [FaskesFeatureController::class, 'storeSpecialty']);
 
+        // 1. Admin Moderasi Laporan Diskusi (Topik)
         Route::get('/admin/discussion-reports', [DiscussionReportController::class, 'indexAdmin']);
+        Route::get('/admin/discussion-reports/{id}', [DiscussionReportController::class, 'show']);
         Route::post('/admin/discussions/{id}/takedown', [DiscussionReportController::class, 'takedown']);
+        Route::post('/admin/discussion-reports/{id}/takedown', [DiscussionReportController::class, 'takedown']);
+        Route::post('/admin/discussions/{id}/dismiss', [DiscussionReportController::class, 'dismiss']);
+        Route::post('/admin/discussion-reports/{id}/dismiss', [DiscussionReportController::class, 'dismiss']);
+        Route::delete('/admin/discussion-reports/{id}', [DiscussionReportController::class, 'destroy']);
 
-        // Admin Faskes Feedback & Comment Moderation
+        // 2. Admin Moderasi Laporan Tanggapan / Komentar Diskusi
+        Route::get('/admin/discussion-comment-reports', [DiscussionCommentController::class, 'indexAdminReports']);
+        Route::get('/admin/discussion-comment-reports/{id}', [DiscussionCommentController::class, 'showReportAdmin']);
+        Route::post('/admin/discussion-comments/{id}/takedown', [DiscussionCommentController::class, 'takedownReportAdmin']);
+        Route::post('/admin/discussion-comment-reports/{id}/takedown', [DiscussionCommentController::class, 'takedownReportAdmin']);
+        Route::post('/admin/discussion-comments/{id}/dismiss', [DiscussionCommentController::class, 'dismissReportAdmin']);
+        Route::post('/admin/discussion-comment-reports/{id}/dismiss', [DiscussionCommentController::class, 'dismissReportAdmin']);
+
+        // 3. Admin Moderasi Masukan / Laporan Data Faskes
         Route::get('/admin/faskes-feedbacks', [FaskesFeedbackController::class, 'indexAdmin']);
+        Route::get('/admin/faskes-feedbacks/{id}', [FaskesFeedbackController::class, 'show']);
         Route::put('/admin/faskes-feedbacks/{id}/status', [FaskesFeedbackController::class, 'updateStatus']);
+        Route::delete('/admin/faskes-feedbacks/{id}', [FaskesFeedbackController::class, 'destroy']);
+
+        // 4. Admin Moderasi Laporan Komentar / Ulasan Faskes
         Route::get('/admin/faskes-comment-reports', [FaskesCommentController::class, 'indexAdminReports']);
+        Route::get('/admin/faskes-comment-reports/{id}', [FaskesCommentController::class, 'showReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/takedown', [FaskesCommentController::class, 'takedownReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/dismiss', [FaskesCommentController::class, 'dismissReportAdmin']);
     });
