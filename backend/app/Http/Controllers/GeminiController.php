@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Faskes;
 use App\Models\GeminiChat;
 use App\Services\GeminiClient;
+use App\Services\RoadDistanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -334,7 +335,14 @@ PROMPT;
             });
         }
 
-        $results = $query->distinct()->limit(4)->get();
+        $hasCoords = ! empty($args['lat']) && ! empty($args['lng']);
+        $results = $query->distinct()->limit($hasCoords ? 10 : 4)->get();
+
+        if ($hasCoords) {
+            $results = RoadDistanceService::applyToCollection($results, (float) $args['lat'], (float) $args['lng'])
+                ->take(4)
+                ->values();
+        }
 
         // Format setiap item agar menyertakan link maps & alamat yang rapi
         return $results->map(function ($faskes) {
