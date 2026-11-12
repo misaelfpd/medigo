@@ -44,6 +44,9 @@ PROMPT;
 
     private const HISTORY_LIMIT = 20;
     private const MAX_TOOL_ROUNDS = 3;
+    private const SESSION_HOURS = 24;     // Memori & jatah reset 24 jam sejak chat pertama sesi
+    private const USER_PROMPT_LIMIT = 100; // Jatah prompt user login per sesi 24 jam
+    private const GUEST_PROMPT_LIMIT = 6;  // Jatah prompt tamu (tidak reset, sampai session tamu habis)
     private const UNAVAILABLE = 'Maaf, Asisten Medigo sedang tidak tersedia. Coba lagi beberapa saat ya.';
 
     public function chat(Request $request, GeminiClient $gemini): JsonResponse
@@ -54,6 +57,7 @@ PROMPT;
             'longitude' => 'nullable|numeric|between:-180,180',
             'lat' => 'nullable|numeric|between:-90,90',
             'lng' => 'nullable|numeric|between:-180,180',
+            'guest_id' => 'nullable|string|max:64',
         ]);
 
         if (! $gemini->isConfigured()) {
@@ -63,21 +67,65 @@ PROMPT;
         $userMessage = $request->input('message');
         $lat = $request->filled('lat') ? (float) $request->input('lat') : ($request->filled('latitude') ? (float) $request->input('latitude') : null);
         $lng = $request->filled('lng') ? (float) $request->input('lng') : ($request->filled('longitude') ? (float) $request->input('longitude') : null);
-        $user = $request->user();
-        $userId = $user ? $user->id_user : null;
 
-        $contents = [];
+        // Route ini publik (di luar auth:sanctum), jadi guard sanctum harus disebut eksplisit
+        // agar Bearer token user login terbaca. Tanpa ini $request->user() selalu null.
+        $user = $request->user('sanctum');
+        $userId = $user ? $user->id_user : null;
+        $guestId = $userId ? null : $request->input('guest_id');
+
+        if (! $userId && empty($guestId)) {
+            $guestId = 'guest_'.substr(hash('sha256', ($request->ip() ?? '0.0.0.0').'|'.($request->userAgent() ?? 'unknown')), 0, 48);
+        }
+
+        // Query dasar riwayat milik pemilik chat (user login atau tamu)
+        $ownerQuery = fn () => GeminiChat::query()
+            ->when($userId, fn ($q) => $q->where('id_user', $userId))
+            ->when(! $userId, fn ($q) => $q->whereNull('id_user')->where('guest_id', $guestId));
+
+        // Tentukan sesi aktif: lanjutkan sesi terakhir jika belum lewat 24 jam, kalau sudah lewat mulai sesi baru
+        $lastChat = $ownerQuery()->whereNotNull('sesi_mulai')->orderByDesc('id')->first();
+        $sessionStart = ($lastChat && $lastChat->sesi_mulai > now()->subHours(self::SESSION_HOURS))
+            ? $lastChat->sesi_mulai
+            : now()->startOfSecond();
+
+        // Cek jatah prompt
         if ($userId) {
-            $contents = GeminiChat::where('id_user', $userId)
-                ->where('created_at', '>=', now()->subDay())
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->limit(self::HISTORY_LIMIT)
-                ->get()
-                ->reverse()
-                ->map(fn (GeminiChat $chat) => ['role' => $chat->role, 'parts' => [['text' => $chat->message]]])
-                ->values()
-                ->all();
+            $usedPrompts = $ownerQuery()->where('sesi_mulai', $sessionStart)->where('role', 'user')->count();
+            if ($usedPrompts >= self::USER_PROMPT_LIMIT) {
+                $resetAt = \Illuminate\Support\Carbon::parse($sessionStart)->addHours(self::SESSION_HOURS);
+
+                return response()->json([
+                    'status' => 'quota_exceeded',
+                    'message' => 'Batas '.self::USER_PROMPT_LIMIT.' prompt untuk sesi ini sudah tercapai. Silakan coba lagi setelah '.$resetAt->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i').' WIB.',
+                    'reset_at' => $resetAt->toIso8601String(),
+                ], 429);
+            }
+        } else {
+            // Jatah tamu dihitung dari seluruh prompt tamu ini (tidak ikut reset 24 jam)
+            $usedPrompts = $ownerQuery()->where('role', 'user')->count();
+            if ($usedPrompts >= self::GUEST_PROMPT_LIMIT) {
+                return response()->json([
+                    'status' => 'limit_reached',
+                    'message' => 'Batas percobaan habis. Silakan login.',
+                ], 403);
+            }
+        }
+
+        // Ambil memori chat dari sesi aktif saja (sesi lama otomatis terlupakan)
+        $contents = $ownerQuery()
+            ->where('sesi_mulai', $sessionStart)
+            ->orderByDesc('id')
+            ->limit(self::HISTORY_LIMIT)
+            ->get()
+            ->reverse()
+            ->map(fn (GeminiChat $chat) => ['role' => $chat->role, 'parts' => [['text' => $chat->message]]])
+            ->values()
+            ->all();
+
+        // Gemini mewajibkan riwayat diawali role 'user'; buang pesan 'model' di awal jika terpotong limit
+        while (! empty($contents) && $contents[0]['role'] !== 'user') {
+            array_shift($contents);
         }
 
         // SISIPKAN INFO LOKASI KE GEMINI
@@ -95,13 +143,12 @@ PROMPT;
             return response()->json(['message' => self::UNAVAILABLE], 502);
         }
 
-        if ($userId) {
-            DB::transaction(function () use ($userId, $userMessage, $aiReply) {
-                // Yang disimpan ke DB adalah pesan asli user, tanpa teks [INFO SISTEM]
-                GeminiChat::create(['id_user' => $userId, 'role' => 'user', 'message' => $userMessage]);
-                GeminiChat::create(['id_user' => $userId, 'role' => 'model', 'message' => $aiReply]);
-            });
-        }
+        DB::transaction(function () use ($userId, $guestId, $sessionStart, $userMessage, $aiReply) {
+            // Yang disimpan ke DB adalah pesan asli user, tanpa teks [INFO SISTEM]
+            $owner = ['id_user' => $userId, 'guest_id' => $guestId, 'sesi_mulai' => $sessionStart];
+            GeminiChat::create($owner + ['role' => 'user', 'message' => $userMessage]);
+            GeminiChat::create($owner + ['role' => 'model', 'message' => $aiReply]);
+        });
 
         return response()->json([
             'message' => 'Success',
