@@ -4,6 +4,86 @@
 @section('title', 'MediGO - Beranda')
 
 @section('content')
+    {{-- Sticky Search Bar (Stays pinned cleanly below navbar on scroll, solid white, no overlapping bugs) --}}
+    <div id="stickyHomeSearchBar" class="sticky-home-search-bar" aria-label="Pencarian Cepat">
+        <div class="container">
+            <form action="{{ route('search.index') }}" method="GET" class="m-0 d-flex align-items-center gap-2">
+                <div class="input-group d-flex align-items-center rounded-pill border bg-white p-1 flex-grow-1 shadow-2xs" style="border-color: #cbd5e1 !important;">
+                    <span class="input-group-text bg-transparent border-0 ps-3 pe-2 text-muted">
+                        <i class="bi bi-search text-medigo-primary fs-6"></i>
+                    </span>
+                    <input type="text" 
+                           name="q" 
+                           class="form-control border-0 shadow-none ps-1 bg-transparent" 
+                           placeholder="Cari RS, klinik, atau spesialis..." 
+                           autocomplete="off"
+                           style="font-size: 0.88rem;">
+                    <a href="{{ route('search.index') }}" class="btn btn-outline-secondary rounded-pill px-2 py-1 me-1 fw-medium d-inline-flex align-items-center gap-1 border-0" title="Buka Filter Lengkap" style="font-size: 0.82rem; color: #475569;">
+                        <i class="bi bi-sliders2 fs-7"></i> <span class="d-none d-sm-inline">Filter</span>
+                    </a>
+                    <button type="submit" class="btn btn-medigo-primary px-3 py-1.5 rounded-pill fw-semibold text-white shadow-xs" style="font-size: 0.84rem;">
+                        Cari RS
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Search Banner / Bar Section --}}
+    <section class="home-search-banner pt-3 pb-2 pt-lg-4 pb-lg-3">
+        <div class="container">
+            <div class="card border-0 rounded-4 shadow-sm p-3 p-md-4 bg-white" style="border: 1px solid #e2e8f0 !important; box-shadow: 0 4px 20px rgba(11,43,82,0.06);">
+                <div class="row align-items-center g-3">
+                    <div class="col-12 col-lg-5">
+                        <h4 class="fw-bold mb-1" style="color: #0b2b52;">Temukan Fasilitas Kesehatan</h4>
+                        <p class="text-muted mb-0" style="font-size: 0.88rem;">Cari rumah sakit, klinik, puskesmas, dan spesialisasi medis</p>
+                    </div>
+                    <div class="col-12 col-lg-7">
+                        <form action="{{ route('search.index') }}" method="GET" class="m-0">
+                            <div class="input-group d-flex align-items-center rounded-pill border bg-white p-1" style="border-color: #cbd5e1 !important; transition: border-color 0.2s;">
+                                <span class="input-group-text bg-transparent border-0 ps-3 text-muted">
+                                    <i class="bi bi-search text-medigo-primary fs-6"></i>
+                                </span>
+                                <input type="text" 
+                                       name="q" 
+                                       class="form-control border-0 shadow-none ps-2 bg-transparent" 
+                                       placeholder="Cari nama rumah sakit, klinik, atau wilayah..." 
+                                       autocomplete="off"
+                                       style="font-size: 0.9rem;">
+                                <a href="{{ route('search.index') }}" class="btn btn-outline-secondary rounded-pill px-2.5 px-sm-3 py-1.5 me-1 fw-medium d-inline-flex align-items-center gap-1 border-0" title="Buka Filter Lengkap" style="font-size: 0.84rem; color: #475569;">
+                                    <i class="bi bi-sliders2 fs-7"></i> <span class="d-none d-sm-inline">Filter</span>
+                                </a>
+                                <button type="submit" class="btn btn-medigo-primary px-3 px-sm-4 py-2 rounded-pill fw-semibold text-white shadow-xs">
+                                    Cari RS
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {{-- Akses Cepat Filter Langsung Dari Beranda --}}
+                <!-- <div class="d-flex align-items-center gap-2 mt-3 pt-3 border-top flex-wrap" style="border-color: #f1f5f9 !important;">
+                    <span class="text-muted fw-semibold d-none d-sm-inline" style="font-size: 0.8rem;">Akses Langsung Filter:</span>
+                    <a href="{{ route('search.index', ['bpjs' => 1]) }}" class="badge-filter-quick">
+                        <i class="bi bi-shield-check text-success"></i> BPJS Kesehatan
+                    </a>
+                    <a href="{{ route('search.index', ['fasilitas' => 'IGD']) }}" class="badge-filter-quick">
+                        <i class="bi bi-lightning-charge-fill text-warning"></i> IGD 24 Jam
+                    </a>
+                    <a href="{{ route('search.index', ['spesialisasi' => 'Anak']) }}" class="badge-filter-quick">
+                        <i class="bi bi-person-heart text-info"></i> Spesialis Anak
+                    </a>
+                    <a href="{{ route('search.index', ['kelas' => 'A']) }}" class="badge-filter-quick">
+                        <i class="bi bi-hospital text-primary"></i> RS Kelas A
+                    </a>
+                    <a href="{{ route('search.index') }}" class="ms-auto btn-medigo-primary">
+                        <i class="bi bi-sliders2"></i> Buka Semua Filter <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div> -->
+            </div>
+        </div>
+    </section>
+
     {{-- Rekomendasi / Hospital Section --}}
     <section class="hospital-section py-3 py-lg-4">
         <div class="container">

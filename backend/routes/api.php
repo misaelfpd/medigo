@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AdminForumModerationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DiscussionCommentController;
 use App\Http\Controllers\DiscussionController;
@@ -22,6 +23,10 @@ Route::post('/login', [AuthController::class, 'login']);
 // token. Requires the shared X-Service-Key header (see AuthController).
 Route::post('/auth/token-by-email', [AuthController::class, 'tokenByEmail']);
 
+// Rute Search & Filter Faskes (Harus didefinisikan sebelum /faskes/{id})
+Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
+Route::get('/faskes/filter-options', [FaskesController::class, 'getFilterOptions']);
+
 Route::get('/faskes', [FaskesController::class, 'index']);
 Route::get('/faskes/{id}', [FaskesController::class, 'show']);
 Route::get('/faskes/{id}/features', [FaskesFeatureController::class, 'getFacilitiesAndSpecialties']);
@@ -38,10 +43,8 @@ Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat sem
 Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat 1 diskusi spesifik
 
     // GEMINI AI
+    Route::get('/chat-ai/history', [GeminiController::class, 'history']);
     Route::post('/chat-ai', [GeminiController::class, 'chat']);
-
-// Rute Search
-Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
 
 // Rute Terproteksi (Wajib punya Token / udah Login)
 Route::middleware('auth:sanctum')->group(function () {
@@ -125,5 +128,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/faskes-comment-reports/{id}', [FaskesCommentController::class, 'showReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/takedown', [FaskesCommentController::class, 'takedownReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/dismiss', [FaskesCommentController::class, 'dismissReportAdmin']);
+
+        // 5. Admin Moderasi Forum Komprehensif (Antrean Moderasi, Tren, Terbaru, Dilaporkan, Blokir User)
+        Route::get('/admin/forum/moderation', [AdminForumModerationController::class, 'getModerationData']);
+        Route::post('/admin/forum/discussions/{id}/takedown', [AdminForumModerationController::class, 'takedownDiscussion']);
+        Route::post('/admin/forum/discussions/{id}/dismiss', [AdminForumModerationController::class, 'dismissDiscussion']);
+        Route::post('/admin/forum/comments/{id}/takedown', [AdminForumModerationController::class, 'takedownComment']);
+        Route::post('/admin/forum/comments/{id}/dismiss', [AdminForumModerationController::class, 'dismissComment']);
+        Route::post('/admin/forum/users/{id}/block', [AdminForumModerationController::class, 'blockUser']);
+        Route::post('/admin/forum/discussions/{id}/report', [AdminForumModerationController::class, 'reportDiscussion']);
+        Route::post('/admin/forum/comments/{id}/report', [AdminForumModerationController::class, 'reportComment']);
     });
 });

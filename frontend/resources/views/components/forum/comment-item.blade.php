@@ -4,6 +4,7 @@
     $commentId = $comment['id_tanggapan'] ?? ($comment['id'] ?? null);
     $commenterName = $comment['nama_user'] ?? ($comment['commentator_name'] ?? 'Pengguna');
     $commenterEmail = $comment['email_user'] ?? ($comment['commentator_email'] ?? ($comment['email'] ?? null));
+    $commenterAvatar = $comment['commentator_avatar'] ?? ($comment['avatar'] ?? null);
     $commentBody = $comment['isi_tanggapan'] ?? ($comment['body'] ?? ($comment['content'] ?? ''));
     $commentImage = $comment['gambar_tanggapan'] ?? ($comment['image_path'] ?? null);
     
@@ -12,6 +13,18 @@
     
     // Bisa report jika sudah login DAN BUKAN pemilik komentar sendiri
     $canReport = Auth::check() && !$isOwner;
+
+    // Resolusi avatar komentator
+    $commenterAvatarUrl = null;
+    if ($isOwner && Auth::check() && !empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar))) {
+        $commenterAvatarUrl = asset(Auth::user()->avatar);
+    } elseif (!empty($commenterAvatar)) {
+        if (str_starts_with($commenterAvatar, 'http')) {
+            $commenterAvatarUrl = $commenterAvatar;
+        } elseif (file_exists(public_path($commenterAvatar))) {
+            $commenterAvatarUrl = asset($commenterAvatar);
+        }
+    }
 @endphp
 <div class="card border-0 border-bottom rounded-0 pb-3 bg-transparent comment-item {{ $index >= $limit ? 'd-none hidden-comment' : '' }}" id="comment-item-{{ $commentId }}">
     <div class="card-body p-0">
@@ -19,9 +32,16 @@
         <!-- Info Komentar Utama -->
         <div class="d-flex justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2">
-                <div class="avatar-circle-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
-                    {{ strtoupper(substr($commenterName, 0, 1)) }}
-                </div>
+                @if($commenterAvatarUrl)
+                    <img src="{{ $commenterAvatarUrl }}" 
+                         alt="{{ $commenterName }}" 
+                         class="rounded-circle object-fit-cover border shadow-2xs" 
+                         style="width: 36px; height: 36px;">
+                @else
+                    <div class="avatar-circle-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
+                        {{ strtoupper(substr($commenterName, 0, 1)) }}
+                    </div>
+                @endif
                 <div class="fw-semibold text-dark">{{ $commenterName }}</div>
             </div>
             <div class="d-flex align-items-center gap-2">

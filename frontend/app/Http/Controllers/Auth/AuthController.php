@@ -105,7 +105,6 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'terms' => ['accepted'],
         ], [
             'name.required' => 'Nama lengkap wajib diisi.',
             'email.required' => 'Alamat email wajib diisi.',
@@ -114,7 +113,6 @@ class AuthController extends Controller
             'password.required' => 'Kata sandi wajib diisi.',
             'password.min' => 'Kata sandi minimal 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
-            'terms.accepted' => 'Anda harus menyetujui syarat & ketentuan MediGO.',
         ]);
 
         // 1. Create local user
@@ -130,6 +128,11 @@ class AuthController extends Controller
         // 3. Auto login the new user
         Auth::login($user);
         $request->session()->regenerate();
+
+        $redirectTo = $request->input('redirect');
+        if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
+            return redirect($redirectTo)->with('success', 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
+        }
 
         return redirect()->route('profile')->with('success', 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
     }
@@ -182,11 +185,11 @@ class AuthController extends Controller
                 ]);
             } else {
                 // JEBAKAN KITA: Tampilkan apa alasan backend menolak login!
-                dd('API BE Gagal Login. Status: ' . $response->status(), 'Response BE:', $response->json());
+                // dd('API BE Gagal Login. Status: ' . $response->status(), 'Response BE:', $response->json());
             }
         } catch (\Exception $e) {
             // JEBAKAN KITA: Tampilkan jika FE sama sekali tidak bisa konek ke BE
-            dd('Koneksi dari FE ke BE Terputus. Pesan Error:', $e->getMessage());
+            // dd('Koneksi dari FE ke BE Terputus. Pesan Error:', $e->getMessage());
         }
     }
 
@@ -211,6 +214,8 @@ class AuthController extends Controller
                     'user_backend_token' => $body['access_token'] ?? null,
                     'user_backend_data' => $body['data'] ?? null,
                 ]);
+            } else {
+                $this->syncBackendLogin($email, $password);
             }
         } catch (\Exception $e) {
             Log::info('Backend register sync bypassed: ' . $e->getMessage());

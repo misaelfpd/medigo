@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faskes;
+use App\Services\RoadDistanceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,79 @@ class FaskesController extends Controller
         }
 
         return 'other';
+    }
+
+    public static function getCityCoordinates(?string $kota): ?array
+    {
+        if (empty($kota)) {
+            return null;
+        }
+        $k = strtolower(trim($kota));
+        $cities = [
+            'jakarta pusat' => [-6.1805, 106.8284],
+            'jakarta selatan' => [-6.2615, 106.8106],
+            'jakarta barat' => [-6.1674, 106.7637],
+            'jakarta utara' => [-6.1214, 106.7741],
+            'jakarta timur' => [-6.2250, 106.9004],
+            'jakarta' => [-6.2088, 106.8456],
+            'dki jakarta' => [-6.2088, 106.8456],
+            'bekasi' => [-6.2383, 106.9756],
+            'kota bekasi' => [-6.2383, 106.9756],
+            'kabupaten bekasi' => [-6.2415, 107.1453],
+            'bogor' => [-6.5971, 106.8060],
+            'kota bogor' => [-6.5971, 106.8060],
+            'kabupaten bogor' => [-6.4797, 106.8249],
+            'depok' => [-6.4025, 106.7942],
+            'kota depok' => [-6.4025, 106.7942],
+            'tangerang' => [-6.1783, 106.6319],
+            'kota tangerang' => [-6.1783, 106.6319],
+            'tangerang selatan' => [-6.2885, 106.7179],
+            'kabupaten tangerang' => [-6.1751, 106.4673],
+            'bandung' => [-6.9175, 107.6191],
+            'kota bandung' => [-6.9175, 107.6191],
+            'kabupaten bandung' => [-7.0253, 107.5198],
+            'surabaya' => [-7.2575, 112.7521],
+            'semarang' => [-6.9667, 110.4167],
+            'yogyakarta' => [-7.7956, 110.3695],
+            'sleman' => [-7.7167, 110.3556],
+            'bantul' => [-7.8939, 110.3275],
+            'medan' => [3.5952, 98.6722],
+            'palembang' => [-2.9761, 104.7754],
+            'makassar' => [-5.1477, 119.4327],
+            'denpasar' => [-8.6705, 115.2126],
+            'badung' => [-8.5819, 115.1771],
+            'bali' => [-8.4095, 115.1889],
+            'malang' => [-7.9666, 112.6326],
+            'surakarta' => [-7.5755, 110.8243],
+            'solo' => [-7.5755, 110.8243],
+            'cirebon' => [-6.7320, 108.5523],
+            'sukabumi' => [-6.9277, 106.9300],
+            'karawang' => [-6.3073, 107.3019],
+            'serang' => [-6.1104, 106.1640],
+            'cilegon' => [-6.0174, 106.0538],
+            'lampung' => [-5.4500, 105.2667],
+            'bandar lampung' => [-5.4500, 105.2667],
+            'padang' => [-0.9471, 100.4172],
+            'pekanbaru' => [0.5071, 101.4478],
+            'batam' => [1.1301, 104.0529],
+            'pontianak' => [-0.0263, 109.3425],
+            'banjarmasin' => [-3.3194, 114.5908],
+            'balikpapan' => [-1.2379, 116.8529],
+            'samarinda' => [-0.5022, 117.1537],
+            'manado' => [1.4748, 124.8421],
+            'mataram' => [-8.5833, 116.1167],
+            'kupang' => [-10.1772, 123.6070],
+            'ambon' => [-3.6547, 128.1906],
+            'jayapura' => [-2.5916, 140.6690],
+        ];
+
+        foreach ($cities as $cityKey => $coords) {
+            if (str_contains($k, $cityKey) || str_contains($cityKey, $k)) {
+                return $coords;
+            }
+        }
+
+        return null;
     }
 
     private function formatFaskesName($name, $typeSlug, $jenis_faskes = '')
@@ -126,21 +200,21 @@ class FaskesController extends Controller
             $lat = (float) $request->lat;
             $lng = (float) $request->lng;
 
-            // Haversine formula (km)
-            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
+            // Haversine formula (km) dengan perlindungan NULL & domain acos [-1, 1]
+            $haversine = "(CASE WHEN faskes.latitude IS NOT NULL AND faskes.longitude IS NOT NULL THEN (6371 * acos(least(1.0, greatest(-1.0, cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude)))))) ELSE NULL END)";
 
             $query->select('faskes.*')
-                ->selectRaw("{$haversine} AS distance_km")
-                ->whereNotNull('faskes.latitude')
-                ->whereNotNull('faskes.longitude');
+                ->selectRaw("{$haversine} AS distance_km");
 
             // Filter radius jika diberikan
             if ($request->filled('radius')) {
                 $radius = (float) $request->radius;
-                $query->having('distance_km', '<=', $radius);
+                $query->whereNotNull('faskes.latitude')
+                    ->whereNotNull('faskes.longitude')
+                    ->having('distance_km', '<=', $radius);
             }
 
-            $query->orderBy('distance_km', 'asc');
+            $query->orderByRaw('(CASE WHEN distance_km IS NOT NULL THEN 0 ELSE 1 END) ASC, distance_km ASC, faskes.id_faskes ASC');
         } else {
             $query->select('faskes.*')->orderBy('faskes.id_faskes', 'asc');
         }
@@ -172,6 +246,10 @@ class FaskesController extends Controller
 
                 return $item;
             });
+
+            if ($request->filled('lat') && $request->filled('lng')) {
+                $faskes = RoadDistanceService::applyToCollection($faskes, (float) $request->lat, (float) $request->lng);
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -205,6 +283,12 @@ class FaskesController extends Controller
             return $item;
         });
 
+        if ($request->filled('lat') && $request->filled('lng')) {
+            $paginated->setCollection(
+                RoadDistanceService::applyToCollection($paginated->getCollection(), (float) $request->lat, (float) $request->lng)
+            );
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Berhasil mengambil data faskes',
@@ -213,7 +297,7 @@ class FaskesController extends Controller
     }
 
     // 2. Ambil detail spesifik satu Faskes (buat halaman detail)
-    public function show($id)
+    public function show(Request $request, $id)
     {
         // 1. Ambil data utama faskesnya
         $faskes = DB::table('faskes')
@@ -245,6 +329,17 @@ class FaskesController extends Controller
         $hasSpecific = ! empty($faskes->link_maps) && ! in_array($faskes->link_maps, ['-', 'TRUE', 'FALSE']) && str_starts_with($faskes->link_maps, 'http') && (str_contains($faskes->link_maps, '@') || str_contains($faskes->link_maps, 'place') || str_contains($faskes->link_maps, 'maps.app.goo.gl') || str_contains($faskes->link_maps, 'dir'));
         if (! $hasSpecific) {
             $faskes->link_maps = $this->getGoogleMapsUrl($faskes->nama_faskes, $faskes->latitude ?? null, $faskes->longitude ?? null, $faskes->kota_kabupaten ?? '', $faskes->alamat_faskes ?? '');
+        }
+
+        // Hitung jarak (distance) jika koordinat user dikirimkan
+        $lat = $request->filled('lat') ? (float) $request->input('lat') : ($request->filled('latitude') ? (float) $request->input('latitude') : null);
+        $lng = $request->filled('lng') ? (float) $request->input('lng') : ($request->filled('longitude') ? (float) $request->input('longitude') : null);
+
+        if ($lat !== null && $lng !== null && ! empty($faskes->latitude) && ! empty($faskes->longitude)) {
+            $applied = RoadDistanceService::applyToCollection(collect([$faskes]), $lat, $lng, false)->first();
+            if ($applied) {
+                $faskes = $applied;
+            }
         }
 
         // 2. Ambil semua ulasan yang terhubung ke faskes ini dari tabel komentar
@@ -284,6 +379,10 @@ class FaskesController extends Controller
             'message' => 'Berhasil mengambil detail faskes',
             'data' => [
                 'faskes' => $faskes,
+                'distance' => $faskes->distance ?? null,
+                'distance_km' => $faskes->distance_km ?? null,
+                'jarak_km' => $faskes->jarak_km ?? null,
+                'jarak_teks' => $faskes->jarak_teks ?? null,
                 'reviews' => $reviews,
                 'fasilitas' => $fasilitas,
                 'spesialisasi' => $spesialisasi,
@@ -336,7 +435,18 @@ class FaskesController extends Controller
                     $lng = (float) $m[2];
                 }
             }
-        } else {
+        }
+
+        // Fallback default coordinates from city dictionary if not provided
+        if ($lat === null || $lng === null) {
+            $cityCoords = self::getCityCoordinates($kotaKab);
+            if ($cityCoords) {
+                $lat = $cityCoords[0];
+                $lng = $cityCoords[1];
+            }
+        }
+
+        if (empty($linkMaps) || $linkMaps === '-' || $linkMaps === 'TRUE' || $linkMaps === 'FALSE') {
             if ($lat !== null && $lng !== null) {
                 $linkMaps = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
             } else {
@@ -520,9 +630,26 @@ class FaskesController extends Controller
 
         if ($request->has('latitude')) {
             $updateData['latitude'] = $request->filled('latitude') ? (float) $request->latitude : null;
+        } elseif ($targetLat !== null) {
+            $updateData['latitude'] = $targetLat;
+        } else {
+            $kotaCheck = $request->kota_kabupaten ?? $faskes->kota_kabupaten;
+            $cityCoords = self::getCityCoordinates($kotaCheck);
+            if ($cityCoords) {
+                $updateData['latitude'] = $cityCoords[0];
+            }
         }
+
         if ($request->has('longitude')) {
             $updateData['longitude'] = $request->filled('longitude') ? (float) $request->longitude : null;
+        } elseif ($targetLng !== null) {
+            $updateData['longitude'] = $targetLng;
+        } else {
+            $kotaCheck = $request->kota_kabupaten ?? $faskes->kota_kabupaten;
+            $cityCoords = self::getCityCoordinates($kotaCheck);
+            if ($cityCoords) {
+                $updateData['longitude'] = $cityCoords[1];
+            }
         }
 
         if ($request->has('_support_bpjs')) {
@@ -688,6 +815,41 @@ class FaskesController extends Controller
      * @param  array  $params  Parameter pencarian (bisa dari $request->all() atau dari AI Function Call)
      * @return JsonResponse
      */
+    public function getFilterOptions(): JsonResponse
+    {
+        $kota = DB::table('faskes')
+            ->whereNotNull('kota_kabupaten')
+            ->where('kota_kabupaten', '!=', '')
+            ->distinct()
+            ->orderBy('kota_kabupaten', 'asc')
+            ->pluck('kota_kabupaten');
+
+        $kelas = DB::table('faskes')
+            ->whereNotNull('kelas')
+            ->where('kelas', '!=', '')
+            ->distinct()
+            ->orderBy('kelas', 'asc')
+            ->pluck('kelas');
+
+        $fasilitas = DB::table('fasilitas')
+            ->orderBy('nama_fasilitas', 'asc')
+            ->get(['id_fasilitas', 'nama_fasilitas']);
+
+        $spesialisasi = DB::table('spesialisasi')
+            ->orderBy('nama_spesialisasi', 'asc')
+            ->get(['id_spesialisasi', 'nama_spesialisasi']);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'kota' => $kota,
+                'kelas' => $kelas,
+                'fasilitas' => $fasilitas,
+                'spesialisasi' => $spesialisasi,
+            ],
+        ]);
+    }
+
     public function searchFaskes(Request $request)
     {
         // Mendukung input dari Request HTTP biasa maupun array langsung dari AI Function Calling
@@ -698,68 +860,126 @@ class FaskesController extends Controller
         // 1. Filter Berdasarkan Daerah Saya (Koordinat GPS & Radius)
         $lat = $params['lat'] ?? null;
         $lng = $params['lng'] ?? null;
-        $radius = $params['radius'] ?? 5; // Default radius 5 km jika tidak diisi
 
         if ($lat && $lng) {
-            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latittude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latittude))))";
+            $latVal = (float) $lat;
+            $lngVal = (float) $lng;
+            $haversine = "(CASE WHEN faskes.latitude IS NOT NULL AND faskes.longitude IS NOT NULL THEN (6371 * acos(least(1.0, greatest(-1.0, cos(radians({$latVal})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lngVal})) + sin(radians({$latVal})) * sin(radians(faskes.latitude)))))) ELSE NULL END)";
 
             $query->select('faskes.*')
-                ->selectRaw("{$haversine} AS distance_km")
-                ->whereNotNull('faskes.latittude')
-                ->whereNotNull('faskes.longitude');
+                ->selectRaw("{$haversine} AS distance_km");
 
-            if (isset($params['radius'])) {
-                $query->having('distance_km', '<=', (float) $radius);
+            if (! empty($params['radius'])) {
+                $query->whereNotNull('faskes.latitude')
+                    ->whereNotNull('faskes.longitude')
+                    ->having('distance_km', '<=', (float) $params['radius']);
             }
 
-            $query->orderBy('distance_km', 'asc');
+            $query->orderByRaw('(CASE WHEN distance_km IS NOT NULL THEN 0 ELSE 1 END) ASC, distance_km ASC, faskes.id_faskes DESC');
         } else {
-            $query->select('faskes.*')->orderBy('faskes.id_faskes', 'asc');
+            $query->select('faskes.*')->orderBy('faskes.id_faskes', 'desc');
         }
 
-        // 2. Filter Berdasarkan Kota atau Kabupaten (Poin 2)
+        // 2. Filter Keyword / Nama Faskes (Pencarian Nama, Alamat, atau Wilayah)
+        if (! empty($params['q']) || ! empty($params['search']) || ! empty($params['nama']) || ! empty($params['nama_faskes'])) {
+            $keyword = trim($params['q'] ?? ($params['search'] ?? ($params['nama'] ?? $params['nama_faskes'])));
+            $cleanWords = array_values(array_filter(explode(' ', preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $keyword)), fn($w) => mb_strlen(trim($w)) >= 2));
+            
+            $query->where(function ($sub) use ($keyword, $cleanWords) {
+                $sub->where('faskes.nama_faskes', 'like', "%{$keyword}%")
+                    ->orWhere('faskes.alamat_faskes', 'like', "%{$keyword}%")
+                    ->orWhere('faskes.kota_kabupaten', 'like', "%{$keyword}%");
+
+                if (count($cleanWords) > 1) {
+                    $sub->orWhere(function ($wordSub) use ($cleanWords) {
+                        foreach ($cleanWords as $w) {
+                            $wordSub->where(function ($ws) use ($w) {
+                                $ws->where('faskes.nama_faskes', 'like', "%{$w}%")
+                                   ->orWhere('faskes.alamat_faskes', 'like', "%{$w}%")
+                                   ->orWhere('faskes.kota_kabupaten', 'like', "%{$w}%");
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // 3. Filter Berdasarkan Kota atau Kabupaten
         if (! empty($params['kota_kabupaten'])) {
             $query->where('faskes.kota_kabupaten', 'like', "%{$params['kota_kabupaten']}%");
         }
 
-        // 3. Filter Berdasarkan Spesialisasi Tertentu (Poin 3)
-        // Menerima nama spesialisasi (misal: "Anak", "Jantung", "Penyakit Dalam")
+        // 4. Filter Berdasarkan Spesialisasi Tertentu
         if (! empty($params['spesialisasi'])) {
-            $spesialisasi = $params['spesialisasi'];
-            $query->join('spesialisasi_faskes', 'faskes.id_faskes', '=', 'spesialisasi_faskes.id_faskes')
-                ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
-                ->where('spesialisasi.nama_spesialisasi', 'like', "%{$spesialisasi}%");
+            $spesialisasiList = is_array($params['spesialisasi']) ? $params['spesialisasi'] : explode(',', $params['spesialisasi']);
+            $spesialisasiList = array_filter(array_map('trim', $spesialisasiList));
+            if (! empty($spesialisasiList)) {
+                $query->whereExists(function ($sub) use ($spesialisasiList) {
+                    $sub->select(DB::raw(1))
+                        ->from('spesialisasi_faskes')
+                        ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
+                        ->whereColumn('spesialisasi_faskes.id_faskes', 'faskes.id_faskes')
+                        ->where(function ($w) use ($spesialisasiList) {
+                            foreach ($spesialisasiList as $sp) {
+                                if (is_numeric($sp)) {
+                                    $w->orWhere('spesialisasi.id_spesialisasi', (int) $sp);
+                                } else {
+                                    $w->orWhere('spesialisasi.nama_spesialisasi', 'like', "%{$sp}%");
+                                }
+                            }
+                        });
+                });
+            }
         }
 
-        // 4. Filter Berdasarkan Fasilitas Penunjang Tertentu (Poin 4)
-        // Menerima nama fasilitas (misal: "IGD", "Laboratorium", "Radiologi", "ICU")
+        // 5. Filter Berdasarkan Fasilitas Penunjang Tertentu
         if (! empty($params['fasilitas'])) {
-            $fasilitas = $params['fasilitas'];
-            $query->join('fasilitas_faskes', 'faskes.id_faskes', '=', 'fasilitas_faskes.id_faskes')
-                ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
-                ->where('fasilitas.nama_fasilitas', 'like', "%{$fasilitas}%");
+            $fasilitasList = is_array($params['fasilitas']) ? $params['fasilitas'] : explode(',', $params['fasilitas']);
+            $fasilitasList = array_filter(array_map('trim', $fasilitasList));
+            if (! empty($fasilitasList)) {
+                $query->whereExists(function ($sub) use ($fasilitasList) {
+                    $sub->select(DB::raw(1))
+                        ->from('fasilitas_faskes')
+                        ->join('fasilitas', 'fasilitas_faskes.id_fasilitas', '=', 'fasilitas.id_fasilitas')
+                        ->whereColumn('fasilitas_faskes.id_faskes', 'faskes.id_faskes')
+                        ->where(function ($w) use ($fasilitasList) {
+                            foreach ($fasilitasList as $fas) {
+                                if (is_numeric($fas)) {
+                                    $w->orWhere('fasilitas.id_fasilitas', (int) $fas);
+                                } else {
+                                    $w->orWhere('fasilitas.nama_fasilitas', 'like', "%{$fas}%");
+                                }
+                            }
+                        });
+                });
+            }
         }
 
-        // 5. Filter Support BPJS (Poin 6)
-        if (isset($params['is_support_bpjs']) && $params['is_support_bpjs'] !== '') {
-            $bpjsVal = filter_var($params['is_support_bpjs'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-            $query->where('faskes.is_support_bpjs', $bpjsVal);
+        // 6. Filter Support BPJS
+        $bpjsInput = $params['is_support_bpjs'] ?? ($params['_support_bpjs'] ?? ($params['bpjs'] ?? null));
+        if ($bpjsInput !== null && $bpjsInput !== '') {
+            $bpjsVal = filter_var($bpjsInput, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            $query->where('faskes._support_bpjs', $bpjsVal);
         }
 
-        // 7. Filter Kelas Faskes (Poin 7 - misal: Kelas A, B, C, D)
+        // 7. Filter Kelas Faskes (Kelas A, B, C, D)
         if (! empty($params['kelas'])) {
             $query->where('faskes.kelas', 'like', "%{$params['kelas']}%");
         }
 
-        // 8. Filter Jenis Faskes (Poin 8 - Rumah Sakit, Klinik, Puskesmas)
+        // 8. Filter Jenis Faskes (Rumah Sakit, Klinik, Puskesmas)
         if (! empty($params['jenis_faskes'])) {
             $jenis = $params['jenis_faskes'];
             $query->where('faskes.jenis_faskes', 'like', "%{$jenis}%");
         }
 
-        // Batasi hasil maksimal untuk AI / Filtering (default 10)
-        $limit = min((int) ($params['limit'] ?? 10), 50);
-        $faskesList = $query->distinct()->limit($limit)->get();
+        // Batasi hasil maksimal
+        $limit = min((int) ($params['limit'] ?? 30), 100);
+        $page = max((int) ($params['page'] ?? 1), 1);
+        $offset = ($page - 1) * $limit;
+
+        $total = $query->distinct()->count('faskes.id_faskes');
+        $faskesList = $query->distinct()->offset($offset)->limit($limit)->get();
 
         // Transformasi tambahan (slug, rating, dll)
         $faskesList->transform(function ($item) {
@@ -769,10 +989,17 @@ class FaskesController extends Controller
             return $item;
         });
 
+        if ($lat && $lng) {
+            $faskesList = RoadDistanceService::applyToCollection($faskesList, (float) $lat, (float) $lng);
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Data faskes berhasil ditemukan',
-            'total' => $faskesList->count(),
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+            'has_more' => ($page * $limit) < $total,
             'data' => $faskesList,
         ]);
     }

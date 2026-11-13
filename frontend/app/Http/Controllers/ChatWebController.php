@@ -3,22 +3,89 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ChatWebController extends Controller
 {
+    private function getBackendToken()
+    {
+        $token = session('user_backend_token');
+        if ($token) {
+            return $token;
+        }
+
+        if (!Auth::check()) {
+            return null;
+        }
+
+        try {
+            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+
+            $response = Http::timeout(5)
+                ->withHeaders(['X-Service-Key' => (string) config('services.medigo.service_key')])
+                ->post("{$backendUrl}/api/auth/token-by-email", [
+                    'email' => Auth::user()->email,
+                ]);
+
+            if ($response->successful()) {
+                $token = $response->json('access_token');
+                $userData = $response->json('user');
+                if ($token) {
+                    session([
+                        'user_backend_token' => $token,
+                        'user_backend_data'  => $userData,
+                    ]);
+                    return $token;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed obtaining backend token for chat: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
     public function index()
     {
-        return view('users.chat');
+        $token = $this->getBackendToken();
+        $guestId = session('guest_chat_id');
+        $chatHistory = [];
+
+        try {
+            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+
+            $http = Http::acceptJson()->timeout(4);
+            if ($token) {
+                $http->withToken($token);
+            }
+
+            $response = $http->get("{$backendUrl}/api/chat-ai/history", [
+                'guest_id' => $guestId,
+            ]);
+
+            if ($response->successful()) {
+                $chatHistory = $response->json('messages') ?? [];
+            }
+        } catch (\Exception $e) {
+            Log::info('Failed fetching chat history: ' . $e->getMessage());
+        }
+
+        return view('users.chat', compact('chatHistory'));
     }
 
     public function sendChat(Request $request)
     {
-        $token = session('user_backend_token');
+        $token = $this->getBackendToken();
+        $isLoggedIn = Auth::check() || !empty($token);
 
         // LOGIKA PEMBATASAN GUEST (6 KALI CHAT)
-        if (! $token) {
+        // User yang sudah login di web tidak dikenakan kuota guest (mendapat jatah user login 100 prompt di backend)
+        if (! $isLoggedIn) {
             $guestCount = session('guest_chat_count', 0);
             
             if ($guestCount >= 6) {
@@ -29,9 +96,14 @@ class ChatWebController extends Controller
             }
             
             session(['guest_chat_count' => $guestCount + 1]);
+        } else {
+            // Jika sudah login, bersihkan counter percobaan tamu
+            if (session()->has('guest_chat_count')) {
+                session()->forget('guest_chat_count');
+            }
         }
 
-        // ID unik tamu agar backend bisa menyimpan & mengingat riwayat chat tamu
+        // ID unik tamu agar backend bisa menyimpan, mengingat, & memigrasikan riwayat chat saat user login
         $guestId = session('guest_chat_id');
         if (! $guestId) {
             $guestId = (string) Str::uuid();

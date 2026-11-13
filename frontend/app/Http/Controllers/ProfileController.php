@@ -274,6 +274,19 @@ class ProfileController extends Controller
     }
 
     /**
+     * Show the dedicated Edit Profile page
+     */
+    public function edit()
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $user = Auth::user();
+        return view('users.profile-edit', compact('user'));
+    }
+
+    /**
      * Update user profile information
      */
     public function update(Request $request)
@@ -285,22 +298,111 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'birth_date' => ['nullable', 'date'],
             'current_password' => ['nullable', 'required_with:new_password', 'string'],
-            'new_password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'new_password' => ['nullable', 'string', 'min:8'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ], [
             'name.required' => 'Nama lengkap tidak boleh kosong.',
+            'email.required' => 'Alamat email tidak boleh kosong.',
+            'email.email' => 'Format email tidak valid.',
+            'email.unique' => 'Email ini sudah terdaftar oleh pengguna lain.',
             'current_password.required_with' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
             'new_password.min' => 'Kata sandi baru minimal 8 karakter.',
-            'new_password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
+            'avatar.image' => 'File harus berupa gambar.',
+            'avatar.mimes' => 'Format foto profil harus JPG, JPEG, atau PNG.',
+            'avatar.max' => 'Ukuran foto profil tidak boleh melebihi 2MB.',
         ]);
 
-        if (!empty($validated['new_password'])) {
+        // 1. Cek & Proses Foto Profil Baru (Hasil Crop Base64 atau File Upload)
+        $avatarChanged = false;
+        $avatarCropped = $request->input('avatar_cropped');
+
+        if (!empty($avatarCropped)) {
+            // Validasi format data URL (hanya jpeg, jpg, png)
+            if (!preg_match('/^data:image\/(jpeg|jpg|png);base64,/', $avatarCropped, $matches)) {
+                return back()->withErrors(['avatar' => 'Format foto tidak valid. Gunakan format JPG, JPEG, atau PNG.'])->withInput();
+            }
+
+            $imgType = strtolower($matches[1]);
+            $base64Data = substr($avatarCropped, strpos($avatarCropped, ',') + 1);
+            $decodedData = base64_decode($base64Data);
+
+            if ($decodedData === false) {
+                return back()->withErrors(['avatar' => 'Gagal memproses gambar foto profil.'])->withInput();
+            }
+
+            // Validasi ukuran maksimal 2MB (2,097,152 bytes)
+            if (strlen($decodedData) > 2 * 1024 * 1024) {
+                return back()->withErrors(['avatar' => 'Ukuran foto profil tidak boleh melebihi 2MB.'])->withInput();
+            }
+
+            $uploadDir = public_path('uploads/avatars');
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $ext = ($imgType === 'png') ? 'png' : 'jpg';
+            $filename = 'avatar_' . $user->id . '_' . time() . '.' . $ext;
+            $destination = $uploadDir . DIRECTORY_SEPARATOR . $filename;
+
+            file_put_contents($destination, $decodedData);
+
+            // Hapus file avatar lama jika ada
+            if (!empty($user->avatar) && file_exists(public_path($user->avatar)) && str_contains($user->avatar, 'uploads/avatars/')) {
+                @unlink(public_path($user->avatar));
+            }
+
+            $user->avatar = 'uploads/avatars/' . $filename;
+            $avatarChanged = true;
+        } elseif ($request->hasFile('avatar')) {
+            $uploadDir = public_path('uploads/avatars');
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $file = $request->file('avatar');
+            $ext = $file->getClientOriginalExtension();
+            $filename = 'avatar_' . $user->id . '_' . time() . '.' . $ext;
+            $file->move($uploadDir, $filename);
+
+            if (!empty($user->avatar) && file_exists(public_path($user->avatar)) && str_contains($user->avatar, 'uploads/avatars/')) {
+                @unlink(public_path($user->avatar));
+            }
+
+            $user->avatar = 'uploads/avatars/' . $filename;
+            $avatarChanged = true;
+        }
+
+        // 2. Cek apakah ada perubahan data teks
+        $trimmedName = trim($validated['name']);
+        $trimmedEmail = trim($validated['email']);
+        $trimmedPhone = !empty($validated['phone']) ? trim($validated['phone']) : null;
+        $formattedBirthDate = !empty($validated['birth_date']) ? \Carbon\Carbon::parse($validated['birth_date'])->format('Y-m-d') : null;
+        $currentBirthDate = $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d') : null;
+        $newPassword = $validated['new_password'] ?? null;
+
+        $nameChanged = ($trimmedName !== $user->name);
+        $emailChanged = (strtolower($trimmedEmail) !== strtolower($user->email));
+        $phoneChanged = ($trimmedPhone !== $user->phone);
+        $birthDateChanged = ($formattedBirthDate !== $currentBirthDate);
+        $passwordChanged = !empty($newPassword);
+
+        // Jika tidak ada perubahan sama sekali, tidak terjadi apa-apa
+        if (!$nameChanged && !$emailChanged && !$phoneChanged && !$birthDateChanged && !$passwordChanged && !$avatarChanged) {
+            return redirect()->route('profile');
+        }
+
+        // Jika ada perubahan password, cek kecocokan password lama
+        if ($passwordChanged) {
             if (!Hash::check($validated['current_password'], $user->password)) {
                 return back()->withErrors(['current_password' => 'Kata sandi saat ini tidak sesuai.'])->withInput();
             }
         }
 
-        // Sinkronisasi pembaruan profil ke Backend API
+        // 3. Sinkronisasi pembaruan profil ke Backend API
         $token = $this->getBackendToken();
         if ($token) {
             try {
@@ -308,11 +410,17 @@ class ProfileController extends Controller
                 $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
 
                 $payload = [
-                    'name' => $validated['name'],
+                    'name' => $trimmedName,
+                    'email' => $trimmedEmail,
+                    'phone' => $trimmedPhone,
+                    'birth_date' => $formattedBirthDate,
                 ];
-                if (!empty($validated['new_password'])) {
+                if ($passwordChanged) {
                     $payload['current_password'] = $validated['current_password'];
-                    $payload['new_password'] = $validated['new_password'];
+                    $payload['new_password'] = $newPassword;
+                }
+                if ($avatarChanged) {
+                    $payload['avatar'] = $user->avatar;
                 }
 
                 $beResponse = Http::timeout(5)
@@ -324,8 +432,8 @@ class ProfileController extends Controller
                     if (!empty($errData['errors']['current_password'])) {
                         return back()->withErrors(['current_password' => $errData['errors']['current_password'][0]])->withInput();
                     }
-                    if (!empty($errData['message'])) {
-                        Log::warning('Backend profile update failed: ' . $errData['message']);
+                    if (!empty($errData['errors']['email'])) {
+                        return back()->withErrors(['email' => $errData['errors']['email'][0]])->withInput();
                     }
                 } else {
                     $updatedBeUser = $beResponse->json('data');
@@ -338,10 +446,13 @@ class ProfileController extends Controller
             }
         }
 
-        // Simpan perubahan ke database lokal Frontend
-        $user->name = $validated['name'];
-        if (!empty($validated['new_password'])) {
-            $user->password = Hash::make($validated['new_password']);
+        // 4. Simpan perubahan ke database lokal Frontend
+        $user->name = $trimmedName;
+        $user->email = $trimmedEmail;
+        $user->phone = $trimmedPhone;
+        $user->birth_date = $formattedBirthDate;
+        if ($passwordChanged) {
+            $user->password = Hash::make($newPassword);
         }
         $user->save();
 

@@ -3,16 +3,36 @@
     // dengan email author yang dikirim dari API backend
     $authorEmail = $discussion['author_email'] ?? ($discussion['email_user'] ?? ($discussion['email'] ?? null));
     $authorName = $discussion['author_name'] ?? ($discussion['nama_user'] ?? 'Pengguna');
+    $authorAvatar = $discussion['author_avatar'] ?? null;
     $discId = $discussion['id_diskusi'] ?? ($discussion['id'] ?? null);
     $isDiscussionOwner = Auth::check() && $authorEmail && (Auth::user()->email === $authorEmail);
     $canReportDiscussion = Auth::check() && !$isDiscussionOwner;
+
+    // Resolusi avatar penulis
+    $authorAvatarUrl = null;
+    if ($isDiscussionOwner && Auth::check() && !empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar))) {
+        $authorAvatarUrl = asset(Auth::user()->avatar);
+    } elseif (!empty($authorAvatar)) {
+        if (str_starts_with($authorAvatar, 'http')) {
+            $authorAvatarUrl = $authorAvatar;
+        } elseif (file_exists(public_path($authorAvatar))) {
+            $authorAvatarUrl = asset($authorAvatar);
+        }
+    }
 @endphp
 
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="d-flex align-items-center gap-3">
-        <div class="avatar-circle text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style="width: 48px; height: 48px; background-color: #002b5e;">
-            {{ strtoupper(substr($authorName, 0, 1)) }}
-        </div>
+        @if($authorAvatarUrl)
+            <img src="{{ $authorAvatarUrl }}" 
+                 alt="{{ $authorName }}" 
+                 class="rounded-circle object-fit-cover border shadow-sm" 
+                 style="width: 48px; height: 48px;">
+        @else
+            <div class="avatar-circle text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style="width: 48px; height: 48px; background-color: #002b5e;">
+                {{ strtoupper(substr($authorName, 0, 1)) }}
+            </div>
+        @endif
         <div>
             <div class="fw-bold">{{ $authorName }}</div>
             <div class="text-muted small">{{ \Carbon\Carbon::parse($discussion['created_at'] ?? now())->diffForHumans() }}</div>

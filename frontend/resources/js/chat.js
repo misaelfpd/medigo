@@ -21,24 +21,74 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeNowEl = document.querySelector('.time-now');
     if(timeNowEl) timeNowEl.textContent = getCurrentTime();
 
+    try {
+        const sLat = sessionStorage.getItem("medigo_user_lat");
+        const sLng = sessionStorage.getItem("medigo_user_lng");
+        if (sLat && sLng) {
+            userLat = parseFloat(sLat);
+            userLng = parseFloat(sLng);
+        }
+    } catch (_) {}
+
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 userLat = position.coords.latitude;
                 userLng = position.coords.longitude;
+                try {
+                    sessionStorage.setItem("medigo_user_lat", userLat);
+                    sessionStorage.setItem("medigo_user_lng", userLng);
+                } catch (_) {}
             },
             (error) => { console.warn("Lokasi dibatasi pengguna:", error.message); }
         );
     }
 
+    let isSending = false;
+
     sendBtn.addEventListener('click', sendMessage);
     userInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') sendMessage();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
     });
 
+    function removeTypingIndicators() {
+        document.querySelectorAll('.msg-row.typing-row, .typing-indicator').forEach(el => {
+            const row = el.closest('.msg-row');
+            if (row) row.remove();
+            else el.remove();
+        });
+    }
+
+    function formatChatMessage(text) {
+        if (!text) return '';
+        let escaped = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+        // Bold: **text**
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // Markdown Links: [text](url) -> Tombol navigasi / maps rapi
+        escaped = escaped.replace(/\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill my-1 text-decoration-none d-inline-flex align-items-center gap-1" style="font-size:0.8rem;"><i class="bi bi-geo-alt-fill text-danger"></i> $1</a>');
+
+        // Newlines
+        return escaped.replace(/\n/g, '<br>');
+    }
+
     async function sendMessage() {
+        if (isSending) return;
         const text = userInput.value.trim();
         if (!text) return;
+
+        isSending = true;
+        userInput.disabled = true;
+        sendBtn.disabled = true;
 
         appendMessage(text, 'user');
         userInput.value = '';
@@ -60,8 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const result = await response.json();
-            const loaderEl = document.getElementById(loadingId);
-            if (loaderEl) loaderEl.remove();
+            removeTypingIndicators();
 
             if (response.ok) {
                 const replyText = result.data || result.message || "Ini respons dari MediBot.";
@@ -69,15 +118,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (result.faskes && Array.isArray(result.faskes) && result.faskes.length > 0) {
                     const bubbleWrap = document.querySelector(`#${msgId} .bubble-wrap`);
-                    const cardsContainer = document.createElement('div');
-                    cardsContainer.className = 'faskes-cards-container';
-                    
-                    result.faskes.forEach(faskes => {
-                        cardsContainer.appendChild(renderFaskesCardHTML(faskes));
-                    });
-                    
-                    const textBubble = bubbleWrap.querySelector('.bubble');
-                    textBubble.after(cardsContainer);
+                    if (bubbleWrap) {
+                        const cardsContainer = document.createElement('div');
+                        cardsContainer.className = 'faskes-cards-container';
+                        
+                        result.faskes.forEach(faskes => {
+                            cardsContainer.appendChild(renderFaskesCardHTML(faskes));
+                        });
+                        
+                        const textBubble = bubbleWrap.querySelector('.bubble');
+                        if (textBubble) {
+                            textBubble.after(cardsContainer);
+                        } else {
+                            bubbleWrap.appendChild(cardsContainer);
+                        }
+                    }
                 }
             } else {
                 // TANGKAP ERROR 403 JIKA LIMIT GUEST TERCAPAI
@@ -88,30 +143,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         } catch (error) {
-            const loaderEl = document.getElementById(loadingId);
-            if (loaderEl) loaderEl.remove();
+            removeTypingIndicators();
             appendMessage("Koneksi terputus. Pastikan internet Anda stabil.", 'bot');
+        } finally {
+            isSending = false;
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            removeTypingIndicators();
+            userInput.focus();
+            scrollToBottom();
         }
-        
-        scrollToBottom();
     }
 
+    let msgCounter = 0;
     function appendMessage(text, sender, isRawHtml = false) {
-        const rowId = 'msg-' + Date.now();
+        const rowId = 'msg-' + Date.now() + '-' + (++msgCounter);
         const rowDiv = document.createElement('div');
-        rowDiv.className = `msg-row ${sender}`;
+        rowDiv.className = isRawHtml ? `msg-row ${sender} typing-row` : `msg-row ${sender}`;
         rowDiv.id = rowId;
 
         let formattedText = text;
         if (!isRawHtml) {
-            formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            formattedText = formatChatMessage(text);
         }
 
         const timeString = getCurrentTime();
         
         if (sender === 'user') {
+            const avatarHtml = window.MedigoConfig?.currentUserAvatar 
+                ? `<div class="avatar-user overflow-hidden p-0 border" style="width: 36px; height: 36px; border-radius: 50%;"><img src="${window.MedigoConfig.currentUserAvatar}" class="w-100 h-100 object-fit-cover rounded-circle"></div>`
+                : `<div class="avatar-user"><i class="bi bi-person-fill"></i></div>`;
             rowDiv.innerHTML = `
-                <div class="avatar-user"><i class="bi bi-person-fill"></i></div>
+                ${avatarHtml}
                 <div class="bubble-wrap">
                     <div class="bubble">${formattedText}</div>
                     <div class="timestamp">Anda • ${timeString}</div>
@@ -171,7 +234,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        const detailUrl = (faskes.detail_url && faskes.detail_url !== '#') ? faskes.detail_url : `/faskes/${faskesId}`;
+        let detailUrl = (faskes.detail_url && faskes.detail_url !== '#') ? faskes.detail_url : `/faskes/${faskesId}`;
+        if (userLat && userLng && !detailUrl.includes('lat=')) {
+            const sep = detailUrl.includes('?') ? '&' : '?';
+            const distParam = faskes.distance_km ? `&distance=${encodeURIComponent(parseFloat(faskes.distance_km).toFixed(1) + ' km')}` : '';
+            detailUrl += `${sep}lat=${userLat}&lng=${userLng}${distParam}`;
+        }
         const distanceStr = faskes.distance_km ? `${parseFloat(faskes.distance_km).toFixed(1)} km` : '-';
         const bpjsStatus = faskes._support_bpjs ? 'BPJS' : 'Non - BPJS';
         const bpjsClass = faskes._support_bpjs ? 'badge-bpjs' : 'badge-non-bpjs';
@@ -213,6 +281,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function scrollToBottom() {
-        chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatBox) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
     }
+
+    function initSavedFaskesCards() {
+        document.querySelectorAll('.faskes-cards-container[data-faskes]').forEach(container => {
+            try {
+                const raw = container.getAttribute('data-faskes');
+                if (raw) {
+                    const list = JSON.parse(raw);
+                    if (Array.isArray(list)) {
+                        list.forEach(item => {
+                            container.appendChild(renderFaskesCardHTML(item));
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn("Gagal memuat kartu faskes tersimpan:", err);
+            }
+            container.removeAttribute('data-faskes');
+        });
+    }
+
+    // Inisialisasi kartu faskes yang tersimpan dari database pada saat halaman dimuat
+    initSavedFaskesCards();
+
+    // Scroll otomatis ke percakapan terakhir jika ada riwayat chat sebelumnya
+    scrollToBottom();
 });

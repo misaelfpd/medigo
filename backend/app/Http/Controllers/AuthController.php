@@ -53,6 +53,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->role_user === 'blocked' || $user->role_user === 'banned') {
+            throw ValidationException::withMessages([
+                'email' => ['Akun Anda telah dinonaktifkan atau diblokir oleh administrator karena pelanggaran pedoman komunitas.'],
+            ]);
+        }
+
         $token = $user->createToken('medigo_token')->plainTextToken;
 
         return response()->json([
@@ -140,6 +146,10 @@ class AuthController extends Controller
             'nama_user' => 'sometimes|nullable|string|max:150',
             'email' => 'sometimes|nullable|email|max:150|unique:user,email_user,'.$user->id_user.',id_user',
             'email_user' => 'sometimes|nullable|email|max:150|unique:user,email_user,'.$user->id_user.',id_user',
+            'no_telp' => 'sometimes|nullable|string|max:50',
+            'phone' => 'sometimes|nullable|string|max:50',
+            'tanggal_lahir' => 'sometimes|nullable|date',
+            'birth_date' => 'sometimes|nullable|date',
             'current_password' => 'nullable|string',
             'password_lama' => 'nullable|string',
             'new_password' => 'nullable|string|min:8',
@@ -165,7 +175,25 @@ class AuthController extends Controller
             $user->email_user = trim($newEmail);
         }
 
-        // 3. Update Password jika ada
+        // 3. Update Nomor Telepon
+        $newPhone = $request->input('no_telp') ?? $request->input('phone');
+        if ($newPhone !== null) {
+            $user->no_telp = trim($newPhone);
+        }
+
+        // 4. Update Tanggal Lahir
+        $newBirthDate = $request->input('tanggal_lahir') ?? $request->input('birth_date');
+        if ($newBirthDate !== null) {
+            $user->tanggal_lahir = ! empty($newBirthDate) ? $newBirthDate : null;
+        }
+
+        // 5. Update Avatar jika ada
+        $newAvatar = $request->input('avatar');
+        if (! empty($newAvatar)) {
+            $user->avatar = trim($newAvatar);
+        }
+
+        // 6. Update Password jika ada
         $newPassword = $request->input('new_password') ?? $request->input('password_baru') ?? $request->input('password');
         if (! empty($newPassword)) {
             $currentPassword = $request->input('current_password') ?? $request->input('password_lama');

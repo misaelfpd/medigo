@@ -49,7 +49,7 @@
                 <!-- Menu Settings untuk Mobile (Pisahan dari Sidebar) -->
                 <div class="card border rounded-4 bg-white shadow-2xs overflow-hidden mb-3 mt-4">
                     <div class="list-group list-group-flush profile-menu-list">
-                        <a href="#settingsModal" data-bs-toggle="modal" class="list-group-item list-group-item-action p-3">
+                        <a href="{{ route('profile.edit') }}" class="list-group-item list-group-item-action p-3">
                             <i class="bi bi-gear fs-5 text-secondary"></i> Pengaturan Akun
                         </a>
                     </div>
@@ -59,9 +59,6 @@
                     <button type="submit" class="btn btn-outline-danger w-100 rounded-4 py-2-5">Keluar</button>
                 </form>
             </div>
-
-            <!-- MODAL PENGATURAN -->
-            @include('components.profile.modal-settings')
         @endif
 
     </div>

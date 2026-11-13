@@ -18,6 +18,7 @@ class DiscussionController extends Controller
                 'diskusi.*',
                 'user.nama_user as author_name',
                 'user.email_user as author_email',
+                'user.avatar as author_avatar',
                 DB::raw('(SELECT COUNT(*) FROM tanggapan_diskusi WHERE tanggapan_diskusi.id_diskusi = diskusi.id_diskusi) as comments_count')
             )
             ->orderBy('diskusi.created_at', 'desc');
@@ -125,7 +126,8 @@ class DiscussionController extends Controller
                 'diskusi.status_diskusi as status',
                 'diskusi.created_at',
                 'user.nama_user as author_name',
-                'user.email_user as author_email'
+                'user.email_user as author_email',
+                'user.avatar as author_avatar'
             )
             ->first();
 
@@ -156,6 +158,7 @@ class DiscussionController extends Controller
             'tanggapan_diskusi.created_at',
             'user.nama_user as commentator_name',
             'user.email_user as commentator_email',
+            'user.avatar as commentator_avatar',
         ];
 
         $comments = DB::table('tanggapan_diskusi')
