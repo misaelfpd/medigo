@@ -14,7 +14,7 @@ class FaskesController extends Controller
     /**
      * Map faskes type to a frontend-friendly slug.
      */
-    private function getTypeSlug($jenis_faskes)
+    public static function getTypeSlug($jenis_faskes)
     {
         $tipeLower = strtolower($jenis_faskes ?? '');
         if (str_contains($tipeLower, 'rumah sakit') || str_contains($tipeLower, 'rs')) {
@@ -101,7 +101,7 @@ class FaskesController extends Controller
         return null;
     }
 
-    private function formatFaskesName($name, $typeSlug, $jenis_faskes = '')
+    public static function formatFaskesName($name, $typeSlug, $jenis_faskes = '')
     {
         $name = trim($name ?? '');
         $isPuskesmas = ($typeSlug === 'puskesmas') || str_contains(strtolower($jenis_faskes ?? ''), 'puskesmas') || str_contains(strtolower($name), 'puskesmas');
@@ -233,7 +233,10 @@ class FaskesController extends Controller
                 ->get()
                 ->keyBy('id_faskes');
 
-            $faskes->transform(function ($item) use ($comments) {
+            $thumbnails = FotoFaskesController::thumbnailUrls($faskesIds);
+
+            $faskes->transform(function ($item) use ($comments, $thumbnails) {
+                $item->thumbnail_url = $thumbnails[$item->id_faskes] ?? null;
                 $item->type_slug = $this->getTypeSlug($item->jenis_faskes);
                 $item->nama_faskes = $this->formatFaskesName($item->nama_faskes, $item->type_slug, $item->jenis_faskes);
                 $hasComment = isset($comments[$item->id_faskes]) && $comments[$item->id_faskes]->total_reviews > 0;
@@ -269,7 +272,10 @@ class FaskesController extends Controller
             ->get()
             ->keyBy('id_faskes');
 
-        $paginated->getCollection()->transform(function ($item) use ($comments) {
+        $thumbnails = FotoFaskesController::thumbnailUrls($faskesIds);
+
+        $paginated->getCollection()->transform(function ($item) use ($comments, $thumbnails) {
+            $item->thumbnail_url = $thumbnails[$item->id_faskes] ?? null;
             $item->type_slug = $this->getTypeSlug($item->jenis_faskes);
             $item->nama_faskes = $this->formatFaskesName($item->nama_faskes, $item->type_slug, $item->jenis_faskes);
             $hasComment = isset($comments[$item->id_faskes]) && $comments[$item->id_faskes]->total_reviews > 0;
@@ -374,6 +380,12 @@ class FaskesController extends Controller
         $faskes->fasilitas = $fasilitas;
         $faskes->spesialisasi = $spesialisasi;
 
+        // Foto faskes: thumbnail (kartu beranda), banner (atas halaman detail), galeri (bawah banner)
+        $foto = FotoFaskesController::photosFor((int) $faskes->id_faskes);
+        $faskes->thumbnail_url = $foto['thumbnail']['url'] ?? null;
+        $faskes->banner_url = $foto['banner']['url'] ?? null;
+        $faskes->foto = $foto;
+
         return response()->json([
             'status' => 'success',
             'message' => 'Berhasil mengambil detail faskes',
@@ -386,6 +398,7 @@ class FaskesController extends Controller
                 'reviews' => $reviews,
                 'fasilitas' => $fasilitas,
                 'spesialisasi' => $spesialisasi,
+                'foto' => $foto,
             ],
         ]);
     }
@@ -751,6 +764,9 @@ class FaskesController extends Controller
 
         DB::table('faskes')->where('id_faskes', $id)->delete();
 
+        // Data foto ikut terhapus lewat cascade, file WebP-nya dihapus di sini
+        FotoFaskesController::deleteAllFiles((int) $id);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Fasilitas kesehatan berhasil dihapus',
@@ -813,7 +829,6 @@ class FaskesController extends Controller
      * Method Utama untuk Filtering & AI Function Calling
      *
      * @param  array  $params  Parameter pencarian (bisa dari $request->all() atau dari AI Function Call)
-     * @return JsonResponse
      */
     public function getFilterOptions(): JsonResponse
     {
@@ -883,8 +898,8 @@ class FaskesController extends Controller
         // 2. Filter Keyword / Nama Faskes (Pencarian Nama, Alamat, atau Wilayah)
         if (! empty($params['q']) || ! empty($params['search']) || ! empty($params['nama']) || ! empty($params['nama_faskes'])) {
             $keyword = trim($params['q'] ?? ($params['search'] ?? ($params['nama'] ?? $params['nama_faskes'])));
-            $cleanWords = array_values(array_filter(explode(' ', preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $keyword)), fn($w) => mb_strlen(trim($w)) >= 2));
-            
+            $cleanWords = array_values(array_filter(explode(' ', preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $keyword)), fn ($w) => mb_strlen(trim($w)) >= 2));
+
             $query->where(function ($sub) use ($keyword, $cleanWords) {
                 $sub->where('faskes.nama_faskes', 'like', "%{$keyword}%")
                     ->orWhere('faskes.alamat_faskes', 'like', "%{$keyword}%")
@@ -895,8 +910,8 @@ class FaskesController extends Controller
                         foreach ($cleanWords as $w) {
                             $wordSub->where(function ($ws) use ($w) {
                                 $ws->where('faskes.nama_faskes', 'like', "%{$w}%")
-                                   ->orWhere('faskes.alamat_faskes', 'like', "%{$w}%")
-                                   ->orWhere('faskes.kota_kabupaten', 'like', "%{$w}%");
+                                    ->orWhere('faskes.alamat_faskes', 'like', "%{$w}%")
+                                    ->orWhere('faskes.kota_kabupaten', 'like', "%{$w}%");
                             });
                         }
                     });
@@ -981,8 +996,11 @@ class FaskesController extends Controller
         $total = $query->distinct()->count('faskes.id_faskes');
         $faskesList = $query->distinct()->offset($offset)->limit($limit)->get();
 
+        $thumbnails = FotoFaskesController::thumbnailUrls($faskesList->pluck('id_faskes')->all());
+
         // Transformasi tambahan (slug, rating, dll)
-        $faskesList->transform(function ($item) {
+        $faskesList->transform(function ($item) use ($thumbnails) {
+            $item->thumbnail_url = $thumbnails[$item->id_faskes] ?? null;
             $item->type_slug = $this->getTypeSlug($item->jenis_faskes);
             $item->nama_faskes = $this->formatFaskesName($item->nama_faskes, $item->type_slug, $item->jenis_faskes);
 

@@ -2,14 +2,20 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Auth\BackendSessionUserProvider;
+use App\Auth\BackendUser;
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Login, register, dan logout user.
+ * Frontend tidak menyimpan data user sendiri: semua dicek dan disimpan di backend,
+ * lalu token & data user dari backend disimpan di session.
+ */
 class AuthController extends Controller
 {
     /**
@@ -34,7 +40,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Handle User Login
+     * Handle User Login (dicek ke backend: POST /api/login)
      */
     public function login(Request $request)
     {
@@ -47,41 +53,30 @@ class AuthController extends Controller
             'password.required' => 'Kata sandi wajib diisi.',
         ]);
 
-        $remember = $request->boolean('remember');
+        try {
+            $response = Http::acceptJson()->timeout(10)->post($this->backendUrl().'/api/login', [
+                'email' => $credentials['email'],
+                'password' => $credentials['password'],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Backend login unreachable: '.$e->getMessage());
 
-        // 1. Attempt login with local User table
-        if (Auth::attempt($credentials, $remember)) {
-            $request->session()->regenerate();
-            $user = Auth::user();
-
-            // Try to sync with backend API and get sanctum token if available
-            $this->syncBackendLogin($credentials['email'], $credentials['password']);
-
-            // If a redirect was specified in the form, use it; otherwise use intended or profile
-            $redirectTo = $request->input('redirect');
-            if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
-                return redirect($redirectTo)->with('success', 'Selamat datang kembali, ' . ($user->name ?? 'Pengguna') . '!');
-            }
-
-            return redirect()->intended(route('profile'))->with('success', 'Selamat datang kembali, ' . ($user->name ?? 'Pengguna') . '!');
+            return $this->loginFailed($request, 'Server Medigo sedang tidak bisa dihubungi. Coba lagi beberapa saat.');
         }
 
-        // 2. Fallback: Check if backend API has this user and sync locally
-        $backendAuth = $this->attemptBackendLoginAndSync($credentials['email'], $credentials['password']);
-        if ($backendAuth) {
-            $request->session()->regenerate();
+        if (! $response->successful()) {
+            // Pesan dari backend: email/password salah atau akun diblokir admin
+            $message = $response->json('errors.email.0')
+                ?? 'Email atau kata sandi yang Anda masukkan tidak sesuai.';
 
-            $redirectTo = $request->input('redirect');
-            if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
-                return redirect($redirectTo)->with('success', 'Selamat datang kembali, ' . (Auth::user()->name ?? 'Pengguna') . '!');
-            }
-
-            return redirect()->intended(route('profile'))->with('success', 'Selamat datang kembali, ' . (Auth::user()->name ?? 'Pengguna') . '!');
+            return $this->loginFailed($request, $message);
         }
 
-        return back()->withInput($request->only('email', 'remember'))->withErrors([
-            'email' => 'Email atau kata sandi yang Anda masukkan tidak sesuai.',
-        ]);
+        if (! $this->startSession($request, $response, $request->boolean('remember'))) {
+            return $this->loginFailed($request, 'Gagal memproses data akun. Coba lagi.');
+        }
+
+        return $this->redirectAfterAuth($request, 'Selamat datang kembali, '.(Auth::user()->name ?? 'Pengguna').'!');
     }
 
     /**
@@ -97,44 +92,54 @@ class AuthController extends Controller
     }
 
     /**
-     * Handle User Registration
+     * Handle User Registration (akun dibuat di backend: POST /api/register)
      */
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'name' => ['required', 'string', 'max:150'],
+            'email' => ['required', 'string', 'email', 'max:150'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'name.required' => 'Nama lengkap wajib diisi.',
             'email.required' => 'Alamat email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email ini sudah terdaftar. Silakan login atau gunakan email lain.',
             'password.required' => 'Kata sandi wajib diisi.',
             'password.min' => 'Kata sandi minimal 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);
 
-        // 1. Create local user
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
+        try {
+            $response = Http::acceptJson()->timeout(10)->post($this->backendUrl().'/api/register', [
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Backend register unreachable: '.$e->getMessage());
 
-        // 2. Try registering on backend API as well
-        $this->syncBackendRegister($validated['name'], $validated['email'], $validated['password']);
-
-        // 3. Auto login the new user
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        $redirectTo = $request->input('redirect');
-        if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
-            return redirect($redirectTo)->with('success', 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
+            return back()->withInput($request->only('name', 'email'))->withErrors([
+                'email' => 'Server Medigo sedang tidak bisa dihubungi. Coba lagi beberapa saat.',
+            ]);
         }
 
-        return redirect()->route('profile')->with('success', 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
+        if (! $response->successful()) {
+            $errors = $response->json('errors') ?? [];
+            $emailError = $errors['email'][0] ?? null;
+            if ($emailError && str_contains(strtolower($emailError), 'taken')) {
+                $emailError = 'Email ini sudah terdaftar. Silakan login atau gunakan email lain.';
+            }
+
+            return back()->withInput($request->only('name', 'email'))->withErrors([
+                'email' => $emailError ?? ($errors['name'][0] ?? $errors['password'][0] ?? 'Pendaftaran gagal. Periksa kembali data Anda.'),
+            ]);
+        }
+
+        if (! $this->startSession($request, $response)) {
+            return redirect()->route('login')->with('success', 'Akun berhasil dibuat. Silakan login.');
+        }
+
+        return $this->redirectAfterAuth($request, 'Akun Anda berhasil dibuat! Selamat datang di MediGO.');
     }
 
     /**
@@ -142,17 +147,18 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Try to call backend logout if token exists
+        // Hapus token di backend juga
         $token = session('user_backend_token');
         if ($token) {
             try {
-                $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
-                $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
-                Http::timeout(3)->withToken($token)->post("{$backendUrl}/api/logout");
+                Http::timeout(3)->withToken($token)->post($this->backendUrl().'/api/logout');
             } catch (\Exception $e) {
                 // Silently ignore backend logout failure
             }
         }
+
+        // Hapus data "Ingat saya" supaya cookie lama tidak bisa dipakai login lagi
+        BackendSessionUserProvider::forgetRemembered();
 
         Auth::guard('web')->logout();
         $request->session()->forget(['user_backend_token', 'user_backend_data']);
@@ -163,105 +169,55 @@ class AuthController extends Controller
     }
 
     /**
-     * Sync login with backend API
+     * Simpan token & data user dari backend ke session, lalu tandai user sebagai login.
      */
-    private function syncBackendLogin($email, $password)
+    private function startSession(Request $request, Response $response, bool $remember = false): bool
     {
-        try {
-            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
-            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+        $token = $response->json('access_token');
+        $userData = $response->json('data');
 
-            // Hilangkan timeout sementara supaya tidak terputus kalau backend agak lambat
-            $response = Http::post("{$backendUrl}/api/login", [
-                'email' => $email,
-                'password' => $password,
-            ]);
-
-            if ($response->successful()) {
-                $body = $response->json();
-                session([
-                    'user_backend_token' => $body['access_token'] ?? null,
-                    'user_backend_data' => $body['data'] ?? null,
-                ]);
-            } else {
-                // JEBAKAN KITA: Tampilkan apa alasan backend menolak login!
-                // dd('API BE Gagal Login. Status: ' . $response->status(), 'Response BE:', $response->json());
-            }
-        } catch (\Exception $e) {
-            // JEBAKAN KITA: Tampilkan jika FE sama sekali tidak bisa konek ke BE
-            // dd('Koneksi dari FE ke BE Terputus. Pesan Error:', $e->getMessage());
+        if (! $token || ! is_array($userData) || empty($userData['id_user'])) {
+            return false;
         }
+
+        $request->session()->regenerate();
+        session([
+            'user_backend_token' => $token,
+            'user_backend_data' => $userData,
+        ]);
+
+        // "Ingat saya": data login disimpan sementara (lihat BackendSessionUserProvider::updateRememberToken)
+        if ($remember) {
+            session([BackendSessionUserProvider::REMEMBER_REQUESTED => true]);
+        }
+
+        Auth::login(BackendUser::fromBackend($userData), $remember);
+
+        return true;
     }
 
-    /**
-     * Sync registration with backend API
-     */
-    private function syncBackendRegister($name, $email, $password)
+    private function loginFailed(Request $request, string $message)
     {
-        try {
-            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
-            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
-
-            $response = Http::timeout(4)->post("{$backendUrl}/api/register", [
-                'name' => $name,
-                'email' => $email,
-                'password' => $password,
-            ]);
-
-            if ($response->successful()) {
-                $body = $response->json();
-                session([
-                    'user_backend_token' => $body['access_token'] ?? null,
-                    'user_backend_data' => $body['data'] ?? null,
-                ]);
-            } else {
-                $this->syncBackendLogin($email, $password);
-            }
-        } catch (\Exception $e) {
-            Log::info('Backend register sync bypassed: ' . $e->getMessage());
-        }
+        return back()->withInput($request->only('email', 'remember'))->withErrors([
+            'email' => $message,
+        ]);
     }
 
-    /**
-     * Attempt backend login and synchronize local user if found
-     */
-    private function attemptBackendLoginAndSync($email, $password)
+    private function redirectAfterAuth(Request $request, string $message)
     {
-        try {
-            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
-            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
-
-            $response = Http::timeout(4)->post("{$backendUrl}/api/login", [
-                'email' => $email,
-                'password' => $password,
-            ]);
-
-            if ($response->successful()) {
-                $body = $response->json();
-                $userData = $body['data'] ?? [];
-
-                // Create or update local user record
-                $userName = $userData['nama_user'] ?? ($userData['name'] ?? explode('@', $email)[0]);
-                $user = User::updateOrCreate(
-                    ['email' => $email],
-                    [
-                        'name' => $userName,
-                        'password' => Hash::make($password),
-                    ]
-                );
-
-                Auth::login($user);
-                session([
-                    'user_backend_token' => $body['access_token'] ?? null,
-                    'user_backend_data' => $userData,
-                ]);
-
-                return true;
-            }
-        } catch (\Exception $e) {
-            Log::warning('Backend login fallback failed: ' . $e->getMessage());
+        // If a redirect was specified in the form, use it; otherwise use intended or profile
+        $redirectTo = $request->input('redirect');
+        if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
+            return redirect($redirectTo)->with('success', $message);
         }
 
-        return false;
+        return redirect()->intended(route('profile'))->with('success', $message);
+    }
+
+    private function backendUrl(): string
+    {
+        $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+
+        return rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
     }
 }

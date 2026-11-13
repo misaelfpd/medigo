@@ -10,6 +10,9 @@ use App\Http\Controllers\FaskesCommentController;
 use App\Http\Controllers\FaskesController;
 use App\Http\Controllers\FaskesFeatureController;
 use App\Http\Controllers\FaskesFeedbackController;
+use App\Http\Controllers\ForumController;
+use App\Http\Controllers\ForumLikeController;
+use App\Http\Controllers\FotoFaskesController;
 use App\Http\Controllers\GeminiController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Http\Request;
@@ -26,12 +29,15 @@ Route::post('/auth/token-by-email', [AuthController::class, 'tokenByEmail']);
 // Rute Search & Filter Faskes (Harus didefinisikan sebelum /faskes/{id})
 Route::get('/faskes/search', [FaskesController::class, 'searchFaskes']);
 Route::get('/faskes/filter-options', [FaskesController::class, 'getFilterOptions']);
+// Pencarian faskes untuk tombol mention di judul diskusi
+Route::get('/faskes/mention-search', [ForumController::class, 'mentionSearch']);
 
 Route::get('/faskes', [FaskesController::class, 'index']);
 Route::get('/faskes/{id}', [FaskesController::class, 'show']);
 Route::get('/faskes/{id}/features', [FaskesFeatureController::class, 'getFacilitiesAndSpecialties']);
 Route::get('/faskes/{id}/fasilitas', [FaskesFeatureController::class, 'getFacilities']);
 Route::get('/faskes/{id}/spesialisasi', [FaskesFeatureController::class, 'getSpecialties']);
+Route::get('/faskes/{id}/foto', [FotoFaskesController::class, 'index']); // Foto faskes: thumbnail, banner, galeri
 Route::get('/fasilitas', [FaskesFeatureController::class, 'getAllFacilities']);
 Route::get('/spesialisasi', [FaskesFeatureController::class, 'getAllSpecialties']);
 Route::get('/faskes/{faskes_id}/comments', [FaskesCommentController::class, 'index']);
@@ -41,10 +47,11 @@ Route::post('/faskes/{faskes_id}/report', [FaskesFeedbackController::class, 'sto
 // Rute Forum Diskusi (Public)
 Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat semua diskusi
 Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat 1 diskusi spesifik
+Route::get('/forum/faskes-terdekat', [ForumController::class, 'nearbyFaskes']); // Rekomendasi faskes terdekat (urut like)
 
-    // GEMINI AI
-    Route::get('/chat-ai/history', [GeminiController::class, 'history']);
-    Route::post('/chat-ai', [GeminiController::class, 'chat']);
+// GEMINI AI
+Route::get('/chat-ai/history', [GeminiController::class, 'history']);
+Route::post('/chat-ai', [GeminiController::class, 'chat']);
 
 // Rute Terproteksi (Wajib punya Token / udah Login)
 Route::middleware('auth:sanctum')->group(function () {
@@ -84,6 +91,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/comments/{id}/report', [DiscussionCommentController::class, 'report']);
     Route::post('/discussion-comments/{id}/report', [DiscussionCommentController::class, 'report']);
 
+    // Like & unlike forum (1 user = 1 like, tidak bisa like milik sendiri)
+    Route::post('/discussions/{id}/like', [ForumLikeController::class, 'likeDiscussion']);
+    Route::delete('/discussions/{id}/like', [ForumLikeController::class, 'unlikeDiscussion']);
+    Route::post('/discussion-comments/{id}/like', [ForumLikeController::class, 'likeComment']);
+    Route::delete('/discussion-comments/{id}/like', [ForumLikeController::class, 'unlikeComment']);
+
     // Rute Admin Dashboard Log (Wajib Login + Wajib Admin)
     Route::middleware(AdminMiddleware::class)->group(function () {
         Route::get('/admin/logs', [ActivityLogController::class, 'index']);
@@ -93,6 +106,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/faskes', [FaskesController::class, 'store']);
         Route::put('/faskes/{id}', [FaskesController::class, 'update']);
         Route::delete('/faskes/{id}', [FaskesController::class, 'destroy']);
+
+        // Admin CRUD Foto Faskes (otomatis dikonversi ke WebP)
+        Route::post('/faskes/{id}/foto', [FotoFaskesController::class, 'store']);
+        Route::post('/faskes/{id}/foto/{fotoId}', [FotoFaskesController::class, 'update']); // multipart (ganti file)
+        Route::put('/faskes/{id}/foto/{fotoId}', [FotoFaskesController::class, 'update']);  // JSON (keterangan/urutan)
+        Route::delete('/faskes/{id}/foto/{fotoId}', [FotoFaskesController::class, 'destroy']);
+        Route::post('/faskes/{id}/foto/{fotoId}/jadikan', [FotoFaskesController::class, 'setAs']); // galeri -> thumbnail/banner
 
         // Admin Master Fasilitas & Spesialisasi
         Route::post('/fasilitas', [FaskesFeatureController::class, 'storeFacility']);
