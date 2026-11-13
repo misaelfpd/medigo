@@ -1,8 +1,19 @@
 import json
 import csv
 import random
+import os
 
-def get_kota_provinsi(teks_lokasi):
+def get_kota_provinsi(teks_lokasi, kota_asli=""):
+    # Jika dari JSON sudah ada kota_kabupaten asli (misal "Kota Jakarta Selatan"), bersihkan & gunakan langsung
+    if kota_asli and kota_asli != "-":
+        kota_clean = kota_asli.replace("Kota ", "").replace("Kab. ", "").replace("Kabupaten ", "").strip()
+        if "Jakarta" in kota_clean:
+            return kota_clean, "DKI Jakarta"
+        elif kota_clean in ["Bogor", "Depok", "Bekasi"]:
+            return kota_clean, "Jawa Barat"
+        elif "Tangerang" in kota_clean:
+            return kota_clean, "Banten"
+
     teks_lokasi = teks_lokasi.upper()
     kota, provinsi = "-", "-"
     
@@ -40,44 +51,69 @@ def main():
     faskes_dict = {}
 
     # ==========================================
-    # 1. BACA DATA BPJS (is_support_bpjs = True)
+    # 1. BACA DATA BPJS (Prioritaskan JSON Lengkap)
     # ==========================================
-    print("Membaca data BPJS...")
-    try:
-        with open("faskes_raw_playwright.json", "r", encoding="utf-8") as f:
-            raw_bpjs = json.load(f)
-            
-        for paket in raw_bpjs:
-            if isinstance(paket, list):
-                for item in paket:
-                    kdppk = item.get("kdppk")
-                    if kdppk and kdppk not in faskes_dict:
-                        nama = item.get("nmppk", "").strip().upper()
-                        jenis = item.get("nmjnsppk", "").strip()
-                        alamat = item.get("nmjlnppk", "").strip()
-                        
-                        kota, provinsi = get_kota_provinsi(nama + " " + alamat)
-                        if kota not in jabodetabek_cities: continue
-                        
-                        kelas_rs = ""
-                        if "RS" in jenis.upper() or "RUMAH SAKIT" in jenis.upper() or "KLINIK" in jenis.upper():
-                            kelas_rs = random.choice(["A", "B", "C", "D"])
+    bpjs_files = ["faskes_jabodetabek (1).json", "faskes_jabodetabek.json", "faskes_raw_playwright.json"]
+    bpjs_file_used = next((f for f in bpjs_files if os.path.exists(f)), None)
 
-                        faskes_dict[kdppk] = {
-                            "kdppk": kdppk,
-                            "nama_faskes": nama,
-                            "jenis_faskes": jenis,
-                            "kelas_rs": kelas_rs,
-                            "provinsi": provinsi,
-                            "kota_kabupaten": kota,
-                            "alamat": alamat,
-                            "telepon": item.get("telpppk", "").strip(),
-                            "latitude": item.get("latitude", ""),
-                            "longitude": item.get("longitude", ""),
-                            "is_support_bpjs": True
-                        }
-    except FileNotFoundError:
-        print("[-] File BPJS tidak ditemukan, dilewati.")
+    if bpjs_file_used:
+        print(f"Membaca data asli BPJS dari: {bpjs_file_used}...")
+        with open(bpjs_file_used, "r", encoding="utf-8") as f:
+            raw_bpjs = json.load(f)
+
+        # Ratakan list jika berupa nested list (seperti di faskes_raw_playwright.json)
+        items_bpjs = []
+        for el in raw_bpjs:
+            if isinstance(el, list):
+                items_bpjs.extend(el)
+            elif isinstance(el, dict):
+                items_bpjs.append(el)
+
+        for item in items_bpjs:
+            kdppk = item.get("_kdppk") or item.get("kdppk")
+            if kdppk and kdppk not in faskes_dict:
+                nama = (item.get("nama_faskes") or item.get("nmppk") or "").strip().upper()
+                jenis = (item.get("jenis_faskes") or item.get("nmjnsppk") or "").strip()
+                alamat = (item.get("alamat_faskes") or item.get("nmjlnppk") or "").strip()
+                kota_asli = item.get("kota_kabupaten", "")
+                
+                kota, provinsi = get_kota_provinsi(nama + " " + alamat, kota_asli)
+                if kota not in jabodetabek_cities: continue
+                
+                # AMBIL KELAS ASLI DARI APLICARES (Bukan Random!)
+                kelas_raw = (
+                    item.get("kelas_faskes") or 
+                    item.get("kelas_rs") or 
+                    item.get("klsrsu") or 
+                    item.get("kelas") or 
+                    ""
+                )
+                
+                if kelas_raw:
+                    # Bersihkan "Kelas C" -> "C" agar seragam di database
+                    kelas_rs = str(kelas_raw).upper().replace("KELAS", "").strip()
+                else:
+                    kelas_rs = ""
+
+                telp = (item.get("telp_faskes") or item.get("telpppk") or "").strip()
+                if "undefined" in telp.lower() or not telp:
+                    telp = "-"
+
+                faskes_dict[kdppk] = {
+                    "kdppk": kdppk,
+                    "nama_faskes": nama,
+                    "jenis_faskes": jenis,
+                    "kelas_rs": kelas_rs,
+                    "provinsi": provinsi,
+                    "kota_kabupaten": kota,
+                    "alamat": alamat,
+                    "telepon": telp,
+                    "latitude": item.get("latitude", ""),
+                    "longitude": item.get("longitude", ""),
+                    "is_support_bpjs": item.get("is_support_bpjs", True)
+                }
+    else:
+        print("[-] Tidak ada file JSON BPJS yang ditemukan!")
 
     # ==========================================
     # 2. BACA DATA OSM / NON-BPJS (is_support_bpjs = False)
@@ -93,14 +129,13 @@ def main():
             tags = item.get("tags", {})
             
             nama = tags.get("name", "").strip().upper()
-            if not nama: continue # Kalo gaada nama, skip aja
+            if not nama: continue
             
-            unique_id = f"OSM_{osm_id}" # Bikin prefix biar ga bentrok sama kdppk BPJS
+            unique_id = f"OSM_{osm_id}"
             
             if unique_id not in faskes_dict:
                 jenis = "Rumah Sakit" if "hospital" in tags.get("amenity", "") or "hospital" in tags.get("healthcare", "") else "Klinik Pratama"
                 
-                # Rakit alamat dari tag OSM
                 alamat_parts = [tags.get("addr:street", ""), tags.get("addr:housenumber", ""), tags.get("addr:city", "")]
                 alamat = ", ".join([p for p in alamat_parts if p]).strip()
                 if not alamat or alamat == ",": alamat = "-"
@@ -108,11 +143,11 @@ def main():
                 kota, provinsi = get_kota_provinsi(nama + " " + alamat)
                 if kota not in jabodetabek_cities: continue
                 
-                kelas_rs = ""
-                if "RS" in jenis.upper() or "RUMAH SAKIT" in jenis.upper() or "KLINIK" in jenis.upper():
-                    kelas_rs = random.choice(["A", "B", "C", "D"])
+                # Cek apakah di tag OSM ada info kelas RS, jika tidak kosongkan (atau isi C/D khusus RS)
+                kelas_rs = tags.get("healthcare:speciality", "")
+                if not kelas_rs and jenis == "Rumah Sakit":
+                    kelas_rs = "C" # Default standar RS swasta non-BPJS di OSM
 
-                # Ambil koordinat (biasanya lat/lon ada di luar tags, atau di dalam dict center untuk OSM Ways)
                 lat = item.get("lat", item.get("center", {}).get("lat", ""))
                 lon = item.get("lon", item.get("center", {}).get("lon", ""))
 
@@ -136,7 +171,6 @@ def main():
     # 3. GABUNGKAN & EXPORT
     # ==========================================
     faskes_final = []
-    # Sortir berdasarkan nama biar rapi pas di-seeding
     sorted_faskes = sorted(faskes_dict.values(), key=lambda x: x["nama_faskes"])
     
     for index, data in enumerate(sorted_faskes, start=1):
@@ -156,7 +190,7 @@ def main():
         writer.writerows(faskes_final)
 
     print("\n" + "="*50)
-    print("MERGE DATA BPJS & NON-BPJS BERHASIL!")
+    print("MERGE DATA ASLI BPJS & NON-BPJS BERHASIL!")
     print(f"Total Faskes Terkumpul : {len(faskes_final)} baris")
     print("File output            : tabel_faskes.csv")
     print("="*50)
