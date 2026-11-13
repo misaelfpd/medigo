@@ -37,6 +37,14 @@ class DatabaseSeederTest extends TestCase
         $this->assertGreaterThan(1000, DB::table('fasilitas_faskes')->count());
         $this->assertGreaterThan(1000, DB::table('spesialisasi_faskes')->count());
 
+        // Kolom is_support_bpjs (True/False) dari CSV harus terbaca, tidak semuanya jadi BPJS
+        $this->assertGreaterThan(0, DB::table('faskes')->where('_support_bpjs', 0)->count());
+        $this->assertGreaterThan(0, DB::table('faskes')->where('_support_bpjs', 1)->count());
+
+        // Kelas hanya boleh A-D atau kosong (bukan teks lain dari OSM), dan penulisan jenis "Rumah Sakit" seragam
+        $this->assertSame(0, DB::table('faskes')->whereNotNull('kelas')->whereNotIn('kelas', ['A', 'B', 'C', 'D'])->count());
+        $this->assertSame(0, DB::table('faskes')->where('jenis_faskes', 'Rumah sakit')->count());
+
         $faskesSample = DB::table('faskes')->first();
         $this->assertNotNull($faskesSample->created_at);
         $this->assertNotNull($faskesSample->updated_at);

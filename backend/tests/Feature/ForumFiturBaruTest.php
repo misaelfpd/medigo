@@ -9,8 +9,10 @@ use App\Models\TanggapanDiskusi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -173,6 +175,44 @@ class ForumFiturBaruTest extends TestCase
             ->assertJsonPath('data.data.0.judul_diskusi', 'Populer')
             ->assertJsonPath('data.data.0.likes_count', 2)
             ->assertJsonPath('data.data.0.liked_by_me', false);
+    }
+
+    // ---------- Thumbnail kartu diskusi ----------
+
+    public function test_discussion_list_has_thumbnail_from_first_uploaded_image(): void
+    {
+        Storage::fake('public');
+        $user = $this->makeUser('u@example.com');
+        Sanctum::actingAs($user);
+
+        $id = $this->post('/api/discussions', [
+            'title' => 'Ada foto',
+            'content' => 'Isi',
+            'images' => [
+                UploadedFile::fake()->image('satu.jpg'),
+                UploadedFile::fake()->image('dua.jpg'),
+            ],
+        ], ['Accept' => 'application/json'])->assertCreated()->json('discussion_id');
+        $this->makeDiscussion($user)->update(['judul_diskusi' => 'Tanpa foto', 'created_at' => now()->subDay()]);
+
+        $first = $this->getJson('/api/discussions')->assertOk()->json('data.data');
+        $this->assertSame('Ada foto', $first[0]['judul_diskusi']);
+        $this->assertCount(2, $first[0]['images_list']);
+        $this->assertSame($first[0]['images_list'][0], $first[0]['thumbnail_url']);
+        $this->assertStringContainsString('/storage/discussions/', $first[0]['thumbnail_url']);
+        $this->assertNull($first[1]['thumbnail_url']);
+        $this->assertSame([], $first[1]['images_list']);
+
+        $this->getJson("/api/discussions/{$id}")->assertJsonPath('data.discussion.thumbnail_url', $first[0]['thumbnail_url']);
+        $this->getJson('/api/user/discussions')->assertJsonPath('data.0.thumbnail_url', $first[0]['thumbnail_url']);
+    }
+
+    public function test_old_discussion_with_only_single_image_column_still_gets_thumbnail(): void
+    {
+        $user = $this->makeUser('u@example.com');
+        $this->makeDiscussion($user)->update(['gambar_diskusi' => 'http://localhost/storage/discussions/lama.jpg', 'images' => null]);
+
+        $this->getJson('/api/discussions')->assertJsonPath('data.data.0.thumbnail_url', 'http://localhost/storage/discussions/lama.jpg');
     }
 
     // ---------- Faskes terdekat di forum ----------
