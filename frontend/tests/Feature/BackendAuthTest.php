@@ -228,3 +228,26 @@ test('logout invalidates remember me data', function () {
     $this->withUnencryptedCookie($cookie->getName(), $cookie->getValue())->get('/discussions')->assertOk();
     expect(Auth::check())->toBeFalse();
 });
+
+test('forum list shows thumbnail from first discussion photo', function () {
+    Http::fake(['be.test/api/discussions*' => Http::response(['data' => ['data' => [
+        [
+            'id_diskusi' => 1, 'judul_diskusi' => 'Dengan foto', 'isi_diskusi' => 'isi', 'kategori' => 'Umum',
+            'author_name' => 'A', 'created_at' => now()->toDateTimeString(),
+            'images_list' => ['http://be.test/storage/discussions/a.jpg', 'http://be.test/storage/discussions/b.jpg'],
+            'thumbnail_url' => 'http://be.test/storage/discussions/a.jpg',
+        ],
+        [
+            'id_diskusi' => 2, 'judul_diskusi' => 'Tanpa foto', 'isi_diskusi' => 'isi', 'kategori' => 'Umum',
+            'author_name' => 'B', 'created_at' => now()->toDateTimeString(),
+            'images_list' => [], 'thumbnail_url' => null,
+        ],
+    ]]])]);
+
+    $html = $this->get('/discussions')->assertOk()->getContent();
+
+    expect(substr_count($html, 'http://be.test/storage/discussions/a.jpg'))->toBe(1)
+        ->and($html)->toContain('+1')
+        ->and($html)->toContain('Tanpa foto')
+        ->and($html)->not->toContain('Foto diskusi Tanpa foto');
+});
