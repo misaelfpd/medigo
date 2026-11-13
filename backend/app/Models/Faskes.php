@@ -20,6 +20,11 @@ class Faskes extends Model
         return $this->belongsToMany(Fasilitas::class, 'fasilitas_faskes', 'id_faskes', 'id_fasilitas');
     }
 
+    public function foto()
+    {
+        return $this->hasMany(FotoFaskes::class, 'id_faskes', 'id_faskes');
+    }
+
     public function spesialisasi()
     {
         return $this->belongsToMany(Spesialisasi::class, 'spesialisasi_faskes', 'id_faskes', 'id_spesialisasi');

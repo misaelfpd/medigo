@@ -6,109 +6,16 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class AdminForumModerationController extends Controller
 {
-    /**
-     * Pastikan data awal antrean moderasi contoh tersedia jika seluruh laporan kosong,
-     * agar admin langsung dapat menguji fungsi moderasi sesuai mockup.
-     */
-    private function ensureSampleModerationData(): void
-    {
-        $existingDiscReports = DB::table('laporan_diskusi')->count();
-        $existingCmtReports = DB::table('laporan_tanggapan')->count();
-        if ($existingDiscReports > 0 || $existingCmtReports > 0) {
-            return;
-        }
-
-        try {
-            // 1. Buat User Contoh jika belum ada
-            $user1Id = DB::table('user')->where('email_user', 'angry.patient@medigo.id')->value('id_user');
-            if (! $user1Id) {
-                $user1Id = DB::table('user')->insertGetId([
-                    'nama_user' => 'angry_patient_88',
-                    'email_user' => 'angry.patient@medigo.id',
-                    'password_user' => Hash::make('password123'),
-                    'role_user' => 'user',
-                    'avatar' => null,
-                    'created_at' => now()->subDays(2),
-                    'updated_at' => now()->subDays(2),
-                ]);
-            }
-
-            $user2Id = DB::table('user')->where('email_user', 'johndoe.spam@medigo.id')->value('id_user');
-            if (! $user2Id) {
-                $user2Id = DB::table('user')->insertGetId([
-                    'nama_user' => 'johndoe_spam',
-                    'email_user' => 'johndoe.spam@medigo.id',
-                    'password_user' => Hash::make('password123'),
-                    'role_user' => 'user',
-                    'avatar' => null,
-                    'created_at' => now()->subDays(1),
-                    'updated_at' => now()->subDays(1),
-                ]);
-            }
-
-            $reporterId = DB::table('user')->where('role_user', '!=', 'blocked')->value('id_user') ?: $user1Id;
-
-            // 2. Buat Postingan Contoh Sesuai Mockup
-            $disc1Id = DB::table('diskusi')->insertGetId([
-                'id_user' => $user1Id,
-                'judul_diskusi' => 'Postingan Kontroversial Mengenai Kebijakan Klinik Baru',
-                'isi_diskusi' => 'Ini sama sekali tidak dapat diterima. Waktu tunggu yang baru konyol dan staf sama sekali mengabaikan pasien. Saya menyarankan semua orang segera memboikot fasilitas ini sampai mereka berubah...',
-                'kategori' => 'Diskusi Umum',
-                'status_diskusi' => 'active',
-                'created_at' => now()->subMinutes(10),
-                'updated_at' => now()->subMinutes(10),
-            ]);
-
-            $disc2Id = DB::table('diskusi')->insertGetId([
-                'id_user' => $user2Id,
-                'judul_diskusi' => 'Menjual obat resep diskon - DM saya',
-                'isi_diskusi' => 'Saya punya beberapa obat tambahan yang tidak saya butuhkan lagi. DM untuk harga.',
-                'kategori' => 'Pasar',
-                'status_diskusi' => 'active',
-                'created_at' => now()->subHours(1),
-                'updated_at' => now()->subHours(1),
-            ]);
-
-            // 3. Masukkan Laporan Sesuai Mockup
-            // Diskusi 1: Dilaporkan oleh 5 pengguna
-            for ($i = 0; $i < 5; $i++) {
-                DB::table('laporan_diskusi')->insert([
-                    'id_diskusi' => $disc1Id,
-                    'id_user' => $reporterId,
-                    'alasan_laporan' => 'Ujaran kebencian, fitnah, dan provokasi boikot massal yang melanggar pedoman komunitas.',
-                    'status' => 'pending',
-                    'created_at' => now()->subMinutes(10 - $i),
-                    'updated_at' => now()->subMinutes(10 - $i),
-                ]);
-            }
-
-            // Diskusi 2: Dilaporkan oleh Automod
-            DB::table('laporan_diskusi')->insert([
-                'id_diskusi' => $disc2Id,
-                'id_user' => $reporterId,
-                'alasan_laporan' => 'Terdeteksi otomatis oleh Automod: Transaksi ilegal penjualan obat keras resep.',
-                'status' => 'pending',
-                'created_at' => now()->subHour(),
-                'updated_at' => now()->subHour(),
-            ]);
-        } catch (\Exception $e) {
-            // Abaikan jika kendala insert sample
-        }
-    }
-
     /**
      * Ambil data lengkap moderasi forum (Statistik, Filter Tren/Terbaru/Dilaporkan, dan Antrean Moderasi).
      * Mendukung laporan Utas Diskusi (laporan_diskusi) dan laporan Komentar (laporan_tanggapan).
      */
     public function getModerationData(Request $request): JsonResponse
     {
-        $this->ensureSampleModerationData();
-
         $tab = $request->input('tab', 'reported'); // reported, recent, trending
         $sort = $request->input('sort', 'latest'); // latest, oldest, reports_desc, comments_desc
         $search = trim($request->input('search', ''));
@@ -125,7 +32,8 @@ class AdminForumModerationController extends Controller
         $resolvedDiscussionReports = DB::table('laporan_diskusi')->whereIn('status', ['resolved', 'dismissed'])->count();
         $resolvedCommentReports = DB::table('laporan_tanggapan')->whereIn('status', ['resolved', 'dismissed'])->count();
         $resolvedReportsCount = $resolvedDiscussionReports + $resolvedCommentReports;
-        $autoActionsCount = max(342, $resolvedReportsCount + 340);
+        // Jumlah laporan yang sudah ditindak (resolved/dismissed). Dulu angka ini dipalsukan (min. 342).
+        $autoActionsCount = $resolvedReportsCount;
 
         // 2. QUERY ITEMS BERDASARKAN TAB
         if ($tab === 'reported') {
@@ -262,7 +170,11 @@ class AdminForumModerationController extends Controller
             if ($sort === 'oldest') {
                 $combined = $combined->sortBy('reported_at');
             } elseif ($sort === 'reports_desc') {
-                $combined = $combined->sortByDesc('reports_count')->sortByDesc('reported_at');
+                // Urut jumlah laporan terbanyak, lalu laporan terbaru (sortByDesc berantai menimpa urutan sebelumnya)
+                $combined = $combined->sortBy([
+                    ['reports_count', 'desc'],
+                    ['reported_at', 'desc'],
+                ]);
             } else {
                 // Default: newest report first
                 $combined = $combined->sortByDesc('reported_at');
@@ -355,7 +267,7 @@ class AdminForumModerationController extends Controller
                 'user.email_user as author_email',
                 'user.avatar as author_avatar',
                 'user.role_user as author_role',
-                DB::raw('(SELECT COUNT(*) FROM laporan_diskusi WHERE laporan_diskusi.id_diskusi = diskusi.id_diskusi AND laporan_diskusi.status = "pending") as pending_reports_count'),
+                DB::raw('(SELECT COUNT(*) FROM laporan_diskusi WHERE laporan_diskusi.id_diskusi = diskusi.id_diskusi AND laporan_diskusi.status = \'pending\') as pending_reports_count'),
                 DB::raw('(SELECT COUNT(*) FROM laporan_diskusi WHERE laporan_diskusi.id_diskusi = diskusi.id_diskusi) as total_reports_count'),
                 DB::raw('(SELECT alasan_laporan FROM laporan_diskusi WHERE laporan_diskusi.id_diskusi = diskusi.id_diskusi ORDER BY id_laporan_diskusi DESC LIMIT 1) as latest_report_reason'),
                 DB::raw('(SELECT created_at FROM laporan_diskusi WHERE laporan_diskusi.id_diskusi = diskusi.id_diskusi ORDER BY id_laporan_diskusi DESC LIMIT 1) as latest_report_time'),
@@ -504,7 +416,8 @@ class AdminForumModerationController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return response()->json([
             'status' => 'success',
@@ -524,9 +437,14 @@ class AdminForumModerationController extends Controller
 
         if ($comment->gambar_tanggapan) {
             try {
-                $path = str_replace(url('storage/'), '', $comment->gambar_tanggapan);
-                Storage::disk('public')->delete($path);
-            } catch (\Exception $e) {}
+                $path = parse_url($comment->gambar_tanggapan, PHP_URL_PATH) ?: $comment->gambar_tanggapan;
+                $pos = strpos($path, '/storage/');
+                $relative = $pos !== false ? substr($path, $pos + strlen('/storage/')) : ltrim($path, '/');
+                if ($relative !== '' && ! str_contains($relative, '..')) {
+                    Storage::disk('public')->delete($relative);
+                }
+            } catch (\Exception $e) {
+            }
         }
 
         DB::table('tanggapan_diskusi')->where('id_tanggapan', $id)->delete();
@@ -546,7 +464,8 @@ class AdminForumModerationController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return response()->json([
             'status' => 'success',
@@ -600,6 +519,14 @@ class AdminForumModerationController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Pengguna tidak ditemukan.'], 404);
         }
 
+        $adminUser = $request->user();
+        if ($adminUser && (int) $adminUser->id_user === (int) $user->id_user) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak dapat memblokir akun Anda sendiri.'], 422);
+        }
+        if ($user->role_user === 'admin') {
+            return response()->json(['status' => 'error', 'message' => 'Akun admin tidak dapat diblokir.'], 422);
+        }
+
         // Update status role jadi 'blocked'
         DB::table('user')->where('id_user', $userId)->update([
             'role_user' => 'blocked',
@@ -618,7 +545,8 @@ class AdminForumModerationController extends Controller
                 ->where('tokenable_id', $userId)
                 ->where('tokenable_type', 'App\\Models\\User')
                 ->delete();
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         // Log Aktivitas
         try {
@@ -630,7 +558,8 @@ class AdminForumModerationController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return response()->json([
             'status' => 'success',
@@ -643,6 +572,10 @@ class AdminForumModerationController extends Controller
      */
     public function reportDiscussion(Request $request, $id): JsonResponse
     {
+        if (! DB::table('diskusi')->where('id_diskusi', $id)->exists()) {
+            return response()->json(['status' => 'error', 'message' => 'Diskusi tidak ditemukan.'], 404);
+        }
+
         $reason = $request->input('reason', 'Pelanggaran pedoman komunitas (Dilaporkan oleh Admin)');
         $adminId = $request->user() ? ($request->user()->id_user ?? $request->user()->id) : 1;
 
@@ -667,6 +600,10 @@ class AdminForumModerationController extends Controller
      */
     public function reportComment(Request $request, $id): JsonResponse
     {
+        if (! DB::table('tanggapan_diskusi')->where('id_tanggapan', $id)->exists()) {
+            return response()->json(['status' => 'error', 'message' => 'Komentar tidak ditemukan.'], 404);
+        }
+
         $reason = $request->input('reason', 'Pelanggaran pedoman komunitas (Dilaporkan oleh Admin)');
         $adminId = $request->user() ? ($request->user()->id_user ?? $request->user()->id) : 1;
 

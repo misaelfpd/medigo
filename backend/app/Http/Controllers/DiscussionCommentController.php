@@ -27,6 +27,17 @@ class DiscussionCommentController extends Controller
             return response()->json(['message' => 'Diskusi tidak ditemukan atau telah ditutup'], 404);
         }
 
+        // Balasan hanya boleh menginduk ke komentar di diskusi yang sama
+        if ($request->filled('parent_id')) {
+            $parentInSameDiscussion = DB::table('tanggapan_diskusi')
+                ->where('id_tanggapan', $request->input('parent_id'))
+                ->where('id_diskusi', $discussion_id)
+                ->exists();
+            if (! $parentInSameDiscussion) {
+                return response()->json(['message' => 'Komentar yang dibalas tidak ada di diskusi ini.'], 422);
+            }
+        }
+
         $imageUrl = null;
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('comments', 'public');
@@ -138,8 +149,7 @@ class DiscussionCommentController extends Controller
         }
 
         if ($comment->gambar_tanggapan) {
-            $path = str_replace(url('storage/'), '', $comment->gambar_tanggapan);
-            Storage::disk('public')->delete($path);
+            $this->deletePublicFile($comment->gambar_tanggapan);
         }
 
         $comment->delete();
@@ -233,14 +243,22 @@ class DiscussionCommentController extends Controller
      */
     public function takedownReportAdmin(Request $request, $id)
     {
-        $report = DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->first();
-        $tanggapanId = $report ? $report->id_tanggapan : $id;
+        // /admin/discussion-comment-reports/{id}/takedown -> $id = id laporan
+        // /admin/discussion-comments/{id}/takedown        -> $id = id tanggapan
+        if ($this->isReportRoute($request)) {
+            $report = DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->first();
+            if (! $report) {
+                return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
+            }
+            $tanggapanId = $report->id_tanggapan;
+        } else {
+            $tanggapanId = $id;
+        }
 
         $comment = DB::table('tanggapan_diskusi')->where('id_tanggapan', $tanggapanId)->first();
         if ($comment) {
             if ($comment->gambar_tanggapan) {
-                $path = str_replace(url('storage/'), '', $comment->gambar_tanggapan);
-                Storage::disk('public')->delete($path);
+                $this->deletePublicFile($comment->gambar_tanggapan);
             }
             DB::table('tanggapan_diskusi')->where('id_tanggapan', $tanggapanId)->delete();
         }
@@ -276,8 +294,14 @@ class DiscussionCommentController extends Controller
      */
     public function dismissReportAdmin(Request $request, $id)
     {
-        $report = DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->first();
+        $report = $this->isReportRoute($request)
+            ? DB::table('laporan_tanggapan')->where('id_laporan_tanggapan', $id)->first()
+            : null;
+        if (! $report && $this->isReportRoute($request)) {
+            return response()->json(['status' => 'error', 'message' => 'Laporan tidak ditemukan.'], 404);
+        }
         if (! $report) {
+            // Rute /admin/discussion-comments/{id}/dismiss: $id adalah id tanggapan
             $count = DB::table('laporan_tanggapan')->where('id_tanggapan', $id)->count();
             if ($count > 0) {
                 DB::table('laporan_tanggapan')->where('id_tanggapan', $id)->update([
@@ -303,5 +327,32 @@ class DiscussionCommentController extends Controller
             'status' => 'success',
             'message' => 'Laporan komentar diskusi berhasil diabaikan/ditandai tidak melanggar.',
         ]);
+    }
+
+    /**
+     * True jika request datang dari rute berbasis id laporan (/admin/discussion-comment-reports/{id}/...).
+     */
+    private function isReportRoute(Request $request): bool
+    {
+        return $request->is('api/admin/discussion-comment-reports/*');
+    }
+
+    /**
+     * Hapus file di disk public dari URL yang disimpan (http://host/storage/xxx).
+     * Tidak bergantung pada APP_URL/host saat ini, jadi tetap jalan walau host berubah.
+     */
+    private function deletePublicFile(?string $url): void
+    {
+        if (empty($url)) {
+            return;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $pos = strpos($path, '/storage/');
+        $relative = $pos !== false ? substr($path, $pos + strlen('/storage/')) : ltrim($path, '/');
+
+        if ($relative !== '' && ! str_contains($relative, '..')) {
+            Storage::disk('public')->delete($relative);
+        }
     }
 }

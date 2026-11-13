@@ -68,8 +68,8 @@ class DiscussionController extends Controller
                 $body = $response->json();
                 $rawItems = $body['data']['data'] ?? [];
                 
-                // Ambil mapping avatar pengguna dari database lokal frontend berdasarkan email
-                $userAvatarsByEmail = \App\Models\User::whereNotNull('avatar')->pluck('avatar', 'email')->all();
+                // Avatar penulis diambil dari backend (author_avatar); frontend tidak punya tabel user sendiri
+                $userAvatarsByEmail = [];
 
                 $discussions = collect($rawItems)->map(function ($item) use ($userAvatarsByEmail) {
                     $item = (array) $item;
@@ -304,7 +304,7 @@ class DiscussionController extends Controller
                 $rawDiscussion = $data['discussion'] ?? null;
                 $rawComments = $data['comments'] ?? [];
 
-                $userAvatarsByEmail = \App\Models\User::whereNotNull('avatar')->pluck('avatar', 'email')->all();
+                $userAvatarsByEmail = []; // Avatar penulis diambil dari backend (author_avatar)
 
                 if ($rawDiscussion) {
                     $d = (array) $rawDiscussion;

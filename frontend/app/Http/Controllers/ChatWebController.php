@@ -113,7 +113,13 @@ class ChatWebController extends Controller
         $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
         $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
         
-        $http = Http::acceptJson();
+        // X-Service-Key menandai request ini dari server frontend Medigo, X-Client-IP adalah IP asli
+        // pengunjung. Backend memakai IP ini untuk membatasi kuota tamu, supaya tidak bisa diakali
+        // dengan mengganti cookie/guest_id.
+        $http = Http::acceptJson()->withHeaders([
+            'X-Service-Key' => (string) config('services.medigo.service_key'),
+            'X-Client-IP' => (string) $request->ip(),
+        ]);
         if ($token) {
             $http->withToken($token); // Sertakan token jika user sudah login
         }

@@ -137,6 +137,15 @@
                             $discAuthorAvatar = $discussion['author_avatar'] ?? null;
                             $discCommentsCount = $discussion['comments_count'] ?? 0;
 
+                            // Thumbnail kartu: foto pertama yang diunggah di diskusi (dari backend)
+                            $discImagesList = $discussion['images_list'] ?? [];
+                            if (empty($discImagesList) && !empty($discussion['images'])) {
+                                $decodedImages = is_array($discussion['images']) ? $discussion['images'] : json_decode($discussion['images'], true);
+                                $discImagesList = is_array($decodedImages) ? array_values($decodedImages) : [];
+                            }
+                            $discThumbnail = $discussion['thumbnail_url'] ?? ($discImagesList[0] ?? $discImage);
+                            $discPhotoCount = max(count($discImagesList), $discThumbnail ? 1 : 0);
+
                             $currentUserEmail = Auth::check() ? (Auth::user()->email_user ?? Auth::user()->email ?? null) : null;
                             $currentUserId = Auth::check() ? (Auth::user()->id_user ?? Auth::id()) : null;
 
@@ -195,15 +204,36 @@
                                     </div>
                                 </div>
 
-                                <h5 class="fw-bold text-dark mb-2" style="font-size: 1.05rem;">
-                                    <a href="{{ route('discussions.show', $discId) }}" class="text-dark text-decoration-none hover-primary-text">
-                                        {{ $discTitle }}
-                                    </a>
-                                </h5>
+                                <div class="d-flex gap-3 align-items-start">
+                                    <div class="flex-grow-1" style="min-width: 0;">
+                                        <h5 class="fw-bold text-dark mb-2" style="font-size: 1.05rem;">
+                                            <a href="{{ route('discussions.show', $discId) }}" class="text-dark text-decoration-none hover-primary-text">
+                                                {{ $discTitle }}
+                                            </a>
+                                        </h5>
 
-                                <p class="text-secondary mb-3" style="font-size: 0.88rem; line-height: 1.6;">
-                                    {{ \Illuminate\Support\Str::limit($discBody, 160) }}
-                                </p>
+                                        <p class="text-secondary mb-3" style="font-size: 0.88rem; line-height: 1.6;">
+                                            {{ \Illuminate\Support\Str::limit($discBody, 160) }}
+                                        </p>
+                                    </div>
+
+                                    @if(!empty($discThumbnail))
+                                        <a href="{{ route('discussions.show', $discId) }}"
+                                           class="flex-shrink-0 position-relative d-block rounded-3 overflow-hidden border bg-light"
+                                           style="width: 96px; height: 96px;">
+                                            <img src="{{ $discThumbnail }}"
+                                                 alt="Foto diskusi {{ $discTitle }}"
+                                                 loading="lazy"
+                                                 class="w-100 h-100 object-fit-cover"
+                                                 onerror="this.closest('a').classList.add('d-none');">
+                                            @if($discPhotoCount > 1)
+                                                <span class="position-absolute bottom-0 end-0 m-1 badge rounded-pill bg-dark bg-opacity-75" style="font-size: 0.68rem;">
+                                                    +{{ $discPhotoCount - 1 }}
+                                                </span>
+                                            @endif
+                                        </a>
+                                    @endif
+                                </div>
 
                                 <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                                     <div class="d-flex align-items-center gap-2">

@@ -175,9 +175,19 @@ class DiscussionReportController extends Controller
      */
     public function takedown(Request $request, $id)
     {
-        // Check if $id refers to laporan_diskusi or langsung id_diskusi
-        $report = DB::table('laporan_diskusi')->where('id_laporan_diskusi', $id)->first();
-        $discussionId = $report ? $report->id_diskusi : $id;
+        // /admin/discussion-reports/{id}/takedown -> $id = id laporan
+        // /admin/discussions/{id}/takedown       -> $id = id diskusi
+        // Dulu $id selalu dicoba sebagai id laporan dulu, jadi kalau id diskusi kebetulan
+        // sama dengan id laporan lain, diskusi yang salah ikut ter-takedown.
+        if ($this->isReportRoute($request)) {
+            $report = DB::table('laporan_diskusi')->where('id_laporan_diskusi', $id)->first();
+            if (! $report) {
+                return response()->json(['status' => 'error', 'message' => 'Laporan diskusi tidak ditemukan.'], 404);
+            }
+            $discussionId = $report->id_diskusi;
+        } else {
+            $discussionId = $id;
+        }
 
         $discussion = DB::table('diskusi')->where('id_diskusi', $discussionId)->first();
         if (! $discussion) {
@@ -223,10 +233,17 @@ class DiscussionReportController extends Controller
      */
     public function dismiss(Request $request, $id)
     {
-        $report = DB::table('laporan_diskusi')->where('id_laporan_diskusi', $id)->first();
+        // Sama seperti takedown: id laporan hanya untuk rute /admin/discussion-reports/{id}
+        $report = $this->isReportRoute($request)
+            ? DB::table('laporan_diskusi')->where('id_laporan_diskusi', $id)->first()
+            : null;
+
+        if (! $report && $this->isReportRoute($request)) {
+            return response()->json(['status' => 'error', 'message' => 'Laporan diskusi tidak ditemukan.'], 404);
+        }
 
         if (! $report) {
-            // Check if $id was discussion ID
+            // Rute /admin/discussions/{id}/dismiss: $id adalah id diskusi
             $reportsCount = DB::table('laporan_diskusi')->where('id_diskusi', $id)->count();
             if ($reportsCount > 0) {
                 DB::table('laporan_diskusi')->where('id_diskusi', $id)->update([
@@ -252,6 +269,14 @@ class DiscussionReportController extends Controller
             'status' => 'success',
             'message' => 'Laporan diskusi berhasil diabaikan/ditandai tidak melanggar aturan.',
         ]);
+    }
+
+    /**
+     * True jika request datang dari rute berbasis id laporan (/admin/discussion-reports/{id}/...).
+     */
+    private function isReportRoute(Request $request): bool
+    {
+        return $request->is('api/admin/discussion-reports/*');
     }
 
     /**

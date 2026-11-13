@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\User;
-
 return [
 
     /*
@@ -41,6 +39,9 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Lama login bertahan kalau user mencentang "Ingat saya" (menit). Default 3 hari.
+            // Tanpa centang, login mengikuti SESSION_LIFETIME (120 menit tanpa aktivitas).
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 4320),
         ],
     ],
 
@@ -62,9 +63,10 @@ return [
     */
 
     'providers' => [
+        // User tidak disimpan di database frontend. Login dicek ke backend (POST /api/login),
+        // lalu data user dari backend disimpan di session. Lihat App\Auth\BackendSessionUserProvider.
         'users' => [
-            'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'driver' => 'medigo-backend',
         ],
 
         // 'users' => [

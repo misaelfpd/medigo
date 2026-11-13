@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Kredensial service account Google Cloud: jangan pernah di-commit
+/gcp-credential.json
+*-credential*.json

@@ -17,7 +17,7 @@ class DatabaseSeederTest extends TestCase
         $this->seed(DatabaseSeeder::class);
 
         $this->assertDatabaseHas('user', [
-            'email_user' => 'test@example.com',
+            'email_user' => 'dr.sarah@medigo.id',
             'role_user' => 'user',
         ]);
 
@@ -42,7 +42,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertNotNull($faskesSample->updated_at);
         $this->assertNotNull($faskesSample->telepon);
 
-        $userSample = User::where('email_user', 'test@example.com')->first();
+        $userSample = User::where('email_user', 'dr.sarah@medigo.id')->first();
         $this->assertNotNull($userSample->created_at);
         $this->assertNotNull($userSample->updated_at);
 

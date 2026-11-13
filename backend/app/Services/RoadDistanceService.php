@@ -4,16 +4,29 @@ namespace App\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class RoadDistanceService
 {
-    private const OSRM_TABLE_URL = 'https://router.project-osrm.org/table/v1/driving/';
     private const CACHE_TTL_SECONDS = 21600; // 6 jam
+
+    /** Ukuran batch tujuan per request OSRM. */
+    private const BATCH_SIZE = 60;
+
+    /** Lama (detik) OSRM dilewati setelah gagal/timeout, supaya request berikutnya tidak ikut lambat. */
+    private const COOLDOWN_SECONDS = 60;
+
+    private const COOLDOWN_KEY = 'osrm_cooldown';
 
     /**
      * Hitung jarak mengikuti rute jalan raya (OSRM Table API) untuk koleksi faskes,
      * lalu urutkan berdasarkan jarak jalan raya terdekat.
+     *
+     * Supaya respons tetap cepat:
+     * - hanya N faskes terdekat (garis lurus) yang dihitung lewat OSRM (config services.osrm.max_items),
+     * - semua panggilan OSRM dalam satu request dibatasi total waktunya (services.osrm.timeout),
+     * - kalau OSRM gagal/timeout, OSRM dilewati sementara (cooldown) dan dipakai jarak garis lurus.
      */
     public static function applyToCollection(Collection $items, float $originLat, float $originLng, bool $resort = true): Collection
     {
@@ -24,8 +37,7 @@ class RoadDistanceService
         $origLatKey = number_format($originLat, 4, '.', '');
         $origLngKey = number_format($originLng, 4, '.', '');
 
-        $uncachedIndices = [];
-        $uncachedCoords = [];
+        $candidates = [];
         $resolvedDistances = [];
 
         foreach ($items->values() as $idx => $item) {
@@ -40,24 +52,40 @@ class RoadDistanceService
             $destLngKey = number_format($lng, 5, '.', '');
             $cacheKey = "osrm_road_km_{$origLatKey}_{$origLngKey}_{$destLatKey}_{$destLngKey}";
 
-            if (! app()->runningUnitTests() && Cache::has($cacheKey)) {
-                $resolvedDistances[$idx] = (float) Cache::get($cacheKey);
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                $resolvedDistances[$idx] = (float) $cached;
             } else {
-                $uncachedIndices[] = [
+                $candidates[] = [
                     'idx' => $idx,
                     'lat' => $lat,
                     'lng' => $lng,
                     'cache_key' => $cacheKey,
+                    'straight_km' => self::haversineKm($originLat, $originLng, $lat, $lng),
                 ];
             }
         }
 
-        // Panggil OSRM Table API secara batch (1 request untuk semua faskes sekaligus)
-        if (! empty($uncachedIndices) && ! app()->runningUnitTests()) {
-            foreach (array_chunk($uncachedIndices, 60) as $chunk) {
-                $batchDistances = self::fetchOsrmBatch($originLat, $originLng, $chunk);
+        if (! empty($candidates) && self::osrmAvailable()) {
+            // Hanya faskes terdekat (garis lurus) yang dihitung lewat OSRM
+            usort($candidates, fn ($a, $b) => $a['straight_km'] <=> $b['straight_km']);
+            $candidates = array_slice($candidates, 0, max(0, (int) config('services.osrm.max_items', 20)));
+
+            $deadline = microtime(true) + max(0.5, (float) config('services.osrm.timeout', 2.5));
+
+            foreach (array_chunk($candidates, self::BATCH_SIZE) as $chunk) {
+                $remaining = $deadline - microtime(true);
+                if ($remaining < 0.3) {
+                    break; // Waktu habis: sisanya pakai jarak garis lurus
+                }
+
+                $batchDistances = self::fetchOsrmBatch($originLat, $originLng, $chunk, $remaining);
+                if ($batchDistances === null) {
+                    break; // OSRM gagal, cooldown sudah dipasang
+                }
+
                 foreach ($chunk as $pos => $entry) {
-                    if (isset($batchDistances[$pos]) && $batchDistances[$pos] !== null) {
+                    if (isset($batchDistances[$pos])) {
                         $km = round($batchDistances[$pos] / 1000, 1);
                         $resolvedDistances[$entry['idx']] = $km;
                         Cache::put($entry['cache_key'], $km, self::CACHE_TTL_SECONDS);
@@ -112,42 +140,41 @@ class RoadDistanceService
     }
 
     /**
-     * Request jarak jalan raya ke OSRM Table API menggunakan native cURL.
+     * OSRM aktif (config services.osrm.enabled; mati otomatis saat unit test) dan tidak sedang cooldown.
+     */
+    private static function osrmAvailable(): bool
+    {
+        return (bool) config('services.osrm.enabled', ! app()->runningUnitTests())
+            && ! Cache::has(self::COOLDOWN_KEY);
+    }
+
+    /**
+     * Request jarak jalan raya ke OSRM Table API.
      *
      * @param  array<int, array{idx:int, lat:float, lng:float, cache_key:string}>  $destinations
-     * @return array<int, float|null> Jarak dalam meter untuk tiap index tujuan
+     * @return array<int, float>|null Jarak (meter) per index tujuan; null kalau OSRM gagal
      */
-    private static function fetchOsrmBatch(float $originLat, float $originLng, array $destinations): array
+    private static function fetchOsrmBatch(float $originLat, float $originLng, array $destinations, float $timeoutSeconds): ?array
     {
         $coords = ["{$originLng},{$originLat}"];
         foreach ($destinations as $dest) {
             $coords[] = "{$dest['lng']},{$dest['lat']}";
         }
 
-        $url = self::OSRM_TABLE_URL.implode(';', $coords).'?sources=0&annotations=distance';
+        $url = rtrim((string) config('services.osrm.url', 'https://router.project-osrm.org/table/v1/driving/'), '/').'/'
+            .implode(';', $coords);
 
         try {
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_CONNECTTIMEOUT_MS => 2000,
-                CURLOPT_TIMEOUT_MS => 3500,
-                CURLOPT_USERAGENT => 'MediGO-Healthcare-Platform/1.0',
-                CURLOPT_SSL_VERIFYPEER => false,
-            ]);
+            $response = Http::withUserAgent('MediGO-Healthcare-Platform/1.0')
+                ->connectTimeout(min(1.5, $timeoutSeconds))
+                ->timeout($timeoutSeconds)
+                ->get($url, ['sources' => 0, 'annotations' => 'distance']);
 
-            $raw = curl_exec($ch);
-            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            $data = $response->json();
+            if (! $response->successful() || ($data['code'] ?? '') !== 'Ok' || ! is_array($data['distances'][0] ?? null)) {
+                self::startCooldown('HTTP '.$response->status());
 
-            if ($raw === false || $httpCode !== 200) {
-                return [];
-            }
-
-            $data = json_decode($raw, true);
-            if (($data['code'] ?? '') !== 'Ok' || ! isset($data['distances'][0]) || ! is_array($data['distances'][0])) {
-                return [];
+                return null;
             }
 
             // Index 0 pada distances[0] adalah titik asal ke titik asal (0 m), tujuan mulai dari index 1
@@ -155,15 +182,23 @@ class RoadDistanceService
             $result = [];
             foreach (array_values($destinations) as $i => $dest) {
                 $val = $row[$i + 1] ?? null;
-                $result[$i] = (is_numeric($val) && $val > 0) ? (float) $val : null;
+                if (is_numeric($val) && $val > 0) {
+                    $result[$i] = (float) $val;
+                }
             }
 
             return $result;
         } catch (\Throwable $e) {
-            Log::warning('OSRM batch distance failed: '.$e->getMessage());
+            self::startCooldown($e->getMessage());
 
-            return [];
+            return null;
         }
+    }
+
+    private static function startCooldown(string $reason): void
+    {
+        Log::warning('OSRM distance unavailable, falling back to straight-line distance: '.$reason);
+        Cache::put(self::COOLDOWN_KEY, true, self::COOLDOWN_SECONDS);
     }
 
     private static function extractCoord($item, array $keys): ?float
@@ -189,4 +224,3 @@ class RoadDistanceService
         return round($r * 2 * atan2(sqrt($a), sqrt(1 - $a)), 1);
     }
 }
-

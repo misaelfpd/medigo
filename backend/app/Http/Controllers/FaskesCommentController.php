@@ -44,8 +44,8 @@ class FaskesCommentController extends Controller
             }
         }
 
-        $perPage = (int) $request->input('per_page', $request->input('limit', 5));
-        $page = (int) $request->input('page', 1);
+        $perPage = max(1, min(50, (int) $request->input('per_page', $request->input('limit', 5))));
+        $page = max(1, (int) $request->input('page', 1));
 
         // Fetch user's own comment if exists
         $myComment = null;
@@ -174,7 +174,7 @@ class FaskesCommentController extends Controller
                 ->where('id_komentar', $existing->id_komentar)
                 ->update([
                     'rating' => $request->input('rating'),
-                    'isi_komentar' => $request->input('body'),
+                    'isi_komentar' => (string) $request->input('body', ''),
                     'updated_at' => now(),
                 ]);
 
@@ -186,7 +186,7 @@ class FaskesCommentController extends Controller
                 'id_faskes' => $faskes_id,
                 'id_user' => $user_id,
                 'rating' => $request->input('rating'),
-                'isi_komentar' => $request->input('body'),
+                'isi_komentar' => (string) $request->input('body', ''),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -245,7 +245,7 @@ class FaskesCommentController extends Controller
 
         DB::table('komentar')->where('id_komentar', $id)->update([
             'rating' => $request->input('rating'),
-            'isi_komentar' => $request->input('body'),
+            'isi_komentar' => (string) $request->input('body', ''),
             'updated_at' => now(),
         ]);
 
@@ -349,8 +349,8 @@ class FaskesCommentController extends Controller
     public function getUserReviews(Request $request)
     {
         $userId = $request->user()->id_user ?? $request->user()->id;
-        $perPage = (int) $request->input('per_page', $request->input('limit', 4));
-        $page = (int) $request->input('page', 1);
+        $perPage = max(1, min(50, (int) $request->input('per_page', $request->input('limit', 4))));
+        $page = max(1, (int) $request->input('page', 1));
         $offset = ($page - 1) * $perPage;
 
         $query = DB::table('komentar')

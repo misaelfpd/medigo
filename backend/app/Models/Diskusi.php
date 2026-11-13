@@ -11,6 +11,7 @@ class Diskusi extends Model
 
     // 1. Kasih tau Laravel nama tabel dan primary key barunya
     protected $table = 'diskusi';
+
     protected $primaryKey = 'id_diskusi';
 
     protected $guarded = [];
@@ -25,5 +26,11 @@ class Diskusi extends Model
     public function reports()
     {
         return $this->hasMany(LaporanDiskusi::class, 'id_diskusi', 'id_diskusi');
+    }
+
+    // 4. Faskes yang di-mention di judul diskusi (maksimal 1)
+    public function faskesMention()
+    {
+        return $this->belongsTo(Faskes::class, 'id_faskes_mention', 'id_faskes');
     }
 }

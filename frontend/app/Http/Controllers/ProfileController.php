@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -165,70 +164,11 @@ class ProfileController extends Controller
             }
         }
 
-        // Direct database fallback if backend token is absent or call failed
-        $offset = ($page - 1) * $limit;
-        try {
-            $query = \Illuminate\Support\Facades\DB::table('komentar')
-                ->join('faskes', 'komentar.id_faskes', '=', 'faskes.id_faskes')
-                ->where('komentar.id_user', $user->id);
-
-            $totalReviews = $query->count();
-            $reviews = $query->select(
-                    'komentar.*',
-                    'faskes.nama_faskes',
-                    'faskes.jenis_faskes as faskes_tipe',
-                    'faskes.alamat_faskes as faskes_alamat'
-                )
-                ->orderBy('komentar.created_at', 'desc')
-                ->offset($offset)
-                ->limit($limit)
-                ->get();
-
-            $formatted = $reviews->map(function ($item) {
-                $typeSlug = 'hospital';
-                $tipeLower = strtolower($item->faskes_tipe ?? '');
-                if (str_contains($tipeLower, 'puskesmas')) {
-                    $typeSlug = 'puskesmas';
-                } elseif (str_contains($tipeLower, 'klinik') || str_contains($tipeLower, 'dokter')) {
-                    $typeSlug = 'clinic';
-                }
-
-                $nama = trim($item->nama_faskes ?? '');
-                if ($typeSlug === 'puskesmas' && !preg_match('/^(puskesmas|pkm)\b/i', $nama)) {
-                    $nama = 'Puskesmas ' . $nama;
-                }
-
-                $reviewId = $item->id_komentar ?? ($item->id ?? null);
-                $faskesId = $item->id_faskes ?? ($item->faskes_id ?? null);
-                $body = $item->isi_komentar ?? ($item->body ?? '');
-
-                return [
-                    'id' => $reviewId,
-                    'faskes_id' => $faskesId,
-                    'nama_faskes' => $nama,
-                    'type_slug' => $typeSlug,
-                    'rating' => (int)$item->rating,
-                    'body' => $body,
-                    'created_at' => $item->created_at,
-                    'created_at_human' => \Carbon\Carbon::parse($item->created_at)->diffForHumans(),
-                    'faskes_url' => url('/faskes/' . $faskesId),
-                ];
-            });
-        } catch (\Exception $e) {
-            $formatted = collect([]);
-            $totalReviews = 0;
-        }
-
+        // Data ulasan hanya ada di backend (frontend tidak punya tabel komentar)
         return response()->json([
-            'status' => 'success',
-            'data' => [
-                'reviews' => $formatted,
-                'current_page' => $page,
-                'per_page' => $limit,
-                'total_reviews' => $totalReviews,
-                'has_more' => ($offset + $limit) < $totalReviews,
-            ]
-        ]);
+            'status' => 'error',
+            'message' => 'Gagal memuat ulasan. Coba muat ulang halaman.',
+        ], 503);
     }
 
     /**
@@ -287,7 +227,9 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update user profile information
+     * Update user profile information.
+     * Data disimpan di backend (PUT /api/user). Frontend hanya menyimpan file foto profil
+     * di public/uploads/avatars dan mengirim path-nya ke backend.
      */
     public function update(Request $request)
     {
@@ -297,8 +239,8 @@ class ProfileController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'name' => ['required', 'string', 'max:150'],
+            'email' => ['required', 'string', 'email', 'max:150'],
             'phone' => ['nullable', 'string', 'max:50'],
             'birth_date' => ['nullable', 'date'],
             'current_password' => ['nullable', 'required_with:new_password', 'string'],
@@ -308,7 +250,6 @@ class ProfileController extends Controller
             'name.required' => 'Nama lengkap tidak boleh kosong.',
             'email.required' => 'Alamat email tidak boleh kosong.',
             'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email ini sudah terdaftar oleh pengguna lain.',
             'current_password.required_with' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
             'new_password.min' => 'Kata sandi baru minimal 8 karakter.',
             'avatar.image' => 'File harus berupa gambar.',
@@ -316,8 +257,8 @@ class ProfileController extends Controller
             'avatar.max' => 'Ukuran foto profil tidak boleh melebihi 2MB.',
         ]);
 
-        // 1. Cek & Proses Foto Profil Baru (Hasil Crop Base64 atau File Upload)
-        $avatarChanged = false;
+        // 1. Simpan foto profil baru (hasil crop base64 atau file upload) ke public/uploads/avatars
+        $newAvatarPath = null;
         $avatarCropped = $request->input('avatar_cropped');
 
         if (!empty($avatarCropped)) {
@@ -326,11 +267,8 @@ class ProfileController extends Controller
                 return back()->withErrors(['avatar' => 'Format foto tidak valid. Gunakan format JPG, JPEG, atau PNG.'])->withInput();
             }
 
-            $imgType = strtolower($matches[1]);
-            $base64Data = substr($avatarCropped, strpos($avatarCropped, ',') + 1);
-            $decodedData = base64_decode($base64Data);
-
-            if ($decodedData === false) {
+            $decodedData = base64_decode(substr($avatarCropped, strpos($avatarCropped, ',') + 1), true);
+            if ($decodedData === false || (function_exists('imagecreatefromstring') && @imagecreatefromstring($decodedData) === false)) {
                 return back()->withErrors(['avatar' => 'Gagal memproses gambar foto profil.'])->withInput();
             }
 
@@ -339,123 +277,125 @@ class ProfileController extends Controller
                 return back()->withErrors(['avatar' => 'Ukuran foto profil tidak boleh melebihi 2MB.'])->withInput();
             }
 
-            $uploadDir = public_path('uploads/avatars');
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-
-            $ext = ($imgType === 'png') ? 'png' : 'jpg';
+            $ext = (strtolower($matches[1]) === 'png') ? 'png' : 'jpg';
             $filename = 'avatar_' . $user->id . '_' . time() . '.' . $ext;
-            $destination = $uploadDir . DIRECTORY_SEPARATOR . $filename;
-
-            file_put_contents($destination, $decodedData);
-
-            // Hapus file avatar lama jika ada
-            if (!empty($user->avatar) && file_exists(public_path($user->avatar)) && str_contains($user->avatar, 'uploads/avatars/')) {
-                @unlink(public_path($user->avatar));
-            }
-
-            $user->avatar = 'uploads/avatars/' . $filename;
-            $avatarChanged = true;
+            $this->ensureAvatarDir();
+            file_put_contents(public_path('uploads/avatars') . DIRECTORY_SEPARATOR . $filename, $decodedData);
+            $newAvatarPath = 'uploads/avatars/' . $filename;
         } elseif ($request->hasFile('avatar')) {
-            $uploadDir = public_path('uploads/avatars');
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-
             $file = $request->file('avatar');
-            $ext = $file->getClientOriginalExtension();
+            $ext = strtolower($file->extension() ?: 'jpg');
             $filename = 'avatar_' . $user->id . '_' . time() . '.' . $ext;
-            $file->move($uploadDir, $filename);
-
-            if (!empty($user->avatar) && file_exists(public_path($user->avatar)) && str_contains($user->avatar, 'uploads/avatars/')) {
-                @unlink(public_path($user->avatar));
-            }
-
-            $user->avatar = 'uploads/avatars/' . $filename;
-            $avatarChanged = true;
+            $this->ensureAvatarDir();
+            $file->move(public_path('uploads/avatars'), $filename);
+            $newAvatarPath = 'uploads/avatars/' . $filename;
         }
 
-        // 2. Cek apakah ada perubahan data teks
+        // 2. Cek apakah ada perubahan
         $trimmedName = trim($validated['name']);
         $trimmedEmail = trim($validated['email']);
         $trimmedPhone = !empty($validated['phone']) ? trim($validated['phone']) : null;
         $formattedBirthDate = !empty($validated['birth_date']) ? \Carbon\Carbon::parse($validated['birth_date'])->format('Y-m-d') : null;
         $currentBirthDate = $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d') : null;
         $newPassword = $validated['new_password'] ?? null;
-
-        $nameChanged = ($trimmedName !== $user->name);
-        $emailChanged = (strtolower($trimmedEmail) !== strtolower($user->email));
-        $phoneChanged = ($trimmedPhone !== $user->phone);
-        $birthDateChanged = ($formattedBirthDate !== $currentBirthDate);
         $passwordChanged = !empty($newPassword);
 
-        // Jika tidak ada perubahan sama sekali, tidak terjadi apa-apa
-        if (!$nameChanged && !$emailChanged && !$phoneChanged && !$birthDateChanged && !$passwordChanged && !$avatarChanged) {
+        $hasChanges = $newAvatarPath !== null
+            || $trimmedName !== $user->name
+            || strtolower($trimmedEmail) !== strtolower($user->email)
+            || $trimmedPhone !== $user->phone
+            || $formattedBirthDate !== $currentBirthDate
+            || $passwordChanged;
+
+        if (!$hasChanges) {
             return redirect()->route('profile');
         }
 
-        // Jika ada perubahan password, cek kecocokan password lama
-        if ($passwordChanged) {
-            if (!Hash::check($validated['current_password'], $user->password)) {
-                return back()->withErrors(['current_password' => 'Kata sandi saat ini tidak sesuai.'])->withInput();
-            }
-        }
-
-        // 3. Sinkronisasi pembaruan profil ke Backend API
+        // 3. Simpan ke backend (satu-satunya tempat data user disimpan)
         $token = $this->getBackendToken();
-        if ($token) {
-            try {
-                $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
-                $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
-
-                $payload = [
-                    'name' => $trimmedName,
-                    'email' => $trimmedEmail,
-                    'phone' => $trimmedPhone,
-                    'birth_date' => $formattedBirthDate,
-                ];
-                if ($passwordChanged) {
-                    $payload['current_password'] = $validated['current_password'];
-                    $payload['new_password'] = $newPassword;
-                }
-                if ($avatarChanged) {
-                    $payload['avatar'] = $user->avatar;
-                }
-
-                $beResponse = Http::timeout(5)
-                    ->withToken($token)
-                    ->put("{$backendUrl}/api/user", $payload);
-
-                if ($beResponse->failed()) {
-                    $errData = $beResponse->json();
-                    if (!empty($errData['errors']['current_password'])) {
-                        return back()->withErrors(['current_password' => $errData['errors']['current_password'][0]])->withInput();
-                    }
-                    if (!empty($errData['errors']['email'])) {
-                        return back()->withErrors(['email' => $errData['errors']['email'][0]])->withInput();
-                    }
-                } else {
-                    $updatedBeUser = $beResponse->json('data');
-                    if ($updatedBeUser) {
-                        session(['user_backend_data' => $updatedBeUser]);
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::warning('Backend profile sync error: ' . $e->getMessage());
-            }
+        if (!$token) {
+            $this->deleteAvatarFile($newAvatarPath);
+            return back()->withErrors(['email' => 'Sesi login Anda sudah habis. Silakan logout lalu login kembali.'])->withInput();
         }
 
-        // 4. Simpan perubahan ke database lokal Frontend
-        $user->name = $trimmedName;
-        $user->email = $trimmedEmail;
-        $user->phone = $trimmedPhone;
-        $user->birth_date = $formattedBirthDate;
+        $payload = [
+            'name' => $trimmedName,
+            'email' => $trimmedEmail,
+            'phone' => $trimmedPhone,
+            'birth_date' => $formattedBirthDate,
+        ];
         if ($passwordChanged) {
-            $user->password = Hash::make($newPassword);
+            // Kata sandi lama dicek oleh backend
+            $payload['current_password'] = $validated['current_password'];
+            $payload['new_password'] = $newPassword;
         }
-        $user->save();
+        if ($newAvatarPath !== null) {
+            $payload['avatar'] = $newAvatarPath;
+        }
+
+        try {
+            $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+            $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+
+            $beResponse = Http::acceptJson()->timeout(8)
+                ->withToken($token)
+                ->put("{$backendUrl}/api/user", $payload);
+        } catch (\Exception $e) {
+            Log::warning('Backend profile update error: ' . $e->getMessage());
+            $this->deleteAvatarFile($newAvatarPath);
+            return back()->withErrors(['email' => 'Server Medigo sedang tidak bisa dihubungi. Perubahan belum disimpan.'])->withInput();
+        }
+
+        if ($beResponse->failed()) {
+            $this->deleteAvatarFile($newAvatarPath);
+
+            if ($beResponse->status() === 401) {
+                session()->forget('user_backend_token');
+                return back()->withErrors(['email' => 'Sesi login Anda sudah habis. Silakan coba simpan lagi.'])->withInput();
+            }
+
+            $errors = $beResponse->json('errors') ?? [];
+            if (!empty($errors['current_password'][0])) {
+                return back()->withErrors(['current_password' => $errors['current_password'][0]])->withInput();
+            }
+            foreach (['email' => ['email', 'email_user'], 'name' => ['name', 'nama_user'], 'new_password' => ['new_password', 'password'], 'phone' => ['phone', 'no_telp'], 'birth_date' => ['birth_date', 'tanggal_lahir']] as $field => $keys) {
+                foreach ($keys as $key) {
+                    if (!empty($errors[$key][0])) {
+                        return back()->withErrors([$field => $errors[$key][0]])->withInput();
+                    }
+                }
+            }
+
+            return back()->withErrors(['email' => $beResponse->json('message') ?? 'Gagal menyimpan profil. Coba lagi.'])->withInput();
+        }
+
+        // 4. Berhasil: perbarui data user di session dengan data terbaru dari backend
+        $updatedBeUser = $beResponse->json('data');
+        if (is_array($updatedBeUser) && !empty($updatedBeUser['id_user'])) {
+            session(['user_backend_data' => $updatedBeUser]);
+            \App\Auth\BackendSessionUserProvider::refreshRemembered();
+        }
+
+        // Foto lama baru dihapus setelah backend berhasil menyimpan foto baru
+        if ($newAvatarPath !== null && $user->avatar !== $newAvatarPath) {
+            $this->deleteAvatarFile($user->avatar);
+        }
 
         return redirect()->route('profile')->with('success', 'Profil Anda berhasil diperbarui!');
+    }
+
+    private function ensureAvatarDir(): void
+    {
+        $uploadDir = public_path('uploads/avatars');
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+    }
+
+    private function deleteAvatarFile(?string $path): void
+    {
+        if (!empty($path) && str_starts_with($path, 'uploads/avatars/') && !str_contains($path, '..') && file_exists(public_path($path))) {
+            @unlink(public_path($path));
+        }
     }
 }

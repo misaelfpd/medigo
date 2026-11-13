@@ -42,7 +42,7 @@ class DiscussionReportTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('message', 'Laporan berhasil dikirim');
+            ->assertJsonPath('message', 'Laporan diskusi berhasil dikirim dan akan segera ditinjau oleh admin.');
 
         $this->assertDatabaseHas('laporan_diskusi', [
             'id_diskusi' => $discussion->id_diskusi,
@@ -131,7 +131,7 @@ class DiscussionReportTest extends TestCase
 
         $takedownResponse = $this->postJson("/api/admin/discussions/{$discussion->id_diskusi}/takedown");
         $takedownResponse->assertOk()
-            ->assertJsonPath('message', 'Diskusi berhasil di-takedown');
+            ->assertJsonPath('message', 'Diskusi berhasil di-takedown dan semua laporan terkait ditandai selesai (resolved).');
 
         $this->assertDatabaseHas('diskusi', [
             'id_diskusi' => $discussion->id_diskusi,

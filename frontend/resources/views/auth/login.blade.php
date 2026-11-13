@@ -105,8 +105,15 @@
                 </div>
               </div>
 
-              <!-- Lupa Kata Sandi -->
-              <div class="mb-3 mt-1">
+              <!-- Ingat Saya & Lupa Kata Sandi -->
+              <div class="mb-3 mt-1 d-flex justify-content-between align-items-center">
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="checkbox" name="remember" value="1" id="remember"
+                    {{ old('remember') ? 'checked' : '' }}>
+                  <label class="form-check-label text-muted" for="remember" style="font-size: 0.75rem;">
+                    Ingat saya (3 hari)
+                  </label>
+                </div>
                 <a href="#" class="text-dark text-decoration-none fw-bold"
                   style="font-size: 0.75rem;"
                   onclick="alert('Silakan hubungi administrator.'); return false;">

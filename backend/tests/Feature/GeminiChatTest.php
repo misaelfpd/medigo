@@ -56,7 +56,7 @@ class GeminiChatTest extends TestCase
 
         $this->postJson('/api/chat-ai', ['message' => 'Halo'])
             ->assertOk()
-            ->assertExactJson(['message' => 'Success', 'data' => 'Halo, ada yang bisa dibantu?']);
+            ->assertExactJson(['message' => 'Success', 'data' => 'Halo, ada yang bisa dibantu?', 'faskes' => []]);
 
         Http::assertSent(fn (Request $r) => $r->url() === self::url('model-a')
             && $r->hasHeader('x-goog-api-key', 'test-key')
@@ -251,10 +251,12 @@ class GeminiChatTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data', 'RS terdekat adalah RS Dekat Sehat dengan jarak sekitar 0.56 km.');
 
+        // Koordinat dikirim ke Gemini di pesan user terakhir (tidak disimpan ke riwayat)
         $firstReq = Http::recorded()[0][0];
-        $systemText = $firstReq['system_instruction']['parts'][0]['text'];
-        $this->assertStringContainsString('Latitude: -6.59', $systemText);
-        $this->assertStringContainsString('Longitude: 106.79', $systemText);
+        $lastUserText = last($firstReq['contents'])['parts'][0]['text'];
+        $this->assertStringContainsString('Latitude: -6.59', $lastUserText);
+        $this->assertStringContainsString('Longitude: 106.79', $lastUserText);
+        $this->assertSame('apakah ada rumah sakit terdekat?', GeminiChat::where('role', 'user')->value('message'));
 
         $toolReq = Http::recorded()[1][0];
         $functionResponse = last($toolReq['contents'])['parts'][0]['functionResponse'];
