@@ -55,56 +55,79 @@ def main():
         fs_lookup[item.strip().lower()] = idx
         fs_lookup[nama_rapi.lower()] = idx
 
-    # 2. Baca Data Asli Relasi dari JSON BPJS Lengkap
+    # 2. Baca Data Asli Relasi dari SEMUA file JSON BPJS yang tersedia
     bpjs_relasi_map = {}
-    bpjs_files = ["faskes_jabodetabek.json", "faskes_jabodetabek (1).json", "faskes_raw_playwright.json"]
-    bpjs_file_used = next((f for f in bpjs_files if os.path.exists(f)), None)
+    bpjs_files = ["faskes_raw_playwright.json", "faskes_jabodetabek (1).json", "faskes_jabodetabek.json"]
     
-    if bpjs_file_used:
-        print(f"Membaca relasi asli dari: {bpjs_file_used}...")
-        with open(bpjs_file_used, "r", encoding="utf-8") as f:
+    for bpjs_file in bpjs_files:
+        if not os.path.exists(bpjs_file):
+            continue
+        print(f"Membaca relasi asli dari: {bpjs_file}...")
+        with open(bpjs_file, "r", encoding="utf-8") as f:
             raw_bpjs = json.load(f)
-        for el in raw_bpjs:
-            items = el if isinstance(el, list) else [el]
-            for item in items:
-                kd = item.get("_kdppk") or item.get("kdppk")
-                if kd and ("spesialisasi" in item or "fasilitas_penunjang" in item):
-                    bpjs_relasi_map[kd] = {
-                        "spesialisasi": item.get("spesialisasi", []),
-                        "fasilitas": item.get("fasilitas_penunjang", [])
-                    }
+            
+        items_bpjs = []
+        if isinstance(raw_bpjs, dict):
+            for val in raw_bpjs.values():
+                if isinstance(val, list):
+                    items_bpjs.extend(val)
+        elif isinstance(raw_bpjs, list):
+            for el in raw_bpjs:
+                if isinstance(el, list):
+                    items_bpjs.extend(el)
+                elif isinstance(el, dict):
+                    items_bpjs.append(el)
 
-    # 3. Hubungkan dengan tabel_faskes.csv (MURNI DATA ASLI, TANPA RANDOM UNTUK OSM)
+        for item in items_bpjs:
+            if not isinstance(item, dict):
+                continue
+            kd = str(item.get("_kdppk") or item.get("kdppk") or "").strip()
+            if kd and ("spesialisasi" in item or "fasilitas_penunjang" in item):
+                existing = bpjs_relasi_map.get(kd, {"spesialisasi": [], "fasilitas": []})
+                bpjs_relasi_map[kd] = {
+                    "spesialisasi": existing["spesialisasi"] + item.get("spesialisasi", []),
+                    "fasilitas": existing["fasilitas"] + item.get("fasilitas_penunjang", [])
+                }
+
+    # 3. Hubungkan dengan tabel_faskes.csv (Deduplikasi Ketat di Level Pasangan ID)
     faskes_spesialisasi = []
     faskes_fasilitas = []
+    
+    seen_sp_pairs = set()
+    seen_fs_pairs = set()
 
     with open("tabel_faskes.csv", "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            id_faskes = row["id_faskes"]
+            id_faskes = int(row["id_faskes"])
             kdppk = row["kdppk"]
 
-            # Hanya isi relasi jika faskes memang memiliki data asli dari BPJS
             if kdppk in bpjs_relasi_map:
                 asli_sp = bpjs_relasi_map[kdppk]["spesialisasi"]
                 asli_fs = bpjs_relasi_map[kdppk]["fasilitas"]
 
-                for sp_name in sorted(set(asli_sp)):
+                for sp_name in asli_sp:
                     sp_id = sp_lookup.get(sp_name.strip().lower())
-                    if sp_id:
+                    if sp_id and (id_faskes, sp_id) not in seen_sp_pairs:
+                        seen_sp_pairs.add((id_faskes, sp_id))
                         faskes_spesialisasi.append({"id_faskes": id_faskes, "id_spesialisasi": sp_id})
 
-                for fs_name in sorted(set(asli_fs)):
+                for fs_name in asli_fs:
                     fs_id = fs_lookup.get(fs_name.strip().lower())
-                    if fs_id:
+                    if fs_id and (id_faskes, fs_id) not in seen_fs_pairs:
+                        seen_fs_pairs.add((id_faskes, fs_id))
                         faskes_fasilitas.append({"id_faskes": id_faskes, "id_fasilitas": fs_id})
+
+    # Urutkan agar rapi di CSV
+    faskes_spesialisasi.sort(key=lambda x: (x["id_faskes"], x["id_spesialisasi"]))
+    faskes_fasilitas.sort(key=lambda x: (x["id_faskes"], x["id_fasilitas"]))
 
     print("\nMembuat file CSV...")
     export_csv("tabel_spesialisasi.csv", master_spesialisasi, ["id_spesialisasi", "nama_spesialisasi"])
     export_csv("tabel_fasilitas.csv", master_fasilitas, ["id_fasilitas", "nama_fasilitas"])
     export_csv("tabel_faskes_spesialisasi.csv", faskes_spesialisasi, ["id_faskes", "id_spesialisasi"])
     export_csv("tabel_faskes_fasilitas.csv", faskes_fasilitas, ["id_faskes", "id_fasilitas"])
-    print("\n[V] SELESAI! Relasi 100% murni dari Aplicares (data OSM dibiarkan kosong tanpa random).")
+    print("\n[V] SELESAI! Relasi 100% bebas duplikat ID dan murni dari Aplicares.")
 
 if __name__ == "__main__":
     main()
