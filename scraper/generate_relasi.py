@@ -1,7 +1,6 @@
 import csv
 import json
 import os
-import random
 
 def load_json_list(filename):
     try:
@@ -11,12 +10,15 @@ def load_json_list(filename):
         print(f"Error baca {filename}: {e}")
         return []
 
-def export_csv(filename, data):
-    if not data: return
+def export_csv(filename, data, default_headers=None):
+    headers = list(data[0].keys()) if data else (default_headers or [])
+    if not headers:
+        return
     with open(filename, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=data[0].keys())
+        writer = csv.DictWriter(f, fieldnames=headers)
         writer.writeheader()
-        writer.writerows(data)
+        if data:
+            writer.writerows(data)
     print(f"[+] {filename} berhasil dibuat! ({len(data)} baris)")
 
 def format_judul(teks):
@@ -33,7 +35,6 @@ def main():
     print("Membaca data master...")
     raw_spesialisasi = load_json_list("spesialisasi.json")
     
-    # Cek nama file fasilitas yang ada di folder
     fas_file = "fasilitas_penunjang.json" if os.path.exists("fasilitas_penunjang.json") else "fasilitas.json"
     raw_fasilitas = load_json_list(fas_file)
     
@@ -54,12 +55,13 @@ def main():
         fs_lookup[item.strip().lower()] = idx
         fs_lookup[nama_rapi.lower()] = idx
 
-    # 2. Baca Data Asli Relasi dari JSON BPJS Lengkap (Jika ada)
+    # 2. Baca Data Asli Relasi dari JSON BPJS Lengkap
     bpjs_relasi_map = {}
-    bpjs_files = ["faskes_jabodetabek (1).json", "faskes_jabodetabek.json", "faskes_raw_playwright.json"]
+    bpjs_files = ["faskes_jabodetabek.json", "faskes_jabodetabek (1).json", "faskes_raw_playwright.json"]
     bpjs_file_used = next((f for f in bpjs_files if os.path.exists(f)), None)
     
     if bpjs_file_used:
+        print(f"Membaca relasi asli dari: {bpjs_file_used}...")
         with open(bpjs_file_used, "r", encoding="utf-8") as f:
             raw_bpjs = json.load(f)
         for el in raw_bpjs:
@@ -72,51 +74,37 @@ def main():
                         "fasilitas": item.get("fasilitas_penunjang", [])
                     }
 
-    # 3. Hubungkan dengan tabel_faskes.csv
+    # 3. Hubungkan dengan tabel_faskes.csv (MURNI DATA ASLI, TANPA RANDOM UNTUK OSM)
     faskes_spesialisasi = []
     faskes_fasilitas = []
-
-    id_sp_list = [sp["id_spesialisasi"] for sp in master_spesialisasi]
-    id_fs_list = [fs["id_fasilitas"] for fs in master_fasilitas]
 
     with open("tabel_faskes.csv", "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             id_faskes = row["id_faskes"]
             kdppk = row["kdppk"]
-            jenis = row["jenis_faskes"].upper()
 
-            # JIKA ADA DATA ASLI DARI JSON BPJS, PAKAI 100% DATA ASLI!
+            # Hanya isi relasi jika faskes memang memiliki data asli dari BPJS
             if kdppk in bpjs_relasi_map:
                 asli_sp = bpjs_relasi_map[kdppk]["spesialisasi"]
                 asli_fs = bpjs_relasi_map[kdppk]["fasilitas"]
 
-                for sp_name in set(asli_sp):
+                for sp_name in sorted(set(asli_sp)):
                     sp_id = sp_lookup.get(sp_name.strip().lower())
                     if sp_id:
                         faskes_spesialisasi.append({"id_faskes": id_faskes, "id_spesialisasi": sp_id})
 
-                for fs_name in set(asli_fs):
+                for fs_name in sorted(set(asli_fs)):
                     fs_id = fs_lookup.get(fs_name.strip().lower())
                     if fs_id:
                         faskes_fasilitas.append({"id_faskes": id_faskes, "id_fasilitas": fs_id})
-            
-            # JIKA DATA DARI OSM (NON-BPJS) ATAU JSON LAMA YANG BELUM ADA RELASI
-            elif kdppk.startswith("OSM_") or not bpjs_relasi_map:
-                if "RS" in jenis or "RUMAH SAKIT" in jenis:
-                    sp_terpilih = random.sample(id_sp_list, min(random.randint(8, 20), len(id_sp_list)))
-                    fs_terpilih = random.sample(id_fs_list, min(random.randint(15, 35), len(id_fs_list)))
-                    for sp in sp_terpilih:
-                        faskes_spesialisasi.append({"id_faskes": id_faskes, "id_spesialisasi": sp})
-                    for fs in fs_terpilih:
-                        faskes_fasilitas.append({"id_faskes": id_faskes, "id_fasilitas": fs})
 
     print("\nMembuat file CSV...")
-    export_csv("tabel_spesialisasi.csv", master_spesialisasi)
-    export_csv("tabel_fasilitas.csv", master_fasilitas)
-    export_csv("tabel_faskes_spesialisasi.csv", faskes_spesialisasi)
-    export_csv("tabel_faskes_fasilitas.csv", faskes_fasilitas)
-    print("\n[V] SELESAI! Semua relasi sekarang menggunakan data asli Aplicares.")
+    export_csv("tabel_spesialisasi.csv", master_spesialisasi, ["id_spesialisasi", "nama_spesialisasi"])
+    export_csv("tabel_fasilitas.csv", master_fasilitas, ["id_fasilitas", "nama_fasilitas"])
+    export_csv("tabel_faskes_spesialisasi.csv", faskes_spesialisasi, ["id_faskes", "id_spesialisasi"])
+    export_csv("tabel_faskes_fasilitas.csv", faskes_fasilitas, ["id_faskes", "id_fasilitas"])
+    print("\n[V] SELESAI! Relasi 100% murni dari Aplicares (data OSM dibiarkan kosong tanpa random).")
 
 if __name__ == "__main__":
     main()
