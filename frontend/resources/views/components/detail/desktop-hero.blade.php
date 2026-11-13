@@ -38,8 +38,9 @@
                     <i class="bi bi-arrow-down-up me-1"></i> <span class="faskes-distance-display">{{ $faskes['distance'] ?? 'Menghitung jarak...' }}</span>
                 </span>
                 <span class="badge-custom-pill bg-white text-dark shadow-xs" id="desktopHeroRatingBadge">
+                    <div class="gap-2"></div>
                     @if(!empty($faskes['avg_rating']))
-                        <i class="bi bi-star-fill text-warning me-1"></i> <strong>{{ $faskes['avg_rating'] }}</strong> (<span class="total-reviews-num">{{ $faskes['total_reviews'] }}</span> Ulasan)
+                        <i class="bi bi-star-fill text-warning me-1"></i> <div class="gap-2"><strong>{{ $faskes['avg_rating'] }}</strong> <span class="total-reviews-num"> ({{ $faskes['total_reviews'] }} Ulasan)</span></div>  
                     @else
                         <i class="bi bi-star text-muted me-1"></i> <span>Belum dirating</span>
                     @endif
