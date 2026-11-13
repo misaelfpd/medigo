@@ -5,6 +5,45 @@ import re
 import math
 from difflib import SequenceMatcher
 
+def parse_and_fix_coords(lat_raw, lon_raw):
+    """Membaca koordinat dan memperbaiki kesalahan tanda positif pada latitude Jabodetabek."""
+    try:
+        lat = float(str(lat_raw).replace(",", ".").strip())
+        lon = float(str(lon_raw).replace(",", ".").strip())
+        
+        # Koreksi jika latitude tertulis positif di rentang Jabodetabek (misal 6.340966 -> -6.340966)
+        if 5.85 <= lat <= 6.95 and 106.30 <= lon <= 107.45:
+            lat = -lat
+            
+        return lat, lon
+    except (ValueError, TypeError):
+        return None, None
+
+def is_within_jabodetabek_bbox(lat, lon):
+    """Memastikan titik koordinat berada di dalam kotak wilayah Jabodetabek."""
+    if lat is None or lon is None:
+        return False
+    return (-6.95 <= lat <= -5.85) and (106.30 <= lon <= 107.45)
+
+def is_explicit_outside_city(teks):
+    """Membuang faskes yang secara eksplisit menyebut kota luar Jabodetabek (meski ada kata Kuningan/Ciawi/Cikini)."""
+    t = teks.upper()
+    outside_cities = [
+        r'\bINDRAMAYU\b', r'\bMAJALENGKA\b', r'\bTASIKMALAYA\b', r'\bCIREBON\b',
+        r'\bSUBANG\b', r'\bPURWAKARTA\b', r'\bKARAWANG\b', r'\bSUKABUMI\b',
+        r'\bCIANJUR\b', r'\bBANDUNG\b', r'\bGARUT\b', r'\bSUMEDANG\b',
+        r'\bCIAMIS\b', r'\bBANJAR\b', r'\bPANGANDARAN\b', r'\bSERANG\b',
+        r'\bCILEGON\b', r'\bPANDEGLANG\b', r'\bLEBAK\b', r'\bRANGKASBITUNG\b',
+        r'\bKAB\.?\s*KUNINGAN\b', r'\bKABUPATEN\s+KUNINGAN\b', r'\bKOTA\s+KUNINGAN\b'
+    ]
+    for pattern in outside_cities:
+        if re.search(pattern, t):
+            return True
+    # Tangkap "KIMIA FARMA KUNINGAN" (nama cabang kota Kuningan Jabar, bukan Jl. Kuningan Jaksel)
+    if "KIMIA FARMA KUNINGAN" in t and "JAKARTA" not in t and "SETIABUDI" not in t:
+        return True
+    return False
+
 def haversine_distance(lat1, lon1, lat2, lon2):
     """Menghitung jarak dalam meter antara dua titik koordinat."""
     try:
@@ -23,7 +62,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 def normalize_rs_name(name):
     """Membersihkan awalan umum & ejaan untuk pencocokan nama yang akurat."""
     n = name.upper()
-    # Standarisasi ejaan & singkatan RS besar
     n = n.replace("SOEBROTO", "SUBROTO").replace("SUHARSO", "SOEHARSO")
     n = re.sub(r'\bRSCM\b', 'CIPTO MANGUNKUSUMO', n)
     n = re.sub(r'\bRSPAD\b', 'GATOT SUBROTO', n)
@@ -60,20 +98,16 @@ def is_duplicate_faskes(osm_nama, osm_lat, osm_lon, bpjs_list):
         dist = haversine_distance(osm_lat, osm_lon, bpjs["latitude"], bpjs["longitude"])
         sim = SequenceMatcher(None, norm_osm, norm_bpjs).ratio()
 
-        # 1. Nama inti sama persis
         if norm_osm == norm_bpjs and (dist < 15000 or dist == float('inf')):
             return True
 
-        # 2. Salah satu nama inti memuat nama lainnya dan berada di area yang sama (< 5 km)
         if (norm_osm in norm_bpjs or norm_bpjs in norm_osm) and len(min(norm_osm, norm_bpjs, key=len)) >= 5:
             if dist < 5000 or dist == float('inf'):
                 return True
 
-        # 3. Jarak sangat dekat (< 500m) dan nama mirip (>= 58%)
         if dist < 500 and sim >= 0.58:
             return True
 
-        # 4. Jarak dalam kota (< 3.5km) dan nama sangat mirip (>= 80%)
         if dist < 3500 and sim >= 0.80:
             return True
 
@@ -84,7 +118,6 @@ def normalize_jenis_faskes(jenis_raw, nama_faskes="", is_osm=False, tags=None):
     nama_up = nama_faskes.upper()
     jenis_up = (jenis_raw or "").upper().strip()
 
-    # 1. Filter tempat non-medis / tidak relevan
     blacklist_keywords = [
         "GYM", "FITNESS", "SINSHE", "SHINSHE", "PIJAT", "MASSAGE", 
         "SALON", "SPA", "SKINCARE", "BEAUTY", "PET SHOP", "VETERINARY", "HEWAN"
@@ -94,7 +127,6 @@ def normalize_jenis_faskes(jenis_raw, nama_faskes="", is_osm=False, tags=None):
     if tags and (tags.get("leisure") or tags.get("sport") or tags.get("shop") in ["beauty", "massage", "herbalist"]):
         return None
 
-    # 2. Aturan Eksplisit dari jenis_raw (Prioritas Utama untuk Data BPJS)
     if any(k in jenis_up for k in ["LABORATORIUM", "LAB"]):
         return "Laboratorium"
     if "DOKTER GIGI" in jenis_up or "DRG" in jenis_up:
@@ -114,7 +146,6 @@ def normalize_jenis_faskes(jenis_raw, nama_faskes="", is_osm=False, tags=None):
     if "OPTIK" in jenis_up:
         return "Optik"
 
-    # 3. Deteksi dari Nama Faskes (Mengatasi jenis_raw kosong atau salah tag di OSM)
     if any(k in nama_up for k in ["LABORATORIUM", "LAB ", "LAB.", "PRODIA", "BIOMEDIKA", "CITO", " KIMIA FARMA LAB", "PATHLAB", "GENOMIK"]):
         return "Laboratorium"
     if any(k in nama_up for k in ["DOKTER GIGI", "DRG.", "DRG ", "DENTAL"]):
@@ -133,7 +164,6 @@ def normalize_jenis_faskes(jenis_raw, nama_faskes="", is_osm=False, tags=None):
     if any(k in nama_up for k in ["KLINIK", "CLINIC", "BALAI PENGOBATAN"]):
         return "Klinik Pratama"
 
-    # 4. Aturan Tag OSM
     if is_osm and tags:
         amenity = tags.get("amenity", "").lower()
         healthcare = tags.get("healthcare", "").lower()
@@ -160,7 +190,7 @@ def normalize_jenis_faskes(jenis_raw, nama_faskes="", is_osm=False, tags=None):
     return "Klinik Pratama"
 
 def classify_jakarta_by_coords(lat, lon):
-    """Memetakan koordinat di DKI Jakarta ke 5 Kota Administrasi terdekat (tanpa 'Jakarta' generik)."""
+    """Memetakan koordinat di DKI Jakarta ke 5 Kota Administrasi terdekat."""
     try:
         lt, ln = float(lat), float(lon)
         centers = {
@@ -175,8 +205,8 @@ def classify_jakarta_by_coords(lat, lon):
     except (ValueError, TypeError):
         return "Jakarta Pusat", "DKI Jakarta"
 
-def get_kota_provinsi(teks_lokasi, kota_asli="", lat="", lon=""):
-    """Menentukan Kota/Kabupaten secara spesifik (10 Kota/Kab Jabodetabek, tidak ada 'Jakarta' generik)."""
+def get_kota_provinsi(teks_lokasi, kota_asli="", lat=None, lon=None):
+    """Menentukan Kota/Kabupaten secara spesifik (Wajib lolos filter koordinat Jabodetabek terlebih dahulu)."""
     if kota_asli and kota_asli != "-":
         kc = kota_asli.upper()
         if "JAKARTA SELATAN" in kc or "JAKSEL" in kc: return "Jakarta Selatan", "DKI Jakarta"
@@ -206,38 +236,36 @@ def get_kota_provinsi(teks_lokasi, kota_asli="", lat="", lon=""):
         return "Tangerang Selatan", "Banten"
     if any(x in t for x in ["TANGERANG", "CIKUPA", "CURUG", "KARAWACI", "CILEDUG", "JATIUWUNG", "PERIUK", "BENDA", "BATUCEPER", "NEGLASARI", "CIPONDOH", "PINANG", "LARANGAN", "KARANG TENGAH", "CIBODAS", "TIGARAKSA", "BALARAJA", "PASAR KEMIS", "KELAPA DUA", "PAGEDANGAN", "LEGOK", "CISAUK", "SEPATAN", "TELUKNAGA", "KOSAMBI", "SITANALA", "MAUK", "RAJEG", "PAKUHAJI", " SINDANG JAYA", "PANONGAN", "JAMBE", "CISOKA", "SOLEAR", "JAYANTI", "SUKAMULYA", "KRESEK", "GUNUNG KALER", "MEKAR BARU", "KEMIRI", "KRONJO"]):
         return "Tangerang", "Banten"
-    if any(x in t for x in ["BOGOR", "CIBINONG", "CITEUREUP", "SENTUL", "CILEUNGSI", "GUNUNG PUTRI", "CIAWI", "PARUNG", "DRAMAGA", "CIOMAS", "BOJONGGEDE", "TAJUR", "PAJAJARAN", "SUKARAJA", "CISARUA", "LEUWILIANG", "JONGGOL", "CIBUNGBULANG", "CIAMPEA", "KEMANG BOGOR", "RANCA BUNGUR", "TAJURHALANG", "SUKMAJAYA", "TANAH SAREAL", "BOGOR UTARA", "BOGOR SELATAN", "BOGOR TIMUR", "BOGOR BARAT", "BOGOR TENGAH", "BABAKAN MADANG", "KLAPANUNGGAL", "CARIU", "TANJUNGSARI", "SUKAMAKMUR", "MEGAMENDUNG", "CARINGIN", "CIJERUK", "CIGOMBONG", "TAMANSARI BOGOR", "RUMPIN", "GUNUNG SINDUR", "CISEENG", "TENJO", "PARUNG PANJANG", "JASINGA", "NANGGUNG", "SUKAJAYA", "CIGUDEG", "LEUWISADENG", "PAMIJAHAN", "TENJOLAYA"]):
+    if any(x in t for x in ["BOGOR", "CIBINONG", "CITEUREUP", "SENTUL", "CILEUNGSI", "GUNUNG PUTRI", "CIAWI", "PARUNG", "DRAMAGA", "CIOMAS", "BOJONGGEDE", "TAJUR", "PAJAJARAN", "SUKARAJA", "CISARUA", "LEUWILIANG", "JONGGOL", "CIBUNGBULANG", "CIAMPEA", "KEMANG BOGOR", "RANCA BUNGUR", "TAJURHALANG", "SUKMAJAYA", "TANAH SAREAL", "BOGOR UTARA", "BOGOR SELATAN", "BOGOR TIMUR", "BOGOR BARAT", "BOGOR TENAH", "BABAKAN MADANG", "KLAPANUNGGAL", "CARIU", "TANJUNGSARI", "SUKAMAKMUR", "MEGAMENDUNG", "CARINGIN", "CIJERUK", "CIGOMBONG", "TAMANSARI BOGOR", "RUMPIN", "GUNUNG SINDUR", "CISEENG", "TENJO", "PARUNG PANJANG", "JASINGA", "NANGGUNG", "SUKAJAYA", "CIGUDEG", "LEUWISADENG", "PAMIJAHAN", "TENJOLAYA"]):
         return "Bogor", "Jawa Barat"
     if any(x in t for x in ["DEPOK", "CINERE", "CIMANGGIS", "BEJI", "MARGONDA", "SAWANGAN", "PANCORAN MAS", "SUKMAJAYA", "CILODONG", "LIMO", "TAPOS", "BOJONGSARI", "CIPAYUNG DEPOK", "KELAPA DUA DEPOK", "TUGU", "MEKARJAYA", "ABADI JAYA", "BAKTI JAYA", "CISALAK", "HARJAMUKTI", "SUKATANI", "CILANGKAP", "JATIJAJAR", "SUKAMAJU", "KALIMULYA", "DEPOK JAYA", "MAMPANG DEPOK", "MERUYUNG", "GROGOL DEPOK", "KRUKUT DEPOK", "PENGASINAN", "BEDAHAN", "PASIR PUTIH", "PONDOK PETIR", "SERUA", "CURUG DEPOK"]):
         return "Depok", "Jawa Barat"
     if any(x in t for x in ["BEKASI", "CIBITUNG", "CIKARANG", "TAMBUN", "PONDOK GEDE", "JATIASIH", "JATISAMPURNA", "MUSTIKA JAYA", "RAWALUMBU", "BANTARGEBANG", "MEDAN SATRIA", "HARAPAN INDAH", "SUMMARECON BEKASI", "GALAXY", "LIPPO CIKARANG", "JABABEKA", "SETU BEKASI", "BABELAN", "TARUMAJAYA", "PONDOK MELATI", "BEKASI BARAT", "BEKASI TIMUR", "BEKASI UTARA", "BEKASI SELATAN", "KRANJI", " BINTARA", "JAKASAMPURNA", "KAYURINGIN", "MARGAJAYA", "PEKAYON JAYA", "JATIBENING", "JATIMAKMUR", "JATIWARINGIN", "JATIRAHAYU", "JATIMEKAR", "JATIRASA", "PENGASINAN BEKASI", "BOJONG RAWALUMBU", "SEPANJANG JAYA", "PEDURENAN", "CIMUNING", "MUSTIKASARI", "PEJUANG", "HARAPAN JAYA", "KALIABANG", "TELUK PUCUNG", "MARGA MULYA", "SUKAWANGI", "TAMBELANG", "SUKATANI BEKASI", "KARANGBAHAGIA", "PEBAYURAN", "KEDUNGWARINGIN", "CABANGBUNGIN", "MUARAGEMBONG", "SERANG BARU", "CIBARUSAH", "BOJONGMANGU"]):
         return "Bekasi", "Jawa Barat"
 
-    # Fallback Koordinat (Memastikan 50 data OSM "Jakarta" masuk ke 5 Kota Administrasi DKI yang tepat)
+    # Fallback Koordinat (Memastikan seluruh titik di dalam kotak Jabodetabek mendapat kota yang akurat)
     try:
         lt, ln = float(lat), float(lon)
-        if -6.85 <= lt <= -5.95 and 106.35 <= ln <= 107.35:
-            if -6.37 <= lt <= -6.08 and 106.68 <= ln <= 106.98:
-                return classify_jakarta_by_coords(lt, ln)
-            if ln < 106.75:
-                return ("Tangerang Selatan", "Banten") if lt < -6.24 else ("Tangerang", "Banten")
-            if lt < -6.48:
-                return "Bogor", "Jawa Barat"
-            if -6.48 <= lt < -6.34 and 106.72 <= ln <= 106.92:
-                return "Depok", "Jawa Barat"
-            if ln > 106.92:
-                return "Bekasi", "Jawa Barat"
+        if -6.37 <= lt <= -6.08 and 106.68 <= ln <= 106.98:
+            return classify_jakarta_by_coords(lt, ln)
+        if ln < 106.75:
+            return ("Tangerang Selatan", "Banten") if lt < -6.24 else ("Tangerang", "Banten")
+        if lt < -6.48:
+            return "Bogor", "Jawa Barat"
+        if -6.48 <= lt < -6.34 and 106.72 <= ln <= 106.92:
+            return "Depok", "Jawa Barat"
+        if ln > 106.92:
+            return "Bekasi", "Jawa Barat"
+        return classify_jakarta_by_coords(lt, ln)
     except (ValueError, TypeError):
         pass
 
-    # Jika teks hanya menyebut "JAKARTA" tapi koordinat kosong, arahkan ke Jakarta Pusat
     if "JAKARTA" in t or "DKI" in t:
         return classify_jakarta_by_coords(lat, lon)
 
     return "-", "-"
 
 def main():
-    # "Jakarta" generik dihapus agar semua wajib masuk ke 5 kota DKI spesifik
     jabodetabek_cities = [
         "Jakarta Selatan", "Jakarta Pusat", "Jakarta Timur", 
         "Jakarta Barat", "Jakarta Utara", 
@@ -246,12 +274,11 @@ def main():
 
     faskes_dict = {}
     bpjs_reference_list = []
+    skipped_outside_bbox = 0
 
     # ==========================================
     # 1. BACA & GABUNGKAN SEMUA FILE JSON BPJS
     # ==========================================
-    # Membaca file lama (faskes_raw_playwright.json yang punya 1400+ Puskesmas & RS besar)
-    # lalu di-enrich/di-update oleh faskes_jabodetabek.json yang punya info kelas_faskes
     bpjs_files = ["faskes_raw_playwright.json", "faskes_jabodetabek (1).json", "faskes_jabodetabek.json"]
     found_any_bpjs = False
 
@@ -286,8 +313,17 @@ def main():
             jenis_raw = (item.get("jenis_faskes") or item.get("nmjnsppk") or "").strip()
             alamat = (item.get("alamat_faskes") or item.get("nmjlnppk") or "").strip()
             kota_asli = item.get("kota_kabupaten", "")
-            lat = item.get("latitude", "")
-            lon = item.get("longitude", "")
+
+            # 1. Perbaiki tanda koordinat (misal 6.340966 -> -6.340966) & saring kotak Jabodetabek
+            lat, lon = parse_and_fix_coords(item.get("latitude", ""), item.get("longitude", ""))
+            if not is_within_jabodetabek_bbox(lat, lon):
+                skipped_outside_bbox += 1
+                continue
+
+            # 2. Saring faskes yang namanya/alamatnya eksplisit kota luar Jabodetabek (Indramayu, Serang, Tasikmalaya, dll.)
+            if is_explicit_outside_city(nama + " " + alamat + " " + str(kota_asli)):
+                skipped_outside_bbox += 1
+                continue
 
             jenis = normalize_jenis_faskes(jenis_raw, nama, is_osm=False)
             if not jenis:
@@ -295,6 +331,7 @@ def main():
 
             kota, provinsi = get_kota_provinsi(nama + " " + alamat, kota_asli, lat, lon)
             if kota not in jabodetabek_cities:
+                skipped_outside_bbox += 1
                 continue
 
             kelas_raw = (
@@ -305,16 +342,16 @@ def main():
                 ""
             )
             kelas_rs = str(kelas_raw).upper().replace("KELAS", "").strip() if kelas_raw else ""
-            if kelas_rs not in ["A", "B", "C", "D"]:
+            # Pastikan kelas_rs hanya A/B/C/D dan hanya berlaku untuk Rumah Sakit (Klinik Utama dikosongkan)
+            if kelas_rs not in ["A", "B", "C", "D"] or jenis != "Rumah Sakit":
                 kelas_rs = ""
 
             telp = str(item.get("telp_faskes") or item.get("telpppk") or "").strip()
             if "undefined" in telp.lower() or not telp:
                 telp = "-"
 
-            # Jika sudah ada dari file sebelumnya, pertahankan kelas_rs yang tidak kosong
             if kdppk in faskes_dict:
-                if not kelas_rs and faskes_dict[kdppk]["kelas_rs"]:
+                if not kelas_rs and faskes_dict[kdppk]["kelas_rs"] and jenis == "Rumah Sakit":
                     kelas_rs = faskes_dict[kdppk]["kelas_rs"]
 
             faskes_dict[kdppk] = {
@@ -324,7 +361,7 @@ def main():
                 "kelas_rs": kelas_rs,
                 "provinsi": provinsi,
                 "kota_kabupaten": kota,
-                "alamat": alamat,
+                "alamat": alamat if alamat else "-",
                 "telepon": telp,
                 "latitude": lat,
                 "longitude": lon,
@@ -336,7 +373,6 @@ def main():
 
     # ==========================================
     # 1B. PASTIKAN 4 RS VERTIKAL UTAMA MITRA BPJS TERDAFTAR
-    # (Jaminan jika terlewat saat scraping faskes_jabodetabek.json)
     # ==========================================
     essential_bpjs_hospitals = [
         {
@@ -393,7 +429,6 @@ def main():
         }
     ]
 
-    # Cek apakah keempat RS tersebut sudah ada di faskes_dict, jika belum tambahkan
     existing_bpjs_refs = [
         {
             "norm_name": normalize_rs_name(v["nama_faskes"]),
@@ -438,29 +473,38 @@ def main():
             if unique_id in faskes_dict:
                 continue
 
-            jenis = normalize_jenis_faskes("", nama, is_osm=True, tags=tags)
-            if not jenis:
-                skipped_invalid += 1
-                continue
+            raw_lat = item.get("lat", item.get("center", {}).get("lat", ""))
+            raw_lon = item.get("lon", item.get("center", {}).get("lon", ""))
+            lat, lon = parse_and_fix_coords(raw_lat, raw_lon)
 
-            lat = item.get("lat", item.get("center", {}).get("lat", ""))
-            lon = item.get("lon", item.get("center", {}).get("lon", ""))
+            # Saring ketat dengan Bounding Box Jabodetabek
+            if not is_within_jabodetabek_bbox(lat, lon):
+                skipped_outside_bbox += 1
+                continue
 
             alamat_parts = [tags.get("addr:street", ""), tags.get("addr:housenumber", ""), tags.get("addr:city", "")]
             alamat = ", ".join([p for p in alamat_parts if p]).strip()
             if not alamat or alamat == ",":
                 alamat = "-"
 
-            kota, provinsi = get_kota_provinsi(nama + " " + alamat, tags.get("addr:city", ""), lat, lon)
-            if kota not in jabodetabek_cities:
+            if is_explicit_outside_city(nama + " " + alamat + " " + tags.get("addr:city", "")):
+                skipped_outside_bbox += 1
                 continue
 
-            # Deduplikasi terhadap data BPJS & sesama OSM
+            jenis = normalize_jenis_faskes("", nama, is_osm=True, tags=tags)
+            if not jenis:
+                skipped_invalid += 1
+                continue
+
+            kota, provinsi = get_kota_provinsi(nama + " " + alamat, tags.get("addr:city", ""), lat, lon)
+            if kota not in jabodetabek_cities:
+                skipped_outside_bbox += 1
+                continue
+
             if is_duplicate_faskes(nama, lat, lon, bpjs_reference_list):
                 skipped_duplicates += 1
                 continue
 
-            # Kelas untuk OSM dikosongkan
             kelas_rs = ""
 
             faskes_dict[unique_id] = {
@@ -506,17 +550,17 @@ def main():
         writer.writeheader()
         writer.writerows(faskes_final)
 
-    # Hitung ringkasan per jenis faskes untuk verifikasi langsung di terminal
     rekap_jenis = {}
     for f_row in faskes_final:
         j = f_row["jenis_faskes"]
         rekap_jenis[j] = rekap_jenis.get(j, 0) + 1
 
     print("\n" + "="*55)
-    print("MERGE & DEDUPLIKASI DATA BPJS + OSM BERHASIL!")
-    print(f"Duplikat OSM dibuang   : {skipped_duplicates} faskes")
-    print(f"Entitas Non-Medis      : {skipped_invalid} dibuang")
-    print(f"Total Faskes Bersih    : {len(faskes_final)} baris")
+    print("MERGE & FILTER KOORDINAT JABODETABEK BERHASIL!")
+    print(f"Faskes Luar Jabodetabek : {skipped_outside_bbox} dibuang")
+    print(f"Duplikat OSM dibuang    : {skipped_duplicates} faskes")
+    print(f"Entitas Non-Medis       : {skipped_invalid} dibuang")
+    print(f"Total Faskes Bersih     : {len(faskes_final)} baris")
     print("-" * 55)
     print("Rincian per Jenis Faskes:")
     for k, v in sorted(rekap_jenis.items(), key=lambda x: -x[1]):
