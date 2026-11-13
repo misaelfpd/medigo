@@ -1,12 +1,12 @@
 id_spesialisasi,nama_spesialisasi
-1,AKUPUNTUR MEDIK
-2,ANDROLOGI
+1,Akupuntur Medik
+2,Andrologi
 3,Alergi Imunologi
-4,Alergi-Immunologi Klinik
+4,Alergi-immunologi Klinik
 5,Anak
 6,Anak Alergi Imunologi
 7,Anak Endokrinologi
-8,Anak Gastro-Hepatologi
+8,Anak Gastro-hepatologi
 9,Anak Hematologi Onkologi
 10,Anak Infeksi & Pediatri Tropis
 11,Anak Kardiologi
@@ -14,75 +14,75 @@ id_spesialisasi,nama_spesialisasi
 13,Anak Neurologi
 14,Anak Nutrisi & Penyakit Metabolik
 15,Anastesi
-16,Anestesi kardiovaskuler
-17,Anestesi obstetri
-18,Anestesi pediatri
-19,Asma PPOK
-20,BEDAH  ANAK
-21,BEDAH SARAF
-22,BEDAH VASKULER
-23,BTKV
-24,Bank Darah dan Kedokteran laboratorium
+16,Anestesi Kardiovaskuler
+17,Anestesi Obstetri
+18,Anestesi Pediatri
+19,Asma Ppok
+20,Bedah Anak
+21,Bedah Saraf
+22,Bedah Vaskuler
+23,Btkv
+24,Bank Darah dan Kedokteran Laboratorium
 25,Bedah
 26,Bedah Digestif
 27,Bedah Onkologi
 28,Bedah Plastik
-29,Burn (Luka Bakar)
-30,DERMATOLOGI PEDIATRIK
-31,EMERGENSI
-32,Emergensi dan Rawat Intensif Anak (ERIA)
-33,Endokrin-Metabolik-Diabetes
+29,Burn (luka Bakar)
+30,Dermatologi Pediatrik
+31,Emergensi
+32,Emergensi dan Rawat Intensif Anak (eria)
+33,Endokrin-metabolik-diabetes
 34,Epilepsi
-35,FARMAKOLOGI KLINIK
-36,FORENSIK
-37,Fertilitas dan endokrinologi reproduksi
-38,Foot and ankle
-39,GIGI BEDAH MULUT
-40,GIGI ENDODONSI
-41,GIGI ORTHODONTI
-42,GIGI PEDODONTIS
-43,GIGI PENYAKIT MULUT
-44,GIGI PERIODONTI
-45,GIGI PRSOSTHODONTI
-46,GIGI RADIOLOGI
-47,GIZI KLINIK
-48,GLAUKOMA
-49,Gastroenterologi-Hepatologi
+35,Farmakologi Klinik
+36,Forensik
+37,Fertilitas dan Endokrinologi Reproduksi
+38,Foot And Ankle
+39,Gigi Bedah Mulut
+40,Gigi Endodonsi
+41,Gigi Orthodonti
+42,Gigi Pedodontis
+43,Gigi Penyakit Mulut
+44,Gigi Periodonti
+45,Gigi Prsosthodonti
+46,Gigi Radiologi
+47,Gizi Klinik
+48,Glaukoma
+49,Gastroenterologi-hepatologi
 50,Geriatri
 51,Gigi
-52,Ginjal-Hipertensi
-53,HAND AND MICROSURGERY
+52,Ginjal-hipertensi
+53,Hand And Microsurgery
 54,Hematologi
 55,Hematologi - Onkologi Medik
-56,Hip and knee
-57,INFEKSI DAN IMMUNOLOGI
-58,Imaging abdomen
-59,Imunologi paru
+56,Hip And Knee
+57,Infeksi dan Immunologi
+58,Imaging Abdomen
+59,Imunologi Paru
 60,Infeksi
 61,Infeksi Paru
-62,Intensive care/ICU
-63,Intervensi dan gawat nafas
-64,JANTUNG DAN PEMBULUH DARAH
-65,JIWA
-66,KEDOKTERAAN OLAHRAGA
-67,KEDOKTERAN OKUPASI
-68,KEDOKTERAN PENERBANGAN
-69,KULIT KELAMIN
+62,Intensive Care/icu
+63,Intervensi dan Gawat Nafas
+64,Jantung dan Pembuluh Darah
+65,Jiwa
+66,Kedokteraan Olahraga
+67,Kedokteran Okupasi
+68,Kedokteran Penerbangan
+69,Kulit Kelamin
 70,Kardiocerbrovaskuler
 71,Kardiologi Intervensi
 72,Kardiovaskular
 73,Kesehatan Jiwa Anak dan Remaja
-74,"Kornea, lensa dan bedah refraktif"
-75,Kraniofasial (KKF)
-76,Laring faring
-77,MIKROBIOLOGI KLINIK
+74,"Kornea, Lensa dan Bedah Refraktif"
+75,Kraniofasial (kkf)
+76,Laring Faring
+77,Mikrobiologi Klinik
 78,Manajemen Intervensi Nyeri
 79,Mata
-80,NEURO OFTALMOLOGI
+80,Neuro Oftalmologi
 81,Neonatologi
 82,Neuro-intensif
 83,Neuro-oftalmologi dan Neuro-otologi
-84,"Neurobehaviour, MD, Neurogeriatri, dan Neurorestorasi"
+84,"Neurobehaviour, Md, Neurogeriatri, dan Neurorestorasi"
 85,Neurofisiologi Klinis
 86,Neuroinfeksi
 87,Neuroinfeksi dan Imunologi
@@ -93,61 +93,61 @@ id_spesialisasi,nama_spesialisasi
 92,Neurospine
 93,Neurotologi
 94,Neurotrauma
-95,ONKOLOGI MATA
+95,Onkologi Mata
 96,Onkologi Radiasi
 97,Onkologi Toraks
-98,Onkologi bedah kepala leher
+98,Onkologi Bedah Kepala Leher
 99,Orthopedi
-100,PARASITOLOGI UMUM
-101,PARU
-102,PEDIATRIK OFTALMOLOGI
-103,PSIKOTERAPI
-104,Paediatric orthopaedi
+100,Parasitologi Umum
+101,Paru
+102,Pediatrik Oftalmologi
+103,Psikoterapi
+104,Paediatric Orthopaedi
 105,Paru Kerja dan Lingkungan
 106,Patologi Anatomi
 107,Patologi Klinik
 108,Pediatri Gawat Darurat
-109,Pelayanan aritmia
-110,Pelayanan cardiac imaging
-111,Pelayanan intensive dan kegawatan kardiovas-kuler
-112,Pelayanan jantung anak dan PJB
-113,Pelayanan vaskular
+109,Pelayanan Aritmia
+110,Pelayanan Cardiac Imaging
+111,Pelayanan Intensive dan Kegawatan Kardiovas-kuler
+112,Pelayanan Jantung Anak dan Pjb
+113,Pelayanan Vaskular
 114,Pencitraan Anak
 115,Penyakit Dalam
-116,Penyakit Tropik-Infeksi
+116,Penyakit Tropik-infeksi
 117,Perinatologi
-118,Plastik rekonstruksi THT
+118,Plastik Rekonstruksi Tht
 119,Pulmonologi
-120,RADIOLOGI ONKOLOGI
-121,RADIOTERAPI
-122,REHABILITASI MEDIK
+120,Radiologi Onkologi
+121,Radioterapi
+122,Rehabilitasi Medik
 123,Radiologi
 124,Radiologi Intervensional
 125,Radiologi Muskuloskeletal
 126,Radiologi Nuklir
 127,Radiologi Onkologi
-128,Radiologi intervensional kardiovaskular
-129,Radiologi pediatrik
+128,Radiologi Intervensional Kardiovaskular
+129,Radiologi Pediatrik
 130,Rekontruksi dan Estetik
 131,Respirologi Anak
 132,Reumatologi
 133,Saraf
 134,Spine
-135,"Sport, shoulder and elbow"
-136,THT Komunitas
-137,THT-KL
-138,TRAUMA DAN REKONSTRUKSI
+135,"Sport, Shoulder And Elbow"
+136,Tht Komunitas
+137,Tht-kl
+138,Trauma dan Rekonstruksi
 139,Terapi Nyeri
-140,Thorax imaging
+140,Thorax Imaging
 141,Tumbuh Kembang Ped. Sosial
-142,Tumor muskuloskeletal
+142,Tumor Muskuloskeletal
 143,Umum
-144,Urogenital anak
-145,Uroginekologi dan rekonstruksi
+144,Urogenital Anak
+145,Uroginekologi dan Rekonstruksi
 146,Urologi
-147,VITREO - RETINA
-148,endokrinologi
-149,fetomaternal
-150,obgyn
-151,obstetri ginekologi sosial
-152,onkologi ginekologi
+147,Vitreo - Retina
+148,Endokrinologi
+149,Fetomaternal
+150,Obgyn
+151,Obstetri Ginekologi Sosial
+152,Onkologi Ginekologi
