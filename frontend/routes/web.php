@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminFaskesController;
 use App\Http\Controllers\Admin\AdminDiscussionReportController;
+use App\Http\Controllers\Admin\AdminForumController;
 use App\Http\Controllers\Admin\AdminReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -71,6 +72,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     
     Route::get('/faskes', [AdminFaskesController::class, 'index'])->name('admin.faskes');
+    Route::get('/faskes/create', [AdminFaskesController::class, 'create'])->name('admin.faskes.create');
     Route::get('/faskes/{id}/json', [AdminFaskesController::class, 'getFaskesJson'])->name('admin.faskes.json');
     Route::post('/faskes', [AdminFaskesController::class, 'store'])->name('admin.faskes.store');
     Route::put('/faskes/{id}', [AdminFaskesController::class, 'update'])->name('admin.faskes.update');
@@ -78,6 +80,16 @@ Route::prefix('admin')->group(function () {
     Route::post('/fasilitas', [AdminFaskesController::class, 'storeFasilitas'])->name('admin.fasilitas.store');
     Route::post('/spesialisasi', [AdminFaskesController::class, 'storeSpesialisasi'])->name('admin.spesialisasi.store');
     
+    // Rute Moderasi Forum Admin
+    Route::get('/forum', [AdminForumController::class, 'index'])->name('admin.forum');
+    Route::post('/forum/discussions/{id}/takedown', [AdminForumController::class, 'takedownDiscussion'])->name('admin.forum.discussions.takedown');
+    Route::post('/forum/discussions/{id}/dismiss', [AdminForumController::class, 'dismissDiscussionReport'])->name('admin.forum.discussions.dismiss');
+    Route::post('/forum/comments/{id}/takedown', [AdminForumController::class, 'takedownComment'])->name('admin.forum.comments.takedown');
+    Route::post('/forum/comments/{id}/dismiss', [AdminForumController::class, 'dismissCommentReport'])->name('admin.forum.comments.dismiss');
+    Route::post('/forum/users/{id}/block', [AdminForumController::class, 'blockUser'])->name('admin.forum.users.block');
+    Route::post('/forum/discussions/{id}/report', [AdminForumController::class, 'adminReportDiscussion'])->name('admin.forum.discussions.report');
+    Route::post('/forum/comments/{id}/report', [AdminForumController::class, 'adminReportComment'])->name('admin.forum.comments.report');
+
     Route::get('/discussion-reports', [AdminDiscussionReportController::class, 'index'])->name('admin.discussion-reports');
     Route::post('/discussions/{id}/takedown', [AdminDiscussionReportController::class, 'takedown'])->name('admin.discussions.takedown');
     // Rute menghapus komentar diskusi

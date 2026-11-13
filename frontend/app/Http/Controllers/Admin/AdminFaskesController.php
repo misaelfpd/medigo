@@ -225,6 +225,89 @@ class AdminFaskesController extends Controller
         return response()->json(['status' => 'error', 'message' => 'Fasilitas kesehatan tidak ditemukan'], 404);
     }
 
+    /**
+     * Tampilkan halaman khusus Tambah Rumah Sakit Baru (Tab Informasi, Fasilitas, Spesialisasi).
+     */
+    public function create()
+    {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
+        $backendUrl = $this->getBackendUrl();
+
+        $allFasilitas = [];
+        $allSpesialisasi = [];
+        try {
+            $fasRes = Http::timeout(4)->get("{$backendUrl}/api/fasilitas");
+            if ($fasRes->successful()) {
+                $allFasilitas = $fasRes->json()['data'] ?? [];
+            }
+            $specRes = Http::timeout(4)->get("{$backendUrl}/api/spesialisasi");
+            if ($specRes->successful()) {
+                $allSpesialisasi = $specRes->json()['data'] ?? [];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch facilities or specialties for create faskes: ' . $e->getMessage());
+        }
+
+        // Fallback default facilities if empty
+        if (empty($allFasilitas)) {
+            $defaultFasilitas = [
+                'Ambulan', 'IGD 24 Jam', 'Rawat Inap', 'Rawat Jalan', 'ICU (Intensive Care Unit)',
+                'NICU / PICU', 'Laboratorium', 'Radiologi / Rontgen', 'Farmasi / Apotek 24 Jam',
+                'Bank Darah', 'Ruang Operasi (Bedah)', 'Hemodialisa (Cuci Darah)',
+                'Fisioterapi & Rehabilitasi Medis', 'CT Scan & MRI', 'USG 4D',
+                'Medical Check Up (MCU)', 'Kamar Isolasi', 'Ruang Bersalin',
+                'Layanan Vaksinasi', 'Layanan Telemedisin'
+            ];
+            foreach ($defaultFasilitas as $idx => $fName) {
+                $allFasilitas[] = ['id_fasilitas' => 'def_' . ($idx + 1), 'nama_fasilitas' => $fName];
+            }
+        }
+
+        // Fallback default specialties if empty
+        if (empty($allSpesialisasi)) {
+            $defaultSpesialisasi = [
+                'Spesialis Jantung & Pembuluh Darah (Kardiologi)',
+                'Spesialis Penyakit Dalam (Internis)',
+                'Spesialis Anak (Pediatri)',
+                'Spesialis Bedah Saraf',
+                'Spesialis Kebidanan & Kandungan (Obgyn)',
+                'Spesialis Mata (Oftalmologi)',
+                'Spesialis Ortopedi & Traumatologi',
+                'Spesialis Kulit & Kelamin (Dermatologi)',
+                'Spesialis THT-KL (Telinga Hidung Tenggorokan)',
+                'Spesialis Paru (Pulmonologi)',
+                'Spesialis Saraf (Neurologi)',
+                'Spesialis Radiologi',
+                'Spesialis Anestesi',
+                'Spesialis Onkologi (Kanker)',
+                'Spesialis Kedokteran Jiwa (Psikiatri)',
+                'Spesialis Urologi',
+                'Spesialis Gigi & Mulut',
+                'Spesialis Bedah Plastik & Rekonstruksi',
+                'Spesialis Gizi Klinik',
+                'Spesialis Kedokteran Fisik & Rehabilitasi'
+            ];
+            foreach ($defaultSpesialisasi as $idx => $sName) {
+                $allSpesialisasi[] = ['id_spesialisasi' => 'def_' . ($idx + 1), 'nama_spesialisasi' => $sName];
+            }
+        }
+
+        $provincesList = [
+            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Banten', 
+            'DI Yogyakarta', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+            'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Riau', 'Kepulauan Riau',
+            'Jambi', 'Bengkulu', 'Lampung', 'Kepulauan Bangka Belitung', 'Aceh',
+            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+            'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tenggara',
+            'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Tengah', 'Papua Selatan', 'Papua Pegunungan'
+        ];
+
+        return view('admin.faskes_create', compact('allFasilitas', 'allSpesialisasi', 'provincesList'));
+    }
+
     public function store(Request $request)
     {
         if (!session('admin_logged_in')) {
@@ -233,16 +316,21 @@ class AdminFaskesController extends Controller
 
         $request->validate([
             'nama_faskes'    => 'required|string|max:255',
-            'tipe'           => 'required|string|max:100',
+            'tipe'           => 'nullable|string|max:100',
+            'jenis_faskes'   => 'nullable|string|max:100',
             'kelas'          => 'nullable|string|max:50',
             'kota_kabupaten' => 'required|string|max:100',
             'alamat'         => 'required|string',
-            'is_support_bpjs'=> 'nullable|string',
+            'is_support_bpjs'=> 'nullable',
             'link_maps'      => 'nullable|string',
             'kontak'         => 'nullable|string|max:50',
+            'telepon'        => 'nullable|string|max:50',
         ]);
 
         $backendUrl = $this->getBackendUrl();
+
+        $tipeVal = $request->input('tipe', $request->input('jenis_faskes', 'Rumah Sakit')) ?: 'Rumah Sakit';
+        $kontakVal = $request->input('telepon', $request->input('kontak'));
 
         $kelasVal = $request->kelas;
         if ($kelasVal === '' || $kelasVal === 'unknown' || $kelasVal === 'Tidak Diketahui') {
@@ -251,8 +339,10 @@ class AdminFaskesController extends Controller
 
         $bpjsVal = $request->is_support_bpjs;
         $isBpjs = null;
-        if ($bpjsVal === '1' || $bpjsVal === '0') {
-            $isBpjs = (int)$bpjsVal;
+        if ($bpjsVal === '1' || $bpjsVal === 1 || $bpjsVal === 'true' || $bpjsVal === true) {
+            $isBpjs = 1;
+        } elseif ($bpjsVal === '0' || $bpjsVal === 0 || $bpjsVal === 'false' || $bpjsVal === false) {
+            $isBpjs = 0;
         }
 
         $fasilitas = $request->input('fasilitas', []);
@@ -272,8 +362,8 @@ class AdminFaskesController extends Controller
             }
             $http->post("{$backendUrl}/api/faskes", [
                 'nama_faskes'    => $request->nama_faskes,
-                'jenis_faskes'   => $request->tipe ?? $request->jenis_faskes,
-                'tipe'           => $request->tipe ?? $request->jenis_faskes,
+                'jenis_faskes'   => $tipeVal,
+                'tipe'           => $tipeVal,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
                 'provinsi'       => $request->provinsi ?? 'DKI Jakarta',
@@ -284,8 +374,8 @@ class AdminFaskesController extends Controller
                 'link_maps'      => $request->link_maps,
                 'latitude'       => $request->latitude,
                 'longitude'      => $request->longitude,
-                'kontak'         => $request->kontak,
-                'telepon'        => $request->kontak,
+                'kontak'         => $kontakVal,
+                'telepon'        => $kontakVal,
                 'fasilitas'      => $fasilitas,
                 'spesialisasi'   => $spesialisasi,
             ]);

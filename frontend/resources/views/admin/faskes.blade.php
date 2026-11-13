@@ -28,10 +28,10 @@
                 <p class="text-muted small mb-0">Kelola data fasilitas kesehatan, lengkapi daftar fasilitas penunjang medis dan spesialisasi dokter.</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-medigo-primary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateFaskes">
+                <a href="{{ route('admin.faskes.create') }}" class="btn btn-medigo-primary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs text-decoration-none">
                     <i class="bi bi-plus-circle-fill fs-6"></i>
                     <span>Tambah Faskes</span>
-                </button>
+                </a>
             </div>
         </div>
 

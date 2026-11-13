@@ -53,6 +53,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->role_user === 'blocked' || $user->role_user === 'banned') {
+            throw ValidationException::withMessages([
+                'email' => ['Akun Anda telah dinonaktifkan atau diblokir oleh administrator karena pelanggaran pedoman komunitas.'],
+            ]);
+        }
+
         $token = $user->createToken('medigo_token')->plainTextToken;
 
         return response()->json([

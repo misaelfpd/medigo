@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AdminForumModerationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DiscussionCommentController;
 use App\Http\Controllers\DiscussionController;
@@ -127,5 +128,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/faskes-comment-reports/{id}', [FaskesCommentController::class, 'showReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/takedown', [FaskesCommentController::class, 'takedownReportAdmin']);
         Route::post('/admin/faskes-comment-reports/{id}/dismiss', [FaskesCommentController::class, 'dismissReportAdmin']);
+
+        // 5. Admin Moderasi Forum Komprehensif (Antrean Moderasi, Tren, Terbaru, Dilaporkan, Blokir User)
+        Route::get('/admin/forum/moderation', [AdminForumModerationController::class, 'getModerationData']);
+        Route::post('/admin/forum/discussions/{id}/takedown', [AdminForumModerationController::class, 'takedownDiscussion']);
+        Route::post('/admin/forum/discussions/{id}/dismiss', [AdminForumModerationController::class, 'dismissDiscussion']);
+        Route::post('/admin/forum/comments/{id}/takedown', [AdminForumModerationController::class, 'takedownComment']);
+        Route::post('/admin/forum/comments/{id}/dismiss', [AdminForumModerationController::class, 'dismissComment']);
+        Route::post('/admin/forum/users/{id}/block', [AdminForumModerationController::class, 'blockUser']);
+        Route::post('/admin/forum/discussions/{id}/report', [AdminForumModerationController::class, 'reportDiscussion']);
+        Route::post('/admin/forum/comments/{id}/report', [AdminForumModerationController::class, 'reportComment']);
     });
 });

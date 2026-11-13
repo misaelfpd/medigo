@@ -58,7 +58,7 @@
                     </a>
 
                     <!-- Forum -->
-                    <a href="#" class="admin-nav-item {{ request()->is('admin/forum*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.forum') }}" class="admin-nav-item {{ request()->is('admin/forum*') ? 'active' : '' }}">
                         <i class="bi bi-chat-left-text admin-nav-icon"></i>
                         <span>Forum</span>
                     </a>

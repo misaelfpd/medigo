@@ -28,6 +28,79 @@ class FaskesController extends Controller
         return 'other';
     }
 
+    public static function getCityCoordinates(?string $kota): ?array
+    {
+        if (empty($kota)) {
+            return null;
+        }
+        $k = strtolower(trim($kota));
+        $cities = [
+            'jakarta pusat' => [-6.1805, 106.8284],
+            'jakarta selatan' => [-6.2615, 106.8106],
+            'jakarta barat' => [-6.1674, 106.7637],
+            'jakarta utara' => [-6.1214, 106.7741],
+            'jakarta timur' => [-6.2250, 106.9004],
+            'jakarta' => [-6.2088, 106.8456],
+            'dki jakarta' => [-6.2088, 106.8456],
+            'bekasi' => [-6.2383, 106.9756],
+            'kota bekasi' => [-6.2383, 106.9756],
+            'kabupaten bekasi' => [-6.2415, 107.1453],
+            'bogor' => [-6.5971, 106.8060],
+            'kota bogor' => [-6.5971, 106.8060],
+            'kabupaten bogor' => [-6.4797, 106.8249],
+            'depok' => [-6.4025, 106.7942],
+            'kota depok' => [-6.4025, 106.7942],
+            'tangerang' => [-6.1783, 106.6319],
+            'kota tangerang' => [-6.1783, 106.6319],
+            'tangerang selatan' => [-6.2885, 106.7179],
+            'kabupaten tangerang' => [-6.1751, 106.4673],
+            'bandung' => [-6.9175, 107.6191],
+            'kota bandung' => [-6.9175, 107.6191],
+            'kabupaten bandung' => [-7.0253, 107.5198],
+            'surabaya' => [-7.2575, 112.7521],
+            'semarang' => [-6.9667, 110.4167],
+            'yogyakarta' => [-7.7956, 110.3695],
+            'sleman' => [-7.7167, 110.3556],
+            'bantul' => [-7.8939, 110.3275],
+            'medan' => [3.5952, 98.6722],
+            'palembang' => [-2.9761, 104.7754],
+            'makassar' => [-5.1477, 119.4327],
+            'denpasar' => [-8.6705, 115.2126],
+            'badung' => [-8.5819, 115.1771],
+            'bali' => [-8.4095, 115.1889],
+            'malang' => [-7.9666, 112.6326],
+            'surakarta' => [-7.5755, 110.8243],
+            'solo' => [-7.5755, 110.8243],
+            'cirebon' => [-6.7320, 108.5523],
+            'sukabumi' => [-6.9277, 106.9300],
+            'karawang' => [-6.3073, 107.3019],
+            'serang' => [-6.1104, 106.1640],
+            'cilegon' => [-6.0174, 106.0538],
+            'lampung' => [-5.4500, 105.2667],
+            'bandar lampung' => [-5.4500, 105.2667],
+            'padang' => [-0.9471, 100.4172],
+            'pekanbaru' => [0.5071, 101.4478],
+            'batam' => [1.1301, 104.0529],
+            'pontianak' => [-0.0263, 109.3425],
+            'banjarmasin' => [-3.3194, 114.5908],
+            'balikpapan' => [-1.2379, 116.8529],
+            'samarinda' => [-0.5022, 117.1537],
+            'manado' => [1.4748, 124.8421],
+            'mataram' => [-8.5833, 116.1167],
+            'kupang' => [-10.1772, 123.6070],
+            'ambon' => [-3.6547, 128.1906],
+            'jayapura' => [-2.5916, 140.6690],
+        ];
+
+        foreach ($cities as $cityKey => $coords) {
+            if (str_contains($k, $cityKey) || str_contains($cityKey, $k)) {
+                return $coords;
+            }
+        }
+
+        return null;
+    }
+
     private function formatFaskesName($name, $typeSlug, $jenis_faskes = '')
     {
         $name = trim($name ?? '');
@@ -127,21 +200,21 @@ class FaskesController extends Controller
             $lat = (float) $request->lat;
             $lng = (float) $request->lng;
 
-            // Haversine formula (km)
-            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
+            // Haversine formula (km) dengan perlindungan NULL & domain acos [-1, 1]
+            $haversine = "(CASE WHEN faskes.latitude IS NOT NULL AND faskes.longitude IS NOT NULL THEN (6371 * acos(least(1.0, greatest(-1.0, cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude)))))) ELSE NULL END)";
 
             $query->select('faskes.*')
-                ->selectRaw("{$haversine} AS distance_km")
-                ->whereNotNull('faskes.latitude')
-                ->whereNotNull('faskes.longitude');
+                ->selectRaw("{$haversine} AS distance_km");
 
             // Filter radius jika diberikan
             if ($request->filled('radius')) {
                 $radius = (float) $request->radius;
-                $query->having('distance_km', '<=', $radius);
+                $query->whereNotNull('faskes.latitude')
+                    ->whereNotNull('faskes.longitude')
+                    ->having('distance_km', '<=', $radius);
             }
 
-            $query->orderBy('distance_km', 'asc');
+            $query->orderByRaw('(CASE WHEN distance_km IS NOT NULL THEN 0 ELSE 1 END) ASC, distance_km ASC, faskes.id_faskes ASC');
         } else {
             $query->select('faskes.*')->orderBy('faskes.id_faskes', 'asc');
         }
@@ -362,7 +435,18 @@ class FaskesController extends Controller
                     $lng = (float) $m[2];
                 }
             }
-        } else {
+        }
+
+        // Fallback default coordinates from city dictionary if not provided
+        if ($lat === null || $lng === null) {
+            $cityCoords = self::getCityCoordinates($kotaKab);
+            if ($cityCoords) {
+                $lat = $cityCoords[0];
+                $lng = $cityCoords[1];
+            }
+        }
+
+        if (empty($linkMaps) || $linkMaps === '-' || $linkMaps === 'TRUE' || $linkMaps === 'FALSE') {
             if ($lat !== null && $lng !== null) {
                 $linkMaps = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
             } else {
@@ -546,9 +630,26 @@ class FaskesController extends Controller
 
         if ($request->has('latitude')) {
             $updateData['latitude'] = $request->filled('latitude') ? (float) $request->latitude : null;
+        } elseif ($targetLat !== null) {
+            $updateData['latitude'] = $targetLat;
+        } else {
+            $kotaCheck = $request->kota_kabupaten ?? $faskes->kota_kabupaten;
+            $cityCoords = self::getCityCoordinates($kotaCheck);
+            if ($cityCoords) {
+                $updateData['latitude'] = $cityCoords[0];
+            }
         }
+
         if ($request->has('longitude')) {
             $updateData['longitude'] = $request->filled('longitude') ? (float) $request->longitude : null;
+        } elseif ($targetLng !== null) {
+            $updateData['longitude'] = $targetLng;
+        } else {
+            $kotaCheck = $request->kota_kabupaten ?? $faskes->kota_kabupaten;
+            $cityCoords = self::getCityCoordinates($kotaCheck);
+            if ($cityCoords) {
+                $updateData['longitude'] = $cityCoords[1];
+            }
         }
 
         if ($request->has('_support_bpjs')) {
@@ -761,20 +862,22 @@ class FaskesController extends Controller
         $lng = $params['lng'] ?? null;
 
         if ($lat && $lng) {
-            $haversine = "(6371 * acos(cos(radians({$lat})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lng})) + sin(radians({$lat})) * sin(radians(faskes.latitude))))";
+            $latVal = (float) $lat;
+            $lngVal = (float) $lng;
+            $haversine = "(CASE WHEN faskes.latitude IS NOT NULL AND faskes.longitude IS NOT NULL THEN (6371 * acos(least(1.0, greatest(-1.0, cos(radians({$latVal})) * cos(radians(faskes.latitude)) * cos(radians(faskes.longitude) - radians({$lngVal})) + sin(radians({$latVal})) * sin(radians(faskes.latitude)))))) ELSE NULL END)";
 
             $query->select('faskes.*')
-                ->selectRaw("{$haversine} AS distance_km")
-                ->whereNotNull('faskes.latitude')
-                ->whereNotNull('faskes.longitude');
+                ->selectRaw("{$haversine} AS distance_km");
 
-            if (!empty($params['radius'])) {
-                $query->having('distance_km', '<=', (float) $params['radius']);
+            if (! empty($params['radius'])) {
+                $query->whereNotNull('faskes.latitude')
+                    ->whereNotNull('faskes.longitude')
+                    ->having('distance_km', '<=', (float) $params['radius']);
             }
 
-            $query->orderBy('distance_km', 'asc');
+            $query->orderByRaw('(CASE WHEN distance_km IS NOT NULL THEN 0 ELSE 1 END) ASC, distance_km ASC, faskes.id_faskes DESC');
         } else {
-            $query->select('faskes.*')->orderBy('faskes.id_faskes', 'asc');
+            $query->select('faskes.*')->orderBy('faskes.id_faskes', 'desc');
         }
 
         // 2. Filter Keyword / Nama Faskes (Pencarian Nama, Alamat, atau Wilayah)
