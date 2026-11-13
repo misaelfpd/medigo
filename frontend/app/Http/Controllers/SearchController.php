@@ -151,9 +151,9 @@ class SearchController extends Controller
         // Meneruskan parameter pencarian awal dari URL
         $initialQuery = [
             'q' => $request->input('q', ''),
-            'kota' => $request->input('kota', ''),
+            'kota' => $request->input('kota') ?? $request->input('kota_kabupaten', ''),
             'kelas' => $request->input('kelas', ''),
-            'bpjs' => $request->input('bpjs', ''),
+            'bpjs' => $request->has('bpjs') ? (string)$request->input('bpjs') : ($request->has('is_support_bpjs') ? (string)$request->input('is_support_bpjs') : ''),
             'fasilitas' => $request->input('fasilitas', ''),
             'spesialisasi' => $request->input('spesialisasi', ''),
         ];
@@ -168,19 +168,43 @@ class SearchController extends Controller
     {
         $backendUrl = $this->getBackendUrl();
 
-        $params = array_filter([
-            'q' => $request->input('q'),
-            'search' => $request->input('q'),
-            'lat' => $request->input('lat'),
-            'lng' => $request->input('lng'),
-            'kota_kabupaten' => $request->input('kota') ?? $request->input('kota_kabupaten'),
-            'kelas' => $request->input('kelas'),
-            'is_support_bpjs' => $request->input('bpjs'),
-            'fasilitas' => $request->input('fasilitas'),
-            'spesialisasi' => $request->input('spesialisasi'),
+        $params = [
             'page' => $request->input('page', 1),
             'limit' => $request->input('limit', 24),
-        ], fn($val) => $val !== null && $val !== '');
+        ];
+
+        if ($request->filled('q')) {
+            $params['q'] = $request->input('q');
+            $params['search'] = $request->input('q');
+        }
+
+        if ($request->filled('lat') && $request->filled('lng')) {
+            $params['lat'] = $request->input('lat');
+            $params['lng'] = $request->input('lng');
+        }
+
+        $kota = $request->input('kota') ?? $request->input('kota_kabupaten');
+        if (!empty($kota)) {
+            $params['kota_kabupaten'] = $kota;
+            $params['kota'] = $kota;
+        }
+
+        if ($request->filled('kelas')) {
+            $params['kelas'] = $request->input('kelas');
+        }
+
+        if ($request->has('bpjs') && $request->input('bpjs') !== '' && $request->input('bpjs') !== null) {
+            $params['is_support_bpjs'] = $request->input('bpjs');
+            $params['bpjs'] = $request->input('bpjs');
+        }
+
+        if ($request->filled('fasilitas')) {
+            $params['fasilitas'] = $request->input('fasilitas');
+        }
+
+        if ($request->filled('spesialisasi')) {
+            $params['spesialisasi'] = $request->input('spesialisasi');
+        }
 
         try {
             $response = Http::timeout(8)->get("{$backendUrl}/api/faskes/search", $params);

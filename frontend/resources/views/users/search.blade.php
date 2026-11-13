@@ -4,197 +4,33 @@
 
 @push('styles')
     @vite('resources/css/app.css')
-    <style>
-        .search-app-container {
-            height: 100vh;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background-color: #f8fafc;
-        }
-
-        .search-app-header {
-            flex-shrink: 0;
-            background-color: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
-            box-shadow: 0 4px 15px rgba(11, 43, 82, 0.04);
-            z-index: 50;
-        }
-
-        .search-top-nav {
-            background-color: #ffffff;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .main-search-input-group {
-            border: 1.5px solid #cbd5e1;
-            border-radius: 50rem;
-            transition: all 0.2s ease;
-            background: #ffffff;
-        }
-        .main-search-input-group:focus-within {
-            border-color: #0b2b52;
-            box-shadow: 0 0 0 3px rgba(11, 43, 82, 0.1);
-        }
-
-        .search-filters-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-        }
-        @media (max-width: 767.98px) {
-            .search-filters-row {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                padding-bottom: 4px;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-            }
-            .search-filters-row::-webkit-scrollbar {
-                display: none;
-            }
-        }
-
-        .filter-select-btn {
-            background-color: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 50rem;
-            color: #334155;
-            font-size: 0.84rem;
-            font-weight: 500;
-            padding: 0.45rem 1.05rem;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-        }
-        .filter-select-btn:hover {
-            border-color: #94a3b8;
-            background-color: #f8fafc;
-            color: #0b2b52;
-        }
-        .filter-select-btn.is-active {
-            background-color: #e0f2fe;
-            border-color: #0284c7;
-            color: #0369a1;
-            font-weight: 600;
-        }
-
-        .popular-search-tag {
-            background-color: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            padding: 0.2rem 0.6rem;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .popular-search-tag:hover {
-            background-color: #e2e8f0;
-            color: #0b2b52;
-        }
-        .popular-search-tag.active {
-            background-color: #0b2b52;
-            color: #ffffff;
-            border-color: #0b2b52;
-        }
-
-        .modal-item-btn {
-            border: 1px solid #e2e8f0;
-            background: #ffffff;
-            border-radius: 10px;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.85rem;
-            text-align: left;
-            transition: all 0.15s ease;
-            cursor: pointer;
-            width: 100%;
-        }
-        .modal-item-btn:hover {
-            border-color: #0b2b52;
-            background: #f8fafc;
-        }
-        .modal-item-btn.selected {
-            background: #0b2b52;
-            color: #ffffff;
-            border-color: #0b2b52;
-            font-weight: 600;
-        }
-
-        .search-scroll-body {
-            flex: 1 1 auto;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch;
-            padding-top: 1rem;
-            padding-bottom: 3.5rem;
-        }
-
-        .search-faskes-card {
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            background: #ffffff;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        .search-faskes-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(11, 43, 82, 0.08);
-            border-color: #cbd5e1;
-        }
-    </style>
 @endpush
 
 @section('content')
 <div class="search-app-container">
 
-    {{-- 1. HEADER SECTION (STICKY & FIXED, NO SHAKE / JITTER ON SCROLL) --}}
+    {{-- 1. HEADER SECTION (STICKY & FIXED, CLEAN, PROPORTIONAL MARGINS) --}}
     <header class="search-app-header" id="searchAppHeader">
         
-        {{-- Top App Navigation --}}
-        <div class="search-top-nav px-3 px-lg-4 py-2 d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-2 gap-sm-3">
-                <a href="{{ route('faskes.index') }}" class="d-flex align-items-center text-decoration-none">
-                    <img style="max-height: 32px; width: auto;" src="{{ asset('images/medigo_logo.png') }}" alt="MediGO">
+        {{-- Top Bar with Back Button (Aligned with Container, Clean Margins) --}}
+        <div class="search-top-bar px-3 px-sm-4">
+            <div class="container-fluid px-0 d-flex align-items-center justify-content-between" style="max-width: 1240px;">
+                <a href="{{ route('faskes.index') }}" class="btn btn-sm rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-2 fw-semibold text-decoration-none shadow-2xs" style="font-size: 0.85rem;">
+                    <i class="bi bi-arrow-left"></i>
                 </a>
-                <a href="{{ route('faskes.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 px-sm-3 py-1 d-inline-flex align-items-center gap-1.5" style="font-size: 0.8rem; font-weight: 500;">
-                    <i class="bi bi-arrow-left"></i> <span class="d-none d-sm-inline">Kembali ke Beranda</span><span class="d-sm-none">Beranda</span>
-                </a>
-            </div>
-
-            <div class="d-flex align-items-center gap-2">
-                @if(Auth::check())
-                    <a href="{{ route('profile') }}" class="btn user-nav-btn d-flex align-items-center gap-1.5 rounded-pill px-2.5 py-1 text-decoration-none border" style="font-size: 0.82rem;">
-                        @if(!empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar)))
-                            <img src="{{ asset(Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}" class="rounded-circle object-fit-cover shadow-2xs" style="width: 26px; height: 26px;">
-                        @else
-                            <div class="avatar-circle-sm bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 26px; height: 26px; font-size: 0.75rem;">
-                                {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                            </div>
-                        @endif
-                        <span class="user-nav-name fw-semibold text-truncate text-dark d-none d-sm-inline" style="max-width: 120px;">
-                            {{ Auth::user()->name }}
-                        </span>
-                    </a>
-                @else
-                    <a href="{{ route('login') }}" class="btn btn-sm btn-medigo-primary rounded-pill px-3 py-1 fw-semibold text-white text-decoration-none" style="font-size: 0.82rem;">
-                        <i class="bi bi-box-arrow-in-right me-1"></i> Masuk
-                    </a>
-                @endif
+                <div class="text-muted fw-semibold d-none d-md-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                    <i class="bi bi-sliders2 text-medigo-primary"></i>
+                    <span>Filter & Pencarian Faskes</span>
+                </div>
             </div>
         </div>
 
         {{-- Search Controls Wrapper --}}
-        <div class="search-controls-wrapper px-3 px-lg-4 pt-2.5 pb-2 bg-white">
-            <div class="container-fluid px-0" style="max-width: 1240px;">
+        <div class="search-controls-wrapper px-3 px-sm-4 py-3 bg-white">
+            <div class="container-fluid px-0 gap-2" style="max-width: 1240px;">
                 
                 {{-- Main Search Bar Row with Expand/Collapse Button --}}
-                <div class="d-flex align-items-center gap-2 mb-1.5">
+                <div class="d-flex align-items-center gap-2 mb-2">
                     <form id="searchFaskesForm" class="flex-grow-1 m-0">
                         <div class="input-group main-search-input-group p-1 d-flex align-items-center">
                             <span class="input-group-text bg-transparent border-0 ps-3 pe-2 text-muted">
@@ -218,111 +54,115 @@
                     {{-- Dedicated Toggle / Expand Button (Desktop & Mobile) --}}
                     <button type="button" 
                             id="btnToggleSearchExpand" 
-                            class="btn btn-toggle-expand rounded-pill px-2.5 px-sm-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5"
+                            class="btn btn-toggle-expand rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1.5"
                             aria-expanded="false"
                             aria-controls="searchExpandableSection"
                             title="Buka / Ciutkan Kolom Pencarian dan Filter Lengkap">
-                        <i class="bi bi-sliders2 fs-6"></i>
-                        <span class="d-none d-sm-inline" id="toggleSearchText">Filter</span>
-                        <span class="badge bg-medigo-primary text-white rounded-pill ms-0.5 d-none" id="toggleFilterCountBadge">0</span>
-                        <i class="bi bi-chevron-down fs-7 transition-chevron" id="toggleSearchChevron"></i>
-                    </button>
+                        <div class="gap-2">
+                            <i class="bi bi-sliders2 fs-6"></i>
+                            <span class="d-none d-sm-inline" id="toggleSearchText">Filter</span>
+                            <span class="badge bg-medigo-primary text-white rounded-pill ms-0.5 d-none" id="toggleFilterCountBadge">0</span>
+                            <!-- <i class="bi bi-chevron-down fs-7 transition-chevron" id="toggleSearchChevron"></i> -->
+                        </div>
+                        </button>
                 </div>
 
                 {{-- Expandable Section (Contains Title, Filters, Popular Tags) --}}
                 <div id="searchExpandableSection" class="search-expandable-section">
                     
                     {{-- Title / Subtitle + Reset Filter Row --}}
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pt-1 border-top" style="border-color: #f1f5f9 !important;">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3 pb-2 mb-3 border-top" style="border-color: #f1f5f9 !important;">
                         <div>
-                            <h5 class="fw-bold mb-0" style="color: #0b2b52; font-size: 1.15rem;">
+                            <h5 class="fw-bold mb-1" style="color: #0b2b52; font-size: 1.15rem;">
                                 Filter & Spesifikasi Faskes
                             </h5>
-                            <p class="text-muted mb-0 small d-none d-md-block" style="font-size: 0.8rem;">
-                                Saring fasilitas kesehatan berdasarkan wilayah, kelas, jaminan, dan layanan medis
+                            <p class="text-muted mb-0 small d-none d-md-block" style="font-size: 0.82rem;">
+                                Saring fasilitas kesehatan berdasarkan wilayah, kelas, jaminan BPJS, dan layanan medis
                             </p>
                         </div>
 
                         <div>
-                            <button type="button" id="btnResetFilters" class="btn btn-link p-0 text-decoration-none text-muted fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.82rem;">
+                            <button type="button" id="btnResetFilters" class="btn btn-link p-0 text-decoration-none text-muted fw-semibold d-inline-flex align-items-center gap-1.5" style="font-size: 0.84rem;">
                                 <i class="bi bi-arrow-counterclockwise"></i> Reset Semua Filter
                             </button>
                         </div>
                     </div>
 
-                    {{-- Filter Controls Row --}}
-                    <div class="search-filters-row align-items-center mb-2" id="searchFiltersRow">
+                    {{-- Filter Controls Row (Dropdowns for Daerah, Kelas, BPJS; Modals for Fasilitas, Spesialisasi) --}}
+                    <div class="search-filters-row align-items-center mb-3" id="searchFiltersRow">
                         
-                        {{-- Dropdown Kota / Wilayah --}}
-                        <div class="dropdown">
-                            <button class="filter-select-btn d-flex align-items-center gap-2 dropdown-toggle" 
+                        {{-- Dropdown Kota / Wilayah (Daerah) --}}
+                        <div class="filter-dropdown-wrapper position-relative">
+                            <button class="filter-select-btn" 
                                     type="button" 
-                                    id="btnFilterKota" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false">
+                                    id="btnFilterKota">
+                                <i class="bi bi-geo-alt text-medigo-primary"></i>
                                 <span id="labelFilterKota">Kota / Wilayah</span>
+                                <i class="bi bi-chevron-down fs-7 text-muted chevron-icon ms-1"></i>
                             </button>
-                            <ul class="dropdown-menu shadow-sm border rounded-3 p-1" style="max-height: 280px; overflow-y: auto;" aria-labelledby="btnFilterKota">
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-kota active" href="javascript:void(0)" data-value="">Semua Wilayah</a></li>
-                                <li><hr class="dropdown-divider my-1"></li>
+                            <div class="custom-filter-menu shadow border p-1" id="menuFilterKota">
+                                <a class="dropdown-item opt-filter-kota active" href="javascript:void(0)" data-value="">Semua Wilayah</a>
+                                <div class="dropdown-divider my-1"></div>
                                 @foreach($options['kota'] ?? [] as $k)
-                                    <li><a class="dropdown-item py-2 rounded-2 opt-filter-kota" href="javascript:void(0)" data-value="{{ $k }}">{{ $k }}</a></li>
+                                    <a class="dropdown-item opt-filter-kota" href="javascript:void(0)" data-value="{{ $k }}">{{ $k }}</a>
                                 @endforeach
-                            </ul>
+                            </div>
                         </div>
 
                         {{-- Dropdown Kelas RS --}}
-                        <div class="dropdown">
-                            <button class="filter-select-btn d-flex align-items-center gap-2 dropdown-toggle" 
+                        <div class="filter-dropdown-wrapper position-relative">
+                            <button class="filter-select-btn" 
                                     type="button" 
-                                    id="btnFilterKelas" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false">
+                                    id="btnFilterKelas">
+                                <i class="bi bi-hospital text-medigo-primary"></i>
                                 <span id="labelFilterKelas">Kelas RS</span>
+                                <i class="bi bi-chevron-down fs-7 text-muted chevron-icon ms-1"></i>
                             </button>
-                            <ul class="dropdown-menu shadow-sm border rounded-3 p-1" aria-labelledby="btnFilterKelas">
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-kelas active" href="javascript:void(0)" data-value="">Semua Kelas</a></li>
-                                <li><hr class="dropdown-divider my-1"></li>
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-kelas" href="javascript:void(0)" data-value="A">Kelas A (Rujukan Utama)</a></li>
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-kelas" href="javascript:void(0)" data-value="B">Kelas B</a></li>
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-kelas" href="javascript:void(0)" data-value="C">Kelas C</a></li>
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-kelas" href="javascript:void(0)" data-value="D">Kelas D</a></li>
-                            </ul>
+                            <div class="custom-filter-menu shadow border p-1" id="menuFilterKelas">
+                                <a class="dropdown-item opt-filter-kelas active" href="javascript:void(0)" data-value="">Semua Kelas</a>
+                                <div class="dropdown-divider my-1"></div>
+                                <a class="dropdown-item opt-filter-kelas" href="javascript:void(0)" data-value="A">Kelas A (Rujukan Utama)</a>
+                                <a class="dropdown-item opt-filter-kelas" href="javascript:void(0)" data-value="B">Kelas B (Rujukan Regional)</a>
+                                <a class="dropdown-item opt-filter-kelas" href="javascript:void(0)" data-value="C">Kelas C (Rujukan Sub-Regional)</a>
+                                <a class="dropdown-item opt-filter-kelas" href="javascript:void(0)" data-value="D">Kelas D (Pelayanan Dasar)</a>
+                            </div>
                         </div>
 
-                        {{-- Dropdown Jaminan / Asuransi --}}
-                        <div class="dropdown">
-                            <button class="filter-select-btn d-flex align-items-center gap-2 dropdown-toggle" 
+                        {{-- Dropdown Jaminan / Asuransi (BPJS) --}}
+                        <div class="filter-dropdown-wrapper position-relative">
+                            <button class="filter-select-btn" 
                                     type="button" 
-                                    id="btnFilterBpjs" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false">
+                                    id="btnFilterBpjs">
+                                <i class="bi bi-shield-check text-medigo-primary"></i>
                                 <span id="labelFilterBpjs">Jaminan / Asuransi</span>
+                                <i class="bi bi-chevron-down fs-7 text-muted chevron-icon ms-1"></i>
                             </button>
-                            <ul class="dropdown-menu shadow-sm border rounded-3 p-1" aria-labelledby="btnFilterBpjs">
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-bpjs active" href="javascript:void(0)" data-value="">Semua Jaminan</a></li>
-                                <li><hr class="dropdown-divider my-1"></li>
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-bpjs" href="javascript:void(0)" data-value="1">BPJS Kesehatan</a></li>
-                                <li><a class="dropdown-item py-2 rounded-2 opt-filter-bpjs" href="javascript:void(0)" data-value="0">Non - BPJS</a></li>
-                            </ul>
+                            <div class="custom-filter-menu shadow border p-1" id="menuFilterBpjs">
+                                <a class="dropdown-item opt-filter-bpjs active" href="javascript:void(0)" data-value="">Semua Jaminan</a>
+                                <div class="dropdown-divider my-1"></div>
+                                <a class="dropdown-item opt-filter-bpjs" href="javascript:void(0)" data-value="1">BPJS Kesehatan</a>
+                                <a class="dropdown-item opt-filter-bpjs" href="javascript:void(0)" data-value="0">Non - BPJS</a>
+                            </div>
                         </div>
 
                         {{-- Modal Trigger: Fasilitas Penunjang --}}
                         <button type="button" 
-                                class="filter-select-btn d-flex align-items-center gap-2" 
+                                class="filter-select-btn" 
                                 id="btnOpenFasilitasModal" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#modalFasilitas">
+                            <i class="bi bi-building-add text-medigo-primary"></i>
                             <span id="labelFilterFasilitas">Fasilitas Penunjang</span>
                             <i class="bi bi-chevron-down fs-7 text-muted"></i>
                         </button>
 
                         {{-- Modal Trigger: Spesialisasi Medis --}}
                         <button type="button" 
-                                class="filter-select-btn d-flex align-items-center gap-2" 
+                                class="filter-select-btn" 
                                 id="btnOpenSpesialisasiModal" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#modalSpesialisasi">
+                            <i class="bi bi-heart-pulse text-medigo-primary"></i>
                             <span id="labelFilterSpesialisasi">Spesialisasi Medis</span>
                             <i class="bi bi-chevron-down fs-7 text-muted"></i>
                         </button>
@@ -330,9 +170,9 @@
                     </div>
 
                     {{-- Popular Search Tags Row --}}
-                    <div class="d-flex align-items-center gap-2 pt-2 border-top" style="border-color: #f1f5f9 !important;">
-                        <span class="text-muted fw-semibold d-none d-sm-inline" style="font-size: 0.78rem;">Pencarian Populer:</span>
-                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                    <div class="d-flex align-items-center gap-2 pt-2.5 mb-1 border-top" style="border-color: #f1f5f9 !important;">
+                        <span class="text-muted fw-semibold d-none d-sm-inline" style="font-size: 0.8rem;">Pencarian Populer:</span>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <button type="button" class="popular-search-tag" data-tag="IGD">IGD 24 Jam</button>
                             <button type="button" class="popular-search-tag" data-tag="Kelas A">RSUP Rujukan</button>
                             <button type="button" class="popular-search-tag" data-tag="Ambulans">Ambulan</button>
@@ -346,27 +186,27 @@
             </div>
         </div>
 
-        {{-- Quick Expand/Collapse Handle Bar --}}
+        <!-- {{-- Quick Expand/Collapse Handle Bar --}}
         <div class="search-quick-toggle-bar text-center">
             <button type="button" id="btnBottomExpandToggle" class="btn-quick-toggle text-muted" aria-label="Toggle Panel Filter">
                 <span id="bottomExpandText">Buka Filter & Opsi Lengkap</span>
                 <i class="bi bi-chevron-down ms-1" id="bottomExpandChevron"></i>
             </button>
-        </div>
+        </div> -->
 
         {{-- Status Bar (Location & Count & Active Badges) --}}
-        <div class="search-status-bar bg-light-subtle px-3 px-lg-4 py-1.5 border-top border-bottom">
-            <div class="container-fluid px-0 d-flex flex-wrap align-items-center justify-content-between gap-2" style="max-width: 1240px;">
-                <div class="d-flex align-items-center gap-1.5 flex-wrap" style="font-size: 0.8rem;">
-                    <span class="d-inline-flex align-items-center text-dark bg-white px-2 py-0.5 rounded-pill border shadow-xs" id="searchLocationIndicator">
+        <div class="search-status-bar bg-white px-3 px-sm-4 py-2.5 border-top border-bottom">
+            <div class="container-fluid py-2 px-1 d-flex flex-wrap align-items-center justify-content-between gap-2.5" style="max-width: 1240px;">
+                <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.82rem;">
+                    <span class="d-inline-flex align-items-center text-dark bg-white px-2 py-1 rounded-pill border shadow-xs" id="searchLocationIndicator">
                         <i class="bi bi-geo-alt-fill text-danger me-1"></i>
-                        <span id="searchLocationText" class="fw-medium text-truncate" style="max-width: 200px;">Mendeteksi GPS...</span>
+                        <span id="searchLocationText" class="fw-medium text-truncate" style="max-width: 220px;">Mendeteksi GPS...</span>
                     </span>
-                    <div id="activeFilterTagsContainer" class="d-flex align-items-center gap-1 flex-wrap"></div>
+                    <div id="activeFilterTagsContainer" class="d-flex align-items-center gap-1.5 flex-wrap"></div>
                 </div>
 
                 <div>
-                    <span class="badge bg-white text-dark border rounded-pill px-2.5 py-1 fw-semibold shadow-xs" id="searchCountBadge" style="font-size: 0.78rem;">
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-1.5 fw-semibold shadow-xs" id="searchCountBadge" style="font-size: 0.8rem;">
                         Memuat data...
                     </span>
                 </div>
@@ -376,11 +216,11 @@
     </header>
 
     {{-- 2. SCROLLABLE RESULTS SECTION (ONLY THIS BODY SCROLLS) --}}
-    <main class="search-scroll-body px-3 px-lg-4" id="searchResultsScrollContainer">
+    <main class="search-scroll-body px-3 px-sm-4" id="searchResultsScrollContainer">
         <div class="container-fluid px-0" style="max-width: 1240px;">
             
             {{-- Loading State --}}
-            <div id="searchLoadingState" class="text-center py-5 bg-white rounded-4 border p-4 my-2 d-none">
+            <div id="searchLoadingState" class="text-center py-5 bg-white rounded-4 border p-4 my-3 d-none">
                 <div class="spinner-border text-medigo-primary mb-2" role="status" style="width: 2.2rem; height: 2.2rem;">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -388,20 +228,20 @@
             </div>
 
             {{-- Results Grid --}}
-            <div id="searchResultsGrid" class="row g-3 g-lg-4"></div>
+            <div id="searchResultsGrid" class="row g-3 g-lg-4 mb-4"></div>
 
             {{-- Empty State --}}
-            <div id="searchEmptyState" class="text-center py-5 bg-white rounded-4 border p-4 my-2 d-none">
+            <div id="searchEmptyState" class="text-center py-5 bg-white rounded-4 border p-4 my-3 d-none">
                 <div class="mb-3">
                     <div class="bg-medigo-subtle d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px;">
                         <i class="bi bi-hospital fs-1 text-medigo-primary"></i>
                     </div>
                 </div>
                 <h5 class="fw-bold text-dark mb-1">Tidak Ada Fasilitas Kesehatan Ditemukan</h5>
-                <p class="text-muted mb-3 mx-auto" style="max-width: 420px; font-size: 0.9rem;">
+                <p class="text-muted mb-3 mx-auto" style="max-width: 440px; font-size: 0.9rem;">
                     Coba sesuaikan kata kunci pencarian Anda atau gunakan tombol Reset Filter untuk melihat semua fasilitas kesehatan.
                 </p>
-                <button type="button" class="btn btn-medigo-primary rounded-pill px-4 py-2 fw-semibold text-white btn-reset-from-empty">
+                <button type="button" class="btn btn-medigo-primary rounded-pill px-4 py-2 fw-semibold text-white btn-reset-from-empty shadow-xs">
                     Reset Semua Filter
                 </button>
             </div>
@@ -438,7 +278,7 @@
                 {{-- Rekomendasi Populer --}}
                 <div class="mb-3">
                     <div class="text-muted fw-bold mb-2" style="font-size: 0.78rem; text-transform: uppercase;">Paling Sering Dicari:</div>
-                    <div class="d-flex flex-wrap gap-1">
+                    <div class="d-flex flex-wrap gap-2">
                         @foreach(['IGD', 'Laboratorium', 'Radiologi', 'ICU', 'Ambulans', 'Farmasi', 'Rawat Inap', 'USG', 'CT Scan'] as $popFas)
                             <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill btn-quick-select-fasilitas" data-name="{{ $popFas }}" style="font-size: 0.8rem;">
                                 + {{ $popFas }}
@@ -502,7 +342,7 @@
                 {{-- Rekomendasi Populer --}}
                 <div class="mb-3">
                     <div class="text-muted fw-bold mb-2" style="font-size: 0.78rem; text-transform: uppercase;">Paling Sering Dicari:</div>
-                    <div class="d-flex flex-wrap gap-1">
+                    <div class="d-flex flex-wrap gap-2">
                         @foreach(['Anak', 'Penyakit Dalam', 'Bedah', 'Kandungan', 'Jantung', 'Mata', 'Saraf', 'Gigi', 'THT', 'Paru'] as $popSpes)
                             <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill btn-quick-select-spesialisasi" data-name="{{ $popSpes }}" style="font-size: 0.8rem;">
                                 + {{ $popSpes }}

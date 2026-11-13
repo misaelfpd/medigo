@@ -961,14 +961,16 @@ document.addEventListener("DOMContentLoaded", function () {
         .getElementById("btnHomeLoadMore")
         ?.addEventListener("click", loadMoreHomeFaskes);
 
-    // Floating Compact Search Pill visibility on scroll
-    const floatingSearchPill = document.getElementById("floatingHomeSearchPill");
-    if (floatingSearchPill) {
+    // Sticky Home Search Bar on Scroll
+    const stickySearchBar = document.getElementById("stickyHomeSearchBar");
+    if (stickySearchBar) {
+        const searchBanner = document.querySelector(".home-search-banner");
         window.addEventListener("scroll", function () {
-            if (window.scrollY > 280) {
-                floatingSearchPill.classList.add("is-visible");
+            const threshold = searchBanner ? (searchBanner.offsetTop + searchBanner.offsetHeight - 40) : 220;
+            if (window.scrollY > threshold) {
+                stickySearchBar.classList.add("is-visible");
             } else {
-                floatingSearchPill.classList.remove("is-visible");
+                stickySearchBar.classList.remove("is-visible");
             }
         }, { passive: true });
     }

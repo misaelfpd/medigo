@@ -431,30 +431,103 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 350);
     });
 
-    // 7. Dropdown Filters (Kota, Kelas, BPJS)
+    // 7. Custom Dropdown Filters (Daerah / Kota, Kelas RS, Jaminan / BPJS)
+    const dropdownWrappers = document.querySelectorAll('.filter-dropdown-wrapper');
+
+    function closeAllFilterDropdowns() {
+        dropdownWrappers.forEach(wrap => {
+            wrap.classList.remove('is-open');
+            const menu = wrap.querySelector('.custom-filter-menu');
+            if (menu) menu.classList.remove('is-open');
+        });
+    }
+
+    dropdownWrappers.forEach(wrap => {
+        const btn = wrap.querySelector('.filter-select-btn');
+        const menu = wrap.querySelector('.custom-filter-menu');
+        if (!btn || !menu) return;
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = wrap.classList.contains('is-open');
+            closeAllFilterDropdowns();
+            if (!isOpen) {
+                wrap.classList.add('is-open');
+                menu.classList.add('is-open');
+            }
+        });
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.filter-dropdown-wrapper')) {
+            closeAllFilterDropdowns();
+        }
+    });
+
+    function syncDropdownsUI() {
+        // Kota
+        document.querySelectorAll('.opt-filter-kota').forEach(item => {
+            const val = item.getAttribute('data-value') || '';
+            if (val === state.kota) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        // Kelas
+        document.querySelectorAll('.opt-filter-kelas').forEach(item => {
+            const val = item.getAttribute('data-value') || '';
+            if (val === state.kelas) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        // BPJS
+        document.querySelectorAll('.opt-filter-bpjs').forEach(item => {
+            const val = item.getAttribute('data-value') || '';
+            const bpjsStr = state.bpjs !== '' && state.bpjs !== null ? state.bpjs.toString() : '';
+            if (val === bpjsStr) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
     document.querySelectorAll('.opt-filter-kota').forEach(item => {
-        item.addEventListener('click', function () {
-            document.querySelectorAll('.opt-filter-kota').forEach(el => el.classList.remove('active'));
-            this.classList.add('active');
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
             state.kota = this.getAttribute('data-value') || '';
+            closeAllFilterDropdowns();
+            syncDropdownsUI();
             performSearch();
         });
     });
 
     document.querySelectorAll('.opt-filter-kelas').forEach(item => {
-        item.addEventListener('click', function () {
-            document.querySelectorAll('.opt-filter-kelas').forEach(el => el.classList.remove('active'));
-            this.classList.add('active');
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
             state.kelas = this.getAttribute('data-value') || '';
+            closeAllFilterDropdowns();
+            syncDropdownsUI();
             performSearch();
         });
     });
 
     document.querySelectorAll('.opt-filter-bpjs').forEach(item => {
-        item.addEventListener('click', function () {
-            document.querySelectorAll('.opt-filter-bpjs').forEach(el => el.classList.remove('active'));
-            this.classList.add('active');
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
             state.bpjs = this.getAttribute('data-value') || '';
+            closeAllFilterDropdowns();
+            syncDropdownsUI();
             performSearch();
         });
     });
@@ -472,12 +545,14 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (tag === 'Penyakit Dalam') {
                 if (!state.spesialisasi.includes('Penyakit Dalam')) state.spesialisasi.push('Penyakit Dalam');
             }
+            syncDropdownsUI();
             performSearch();
         });
     });
 
     // 9. Reset All Filters
     function resetAllFilters() {
+        closeAllFilterDropdowns();
         state.q = '';
         state.kota = '';
         state.kelas = '';
@@ -486,11 +561,8 @@ document.addEventListener('DOMContentLoaded', function () {
         state.spesialisasi = [];
         keywordInput.value = '';
 
-        document.querySelectorAll('.opt-filter-kota, .opt-filter-kelas, .opt-filter-bpjs').forEach(el => {
-            if (el.getAttribute('data-value') === '') el.classList.add('active');
-            else el.classList.remove('active');
-        });
-
+        syncDropdownsUI();
+        syncModalsUI();
         performSearch();
     }
 
@@ -687,8 +759,9 @@ document.addEventListener('DOMContentLoaded', function () {
         performSearch();
     });
 
-    // Helper to sync all modals
+    // Helper to sync all filters UI
     function syncModalsUI() {
+        syncDropdownsUI();
         syncFasilitasModalUI();
         syncSpesialisasiModalUI();
     }
