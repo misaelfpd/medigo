@@ -61,6 +61,9 @@ class DiscussionController extends Controller
             $item->likes_count = (int) $item->likes_count;
             $item->liked_by_me = (int) $item->liked_by_me > 0;
             $item->mentioned_faskes = $mentions[$item->id_faskes_mention] ?? null;
+            // Thumbnail kartu diskusi = foto pertama yang diunggah di diskusi
+            $item->images_list = self::imagesList($item->images ?? null, $item->gambar_diskusi ?? null);
+            $item->thumbnail_url = $item->images_list[0] ?? null;
 
             return $item;
         });
@@ -182,17 +185,8 @@ class DiscussionController extends Controller
         }
 
         // Sediakan daftar array gambar untuk kenyamanan rendering di frontend
-        $imagesList = [];
-        if (! empty($discussion->images)) {
-            $decoded = json_decode($discussion->images, true);
-            if (is_array($decoded)) {
-                $imagesList = $decoded;
-            }
-        }
-        if (empty($imagesList) && ! empty($discussion->image_path)) {
-            $imagesList = [$discussion->image_path];
-        }
-        $discussion->images_list = $imagesList;
+        $discussion->images_list = self::imagesList($discussion->images ?? null, $discussion->image_path ?? null);
+        $discussion->thumbnail_url = $discussion->images_list[0] ?? null;
 
         $discussion->mentioned_faskes = $discussion->id_faskes_mention
             ? (self::mentionedFaskesMap([$discussion->id_faskes_mention])[$discussion->id_faskes_mention] ?? null)
@@ -271,6 +265,8 @@ class DiscussionController extends Controller
         $discussions->transform(function ($item) use ($mentions) {
             $item->likes_count = (int) $item->likes_count;
             $item->mentioned_faskes = $mentions[$item->id_faskes_mention] ?? null;
+            $item->images_list = self::imagesList($item->images ?? null, $item->gambar_diskusi ?? null);
+            $item->thumbnail_url = $item->images_list[0] ?? null;
 
             return $item;
         });
@@ -328,6 +324,28 @@ class DiscussionController extends Controller
         ]);
 
         return response()->json(['status' => 'success', 'message' => 'Diskusi berhasil dihapus']);
+    }
+
+    /**
+     * Daftar URL foto diskusi dari kolom `images` (JSON) dengan cadangan kolom `gambar_diskusi`.
+     *
+     * @return array<int, string>
+     */
+    public static function imagesList($images, ?string $firstImage): array
+    {
+        $list = [];
+        if (! empty($images)) {
+            $decoded = is_array($images) ? $images : json_decode((string) $images, true);
+            if (is_array($decoded)) {
+                $list = array_values(array_filter($decoded, fn ($url) => is_string($url) && $url !== ''));
+            }
+        }
+
+        if (empty($list) && ! empty($firstImage)) {
+            $list = [$firstImage];
+        }
+
+        return $list;
     }
 
     /**

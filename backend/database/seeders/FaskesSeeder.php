@@ -114,7 +114,7 @@ class FaskesSeeder extends Seeder
         'latitude' => $lat,
         'longitude' => $lng,
         'link_maps' => $linkMaps,
-        '_support_bpjs' => isset($row['support_bpjs']) ? ((string) $row['support_bpjs'] === '1') : true,
+        '_support_bpjs' => $this->parseBpjs($row),
         'created_at' => now(),
         'updated_at' => now(),
       ];
@@ -217,5 +217,19 @@ class FaskesSeeder extends Seeder
     fclose($handle);
 
     return $rows;
+  }
+
+  /**
+   * Kolom BPJS di CSV: dulu `support_bpjs` (1/0), sekarang `is_support_bpjs` (True/False).
+   * Kalau kolomnya tidak ada/kosong, dianggap mendukung BPJS seperti perilaku sebelumnya.
+   */
+  private function parseBpjs(array $row): bool
+  {
+    $value = $row['is_support_bpjs'] ?? $row['support_bpjs'] ?? null;
+    if ($value === null || trim((string) $value) === '') {
+      return true;
+    }
+
+    return filter_var(trim((string) $value), FILTER_VALIDATE_BOOLEAN);
   }
 }
