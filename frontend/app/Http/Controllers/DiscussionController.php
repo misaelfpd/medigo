@@ -19,7 +19,9 @@ class DiscussionController extends Controller
         
         $category = $request->query('category');
         $tab = $request->query('tab');
-        $page = $request->query('page', 1);
+        $page = max(1, (int) $request->query('page', 1));
+        $sort = $request->query('sort');
+        $filter = $request->query('filter');
 
         $queryParams = ['page' => $page];
 
@@ -34,7 +36,7 @@ class DiscussionController extends Controller
         } else {
             $faskesFilterId = null;
         }
-        if ($request->query('sort') === 'terpopuler') {
+        if ($sort === 'terpopuler') {
             $queryParams['sort'] = 'terpopuler';
         }
 
@@ -138,6 +140,60 @@ class DiscussionController extends Controller
             Log::info('Discussions fetch fallback: ' . $e->getMessage());
         }
 
+        // Filter Faskes Terdekat untuk Forum
+        if ($filter === 'terdekat') {
+            try {
+                $nearbyParams = [
+                    'limit' => 15,
+                    'lat' => $request->query('lat'),
+                    'lng' => $request->query('lng'),
+                ];
+                $nearbyRes = Http::timeout(5)->acceptJson()->get("{$backendUrl}/api/forum/diskusi-terdekat", array_filter($nearbyParams));
+                if ($nearbyRes->successful()) {
+                    $rawNearby = $nearbyRes->json('data') ?? [];
+                    if (!empty($rawNearby)) {
+                        $discussions = collect($rawNearby)->map(function ($item) {
+                            $item = (array) $item;
+                            $f = $item['faskes'] ?? [];
+                            return [
+                                'id_diskusi' => $item['id_diskusi'] ?? 0,
+                                'id' => $item['id_diskusi'] ?? 0,
+                                'judul_diskusi' => $item['judul_diskusi'] ?? '',
+                                'isi_diskusi' => $item['isi_diskusi'] ?? '',
+                                'kategori' => $f['nama_faskes'] ?? 'Faskes Terdekat',
+                                'comments_count' => (int) ($item['comments_count'] ?? 0),
+                                'likes_count' => (int) ($item['likes_count'] ?? 0),
+                                'mentioned_faskes' => $f,
+                                'author_name' => $item['author_name'] ?? 'Pengguna MediGO',
+                                'created_at' => $item['created_at'] ?? now()->toIso8601String(),
+                            ];
+                        })->all();
+
+                        $pagination = [
+                            'current_page' => 1,
+                            'last_page' => 1,
+                            'total' => count($discussions),
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Nearby discussions fetch failed in index: ' . $e->getMessage());
+            }
+        }
+
+        // Dukungan AJAX Lazy Loading
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'data' => $discussions,
+                'pagination' => [
+                    'current_page' => (int) ($pagination['current_page'] ?? $page),
+                    'last_page' => (int) ($pagination['last_page'] ?? 1),
+                    'has_more' => (int) ($pagination['current_page'] ?? $page) < (int) ($pagination['last_page'] ?? 1),
+                ],
+            ]);
+        }
+
         // Pass variabel sidebarCategories dan trendingDiscussions ke View
         return view('users.discussion', compact(
             'discussions', 
@@ -146,7 +202,9 @@ class DiscussionController extends Controller
             'pagination', 
             'sidebarCategories', 
             'trendingDiscussions',
-            'faskesFilterId'
+            'faskesFilterId',
+            'sort',
+            'filter'
         ));
     }
 

@@ -6,8 +6,8 @@ export const FASKES_TYPES = {
     apotek: ["bi-capsule-pill", "Apotek"],
     laboratorium: ["bi-eyedropper", "Laboratorium"],
     optik: ["bi-eyeglasses", "Optik"],
-    "dokter-gigi": ["bi-emoji-smile-fill", "Dokter Gigi"],
-    "dokter-umum": ["bi-person-badge-fill", "Dokter Umum"],
+    "dokter-gigi": ["bi-tooth", "Dokter Gigi"],
+    "dokter-umum": ["bi-stethoscope", "Dokter Umum"],
     lainnya: ["bi-plus-square-fill", "Fasilitas Kesehatan"],
 };
 

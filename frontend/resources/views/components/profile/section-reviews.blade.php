@@ -45,8 +45,8 @@
                 </a>
                 
                 <!-- Tombol Hapus Review Faskes -->
-                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-faskes-review" data-id="{{ $revId }}" style="font-size: 0.72rem;" title="Hapus Ulasan">
-                    <i class="bi bi-trash"></i> Hapus
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2-5 py-1 fw-semibold btn-delete-faskes-review" data-id="{{ $revId }}" style="font-size: 0.72rem;" title="Hapus Ulasan">
+                    <i class="bi bi-trash me-1"></i> Hapus
                 </button>
             </div>
         </div>

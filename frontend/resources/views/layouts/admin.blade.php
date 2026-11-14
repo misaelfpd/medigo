@@ -44,6 +44,8 @@
                     $adminMenu = [
                         ['route' => 'admin.dashboard', 'active' => ['admin', 'admin/dashboard'], 'icon' => 'bi-grid-fill', 'label' => 'Dashboard'],
                         ['route' => 'admin.faskes', 'active' => ['admin/faskes*'], 'icon' => 'bi-plus-square-fill', 'label' => 'Rumah Sakit'],
+                        ['route' => 'admin.fasilitas', 'active' => ['admin/fasilitas*'], 'icon' => 'bi-building-add', 'label' => 'Fasilitas Penunjang'],
+                        ['route' => 'admin.spesialisasi', 'active' => ['admin/spesialisasi*'], 'icon' => 'bi-heart-pulse-fill', 'label' => 'Spesialisasi Medis'],
                         ['route' => 'admin.forum', 'active' => ['admin/forum*'], 'icon' => 'bi-chat-left-text', 'label' => 'Forum'],
                         ['route' => 'admin.discussion-reports', 'active' => ['admin/discussion-reports*'], 'icon' => 'bi-chat-square-quote-fill', 'label' => 'Laporan Diskusi', 'count' => $pending['discussion_reports']],
                         ['route' => 'admin.discussion-comment-reports', 'active' => ['admin/discussion-comment-reports*'], 'icon' => 'bi-chat-dots-fill', 'label' => 'Laporan Komentar Diskusi', 'count' => $pending['discussion_comment_reports']],

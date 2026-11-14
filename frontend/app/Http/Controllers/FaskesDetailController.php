@@ -296,11 +296,11 @@ class FaskesDetailController extends Controller
                         'fasilitas' => $this->formatFacilities($rawFasilitas),
                         'spesialisasi' => $this->formatSpecialties($rawSpesialisasi),
                         // Foto dari backend (fitur CRUD foto faskes): banner atas, thumbnail kartu, galeri
-                        'banner_url' => $item['banner_url'] ?? ($body['data']['foto']['banner']['url'] ?? null),
-                        'thumbnail_url' => $item['thumbnail_url'] ?? ($body['data']['foto']['thumbnail']['url'] ?? null),
+                        'banner_url' => \App\Support\FaskesVisual::normalizeStorageUrl($item['banner_url'] ?? ($body['data']['foto']['banner']['url'] ?? null)),
+                        'thumbnail_url' => \App\Support\FaskesVisual::normalizeStorageUrl($item['thumbnail_url'] ?? ($body['data']['foto']['thumbnail']['url'] ?? null)),
                         'galeri' => collect($body['data']['foto']['galeri'] ?? $item['foto']['galeri'] ?? [])
                             ->map(fn ($foto) => [
-                                'url' => $foto['url'] ?? null,
+                                'url' => \App\Support\FaskesVisual::normalizeStorageUrl($foto['url'] ?? null),
                                 'keterangan' => $foto['keterangan'] ?? null,
                             ])
                             ->filter(fn ($foto) => ! empty($foto['url']))

@@ -315,7 +315,7 @@ class BerandaController extends Controller
                         ),
 
                         // Foto thumbnail asli dari admin (backend); kosong = tampilkan ikon
-                        'thumbnail_url' => $item['thumbnail_url'] ?? null,
+                        'thumbnail_url' => \App\Support\FaskesVisual::normalizeStorageUrl($item['thumbnail_url'] ?? null),
 
                         'hospital_name' => $formattedName,
 

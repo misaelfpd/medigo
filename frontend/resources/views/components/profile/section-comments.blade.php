@@ -40,12 +40,12 @@
                 
                 <div class="d-flex gap-2">
                     <!-- Tombol ke Halaman Diskusi -->
-                    <a href="{{ url('/discussions/' . $cDiscId) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0-5" style="font-size: 0.72rem;" title="Lihat Diskusi">
-                        <i class="bi bi-box-arrow-up-right"></i> Lihat
+                    <a href="{{ url('/discussions/' . $cDiscId) }}" class="btn btn-sm btn-outline-medigo-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.74rem;" title="Lihat Diskusi">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Lihat
                     </a>
                     <!-- Tombol Hapus Komentar -->
-                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-forum-comment" data-id="{{ $cId }}" style="font-size: 0.72rem;" title="Hapus Komentar">
-                        <i class="bi bi-trash"></i> Hapus
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2-5 py-1 fw-semibold btn-delete-forum-comment" data-id="{{ $cId }}" style="font-size: 0.72rem;" title="Hapus Komentar">
+                        <i class="bi bi-trash me-1"></i> Hapus
                     </button>
                 </div>
             </div>

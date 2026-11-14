@@ -42,7 +42,7 @@
 <!-- Logout Form -->
 <form action="{{ route('logout') }}" method="POST">
     @csrf
-    <button type="submit" class="btn btn-outline-danger w-100 rounded-4 py-2-5 d-flex align-items-center justify-content-center gap-2 fw-semibold">
+    <button type="submit" class="btn btn-outline-danger w-100 rounded-pill py-2-5 d-flex align-items-center justify-content-center gap-2 fw-semibold">
         <i class="bi bi-box-arrow-left"></i>
         <span>Keluar dari Akun</span>
     </button>

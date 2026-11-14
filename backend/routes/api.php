@@ -119,8 +119,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // Admin Master Fasilitas & Spesialisasi
         Route::post('/fasilitas', [FaskesFeatureController::class, 'storeFacility']);
         Route::post('/admin/fasilitas', [FaskesFeatureController::class, 'storeFacility']);
+        Route::put('/admin/fasilitas/{id}', [FaskesFeatureController::class, 'updateFacility']);
+        Route::delete('/admin/fasilitas/{id}', [FaskesFeatureController::class, 'destroyFacility']);
         Route::post('/spesialisasi', [FaskesFeatureController::class, 'storeSpecialty']);
         Route::post('/admin/spesialisasi', [FaskesFeatureController::class, 'storeSpecialty']);
+        Route::put('/admin/spesialisasi/{id}', [FaskesFeatureController::class, 'updateSpecialty']);
+        Route::delete('/admin/spesialisasi/{id}', [FaskesFeatureController::class, 'destroySpecialty']);
 
         // 1. Admin Moderasi Laporan Diskusi (Topik)
         Route::get('/admin/discussion-reports', [DiscussionReportController::class, 'indexAdmin']);

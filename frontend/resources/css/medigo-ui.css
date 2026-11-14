@@ -162,6 +162,17 @@ body {
     background: linear-gradient(135deg, var(--mg-primary) 0%, #1d5d8f 100%);
     box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
 }
+.mg-detail-banner--mobile {
+    height: 190px !important;
+    border-radius: 0 !important;
+}
+.mg-mobile-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.3) 100%);
+    pointer-events: none;
+    z-index: 2;
+}
 .mg-detail-banner img {
     position: absolute;
     inset: 0;
@@ -920,6 +931,44 @@ body {
 .mg-toast--warning { border-left-color: #d97706; }
 .mg-toast--warning .mg-toast-icon { color: #d97706; }
 .mg-toast--info .mg-toast-icon { color: var(--mg-primary); }
+
+/* Ikon kustom Stetoskop & Gigi kompatibel dengan Bootstrap Icons */
+.bi-stethoscope,
+.bi-tooth {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 1em !important;
+    height: 1em !important;
+    vertical-align: -0.125em;
+    line-height: 1;
+}
+
+.bi-stethoscope::before,
+.bi-tooth::before {
+    content: "" !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    font-family: Arial, sans-serif !important;
+    background-color: currentColor !important;
+    -webkit-mask-size: contain !important;
+    mask-size: contain !important;
+    -webkit-mask-repeat: no-repeat !important;
+    mask-repeat: no-repeat !important;
+    -webkit-mask-position: center !important;
+    mask-position: center !important;
+}
+
+.bi-stethoscope::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23000' d='M64 48C46.3 48 32 62.3 32 80s14.3 32 32 32l16 0 0 112c0 79.5 64.5 144 144 144s144-64.5 144-144l0-112 16 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l16 0 0 112c0 44.2-35.8 80-80 80s-80-35.8-80-80l0-112 16 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L64 48zM416 288c-17.7 0-32 14.3-32 32l0 16c0 53-43 96-96 96l-32 0 0 64 32 0c88.4 0 160-71.6 160-160l0-16c0-17.7-14.3-32-32-32zm48 112a48 48 0 1 0 0-96 48 48 0 1 0 0 96z'/%3E%3C/svg%3E") !important;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23000' d='M64 48C46.3 48 32 62.3 32 80s14.3 32 32 32l16 0 0 112c0 79.5 64.5 144 144 144s144-64.5 144-144l0-112 16 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l16 0 0 112c0 44.2-35.8 80-80 80s-80-35.8-80-80l0-112 16 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L64 48zM416 288c-17.7 0-32 14.3-32 32l0 16c0 53-43 96-96 96l-32 0 0 64 32 0c88.4 0 160-71.6 160-160l0-16c0-17.7-14.3-32-32-32zm48 112a48 48 0 1 0 0-96 48 48 0 1 0 0 96z'/%3E%3C/svg%3E") !important;
+}
+
+.bi-tooth::before {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath fill='%23000' d='M384 32c-35.3 0-67.4 15.6-89.6 40.5C272.2 47.6 240.1 32 204.8 32c-63.5 0-116.8 45.4-129.5 106.1-9.9 47.3-3.8 97.1 17.5 140.6 23.3 47.6 58.7 96.9 80.7 140.7 7 14 20.8 23 36.4 24.4 15.6 1.4 30.6-5 39.9-17.5l24.4-32.5 24.4 32.5c9.3 12.5 24.3 18.9 39.9 17.5 15.6-1.4 29.4-10.4 36.4-24.4 22-43.8 57.4-93.1 80.7-140.7 21.3-43.5 27.4-93.3 17.5-140.6C460.8 77.4 447.5 32 384 32z'/%3E%3C/svg%3E") !important;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath fill='%23000' d='M384 32c-35.3 0-67.4 15.6-89.6 40.5C272.2 47.6 240.1 32 204.8 32c-63.5 0-116.8 45.4-129.5 106.1-9.9 47.3-3.8 97.1 17.5 140.6 23.3 47.6 58.7 96.9 80.7 140.7 7 14 20.8 23 36.4 24.4 15.6 1.4 30.6-5 39.9-17.5l24.4-32.5 24.4 32.5c9.3 12.5 24.3 18.9 39.9 17.5 15.6-1.4 29.4-10.4 36.4-24.4 22-43.8 57.4-93.1 80.7-140.7 21.3-43.5 27.4-93.3 17.5-140.6C460.8 77.4 447.5 32 384 32z'/%3E%3C/svg%3E") !important;
+}
 
 /* ===================== Warna fallback per jenis faskes ===================== */
 .faskes-visual-rumah-sakit { background: linear-gradient(135deg, #002b5e 0%, #1d5d8f 100%) !important; }

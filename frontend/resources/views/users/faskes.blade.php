@@ -15,14 +15,14 @@
                     <input type="text" 
                            name="q" 
                            class="form-control border-0 shadow-none ps-1 bg-transparent" 
-                           placeholder="Cari RS, klinik, atau spesialis..." 
+                           placeholder="Cari RS, klinik, atau spesialis di Jabodetabek..." 
                            autocomplete="off"
                            style="font-size: 0.88rem;">
                     <a href="{{ route('search.index') }}" class="btn btn-outline-secondary rounded-pill px-2 py-1 me-1 fw-medium d-inline-flex align-items-center gap-1 border-0" title="Buka Filter Lengkap" style="font-size: 0.82rem; color: #475569;">
                         <i class="bi bi-sliders2 fs-7"></i> <span class="d-none d-sm-inline">Filter</span>
                     </a>
                     <button type="submit" class="btn btn-medigo-primary px-3 py-1.5 rounded-pill fw-semibold text-white shadow-xs" style="font-size: 0.84rem;">
-                        Cari RS
+                        Cari
                     </button>
                 </div>
             </form>
@@ -35,8 +35,8 @@
             <div class="card border-0 rounded-4 shadow-sm p-3 p-md-4 bg-white" style="border: 1px solid #e2e8f0 !important; box-shadow: 0 4px 20px rgba(11,43,82,0.06);">
                 <div class="row align-items-center g-3">
                     <div class="col-12 col-lg-5">
-                        <h4 class="fw-bold mb-1" style="color: #0b2b52;">Temukan Fasilitas Kesehatan</h4>
-                        <p class="text-muted mb-0" style="font-size: 0.88rem;">Cari rumah sakit, klinik, puskesmas, dan spesialisasi medis</p>
+                        <h4 class="fw-bold mb-1" style="color: #0b2b52;">Temukan Fasilitas Kesehatan di Jabodetabek</h4>
+                        <p class="text-muted mb-0" style="font-size: 0.88rem;">Cari rumah sakit, klinik, puskesmas, dan spesialisasi medis di Jabodetabek</p>
                     </div>
                     <div class="col-12 col-lg-7">
                         <form action="{{ route('search.index') }}" method="GET" class="m-0">
@@ -47,7 +47,7 @@
                                 <input type="text" 
                                        name="q" 
                                        class="form-control border-0 shadow-none ps-2 bg-transparent" 
-                                       placeholder="Cari nama rumah sakit, klinik, atau wilayah..." 
+                                       placeholder="Cari nama rumah sakit, klinik, atau wilayah di Jabodetabek..." 
                                        autocomplete="off"
                                        style="font-size: 0.9rem;">
                                 <a href="{{ route('search.index') }}" class="btn btn-outline-secondary rounded-pill px-2.5 px-sm-3 py-1.5 me-1 fw-medium d-inline-flex align-items-center gap-1 border-0" title="Buka Filter Lengkap" style="font-size: 0.84rem; color: #475569;">
@@ -93,7 +93,7 @@
                 <div>
                     <h4 class="fw-bold mb-1 section-title text-dark"
                         id="homeSectionHeading">
-                        Rumah Sakit Terdekat
+                        Fasilitas Kesehatan Terdekat
                     </h4>
 
                     {{-- Location Indicator --}}
@@ -156,62 +156,107 @@
                 </div>
             </div>
 
-            {{-- Filter Chips --}}
+            {{-- Filter Chips (Hanya Jenis Faskes, Default: Pilih Semua) --}}
             <div class="filter-chips-wrapper d-flex gap-2 overflow-x-auto pb-1 mb-3"
                  id="homeFilterChips">
 
-                {{-- Distance Filter --}}
+                {{-- Semua Faskes (Default Aktif) --}}
                 <button type="button"
-                        class="chip-filter text-nowrap"
-                        data-toggle="distance"
-                        id="homeChipDistance"
-                        title="Klik untuk memfilter hanya radius 5km">
-
-                    <i class="bi bi-geo-alt-fill me-1"></i>
-                    Jarak &lt; 5km
+                        class="chip-filter active text-nowrap"
+                        data-toggle="type"
+                        data-type="all"
+                        id="homeChipAll"
+                        title="Tampilkan semua fasilitas kesehatan">
+                    <i class="bi bi-grid-fill me-1"></i>
+                    Semua
                 </button>
 
-                {{-- Hospital Filter --}}
+                {{-- Rumah Sakit --}}
                 <button type="button"
                         class="chip-filter text-nowrap"
                         data-toggle="type"
-                        data-type="hospital"
-                        id="homeChipHospital">
-
-                    <i class="bi bi-hospital me-1"></i>
+                        data-type="rumah-sakit"
+                        id="homeChipHospital"
+                        title="Filter Rumah Sakit">
+                    <i class="bi bi-hospital-fill me-1"></i>
                     Rumah Sakit
                 </button>
 
-                {{-- Clinic Filter --}}
-                <button type="button"
-                        class="chip-filter text-nowrap"
-                        data-toggle="type"
-                        data-type="clinic"
-                        id="homeChipClinic">
-
-                    <i class="bi bi-heart-pulse-fill me-1"></i>
-                    Klinik
-                </button>
-
-                {{-- Puskesmas Filter --}}
+                {{-- Puskesmas --}}
                 <button type="button"
                         class="chip-filter text-nowrap"
                         data-toggle="type"
                         data-type="puskesmas"
-                        id="homeChipPuskesmas">
-
-                    <i class="bi bi-plus-circle-fill me-1"></i>
+                        id="homeChipPuskesmas"
+                        title="Filter Puskesmas">
+                    <i class="bi bi-house-heart-fill me-1"></i>
                     Puskesmas
                 </button>
 
-                {{-- BPJS Filter --}}
+                {{-- Klinik --}}
                 <button type="button"
                         class="chip-filter text-nowrap"
-                        data-toggle="bpjs"
-                        id="homeChipBpjs">
+                        data-toggle="type"
+                        data-type="klinik"
+                        id="homeChipClinic"
+                        title="Filter Klinik">
+                    <i class="bi bi-heart-pulse-fill me-1"></i>
+                    Klinik
+                </button>
 
-                    <i class="bi bi-check2-circle me-1"></i>
-                    BPJS
+                {{-- Apotek --}}
+                <button type="button"
+                        class="chip-filter text-nowrap"
+                        data-toggle="type"
+                        data-type="apotek"
+                        id="homeChipApotek"
+                        title="Filter Apotek & Farmasi">
+                    <i class="bi bi-capsule-pill me-1"></i>
+                    Apotek
+                </button>
+
+                {{-- Laboratorium --}}
+                <button type="button"
+                        class="chip-filter text-nowrap"
+                        data-toggle="type"
+                        data-type="laboratorium"
+                        id="homeChipLaboratorium"
+                        title="Filter Laboratorium">
+                    <i class="bi bi-eyedropper me-1"></i>
+                    Laboratorium
+                </button>
+
+                {{-- Optik --}}
+                <button type="button"
+                        class="chip-filter text-nowrap"
+                        data-toggle="type"
+                        data-type="optik"
+                        id="homeChipOptik"
+                        title="Filter Optik">
+                    <i class="bi bi-eyeglasses me-1"></i>
+                    Optik
+                </button>
+
+                {{-- Dokter Gigi --}}
+                <button type="button"
+                        class="chip-filter text-nowrap"
+                        data-toggle="type"
+                        data-type="dokter-gigi"
+                        id="homeChipDokterGigi"
+                        title="Filter Dokter Gigi">
+                    <i class="bi bi-tooth me-1"></i>
+                    Dokter Gigi
+                </button>
+
+                {{-- Dokter Umum --}}
+                <button type="button"
+                        class="chip-filter text-nowrap"
+                        data-toggle="type"
+                        data-type="dokter-umum"
+                        id="homeChipDokterUmum"
+                        title="Filter Praktik Dokter">
+                    <i class="bi bi-stethoscope me-1"></i>
+                    Dokter Umum
                 </button>
             </div>
 

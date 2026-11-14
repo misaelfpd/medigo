@@ -9,7 +9,7 @@
         </button>
     </div>
 
-    <!-- Floating Horizontal Quick-Filter Chips -->
+    <!-- Floating Horizontal Quick-Filter Chips (Sesuai jenis faskes di Beranda) -->
     <div class="mobile-filter-chips-wrapper mt-2">
         <div class="d-flex gap-2 mobile-chips-scroll" id="mobileFilterChipsList">
             <!-- Radius Slider Trigger Chip -->
@@ -17,22 +17,52 @@
                 <i class="bi bi-broadcast text-primary me-1"></i> Radius: <span id="mobileChipRadiusVal">5.0</span> Km
             </button>
 
-            <!-- Toggle Filter 1: Jenis RS -->
-            <button type="button" class="btn mobile-chip-pill" data-filter="hospital" id="mobileChipHospital">
-                <i class="bi bi-hospital me-1"></i> RS
+            <!-- Semua (Default) -->
+            <button type="button" class="btn mobile-chip-pill active" data-filter="all" id="mobileChipAll">
+                Semua
             </button>
 
-            <!-- Toggle Filter 2: Jenis Klinik -->
-            <button type="button" class="btn mobile-chip-pill" data-filter="clinic" id="mobileChipClinic">
+            <!-- Rumah Sakit -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="rumah-sakit" id="mobileChipHospital">
+                <i class="bi bi-hospital-fill me-1"></i> RS
+            </button>
+
+            <!-- Puskesmas -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="puskesmas" id="mobileChipPuskesmas">
+                <i class="bi bi-house-heart-fill me-1"></i> Puskesmas
+            </button>
+
+            <!-- Klinik -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="klinik" id="mobileChipClinic">
                 <i class="bi bi-heart-pulse-fill me-1"></i> Klinik
             </button>
 
-            <!-- Toggle Filter 3: Jenis Puskesmas -->
-            <button type="button" class="btn mobile-chip-pill" data-filter="puskesmas" id="mobileChipPuskesmas">
-                <i class="bi bi-plus-circle-fill me-1"></i> Puskesmas
+            <!-- Apotek -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="apotek" id="mobileChipApotek">
+                <i class="bi bi-capsule-pill me-1"></i> Apotek
             </button>
 
-            <!-- Toggle Filter 4: BPJS -->
+            <!-- Laboratorium -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="laboratorium" id="mobileChipLaboratorium">
+                <i class="bi bi-eyedropper me-1"></i> Lab
+            </button>
+
+            <!-- Optik -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="optik" id="mobileChipOptik">
+                <i class="bi bi-eyeglasses me-1"></i> Optik
+            </button>
+
+            <!-- Dokter Gigi -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="dokter-gigi" id="mobileChipDokterGigi">
+                <i class="bi bi-tooth me-1"></i> Dokter Gigi
+            </button>
+
+            <!-- Dokter Umum -->
+            <button type="button" class="btn mobile-chip-pill" data-filter="dokter-umum" id="mobileChipDokterUmum">
+                <i class="bi bi-stethoscope me-1"></i> Dokter
+            </button>
+
+            <!-- BPJS -->
             <button type="button" class="btn mobile-chip-pill" data-filter="bpjs" id="mobileChipBpjs">
                 <i class="bi bi-check-circle me-1"></i> BPJS
             </button>

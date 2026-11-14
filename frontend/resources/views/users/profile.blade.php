@@ -49,13 +49,20 @@
                 </div>
                 <form action="{{ route('logout') }}" method="POST" class="mb-4">
                     @csrf
-                    <button type="submit" class="btn btn-outline-danger w-100 rounded-4 py-2-5">Keluar</button>
+                    <button type="submit" class="btn btn-outline-danger w-100 rounded-pill py-2-5 fw-semibold d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-box-arrow-left"></i>
+                        <span>Keluar</span>
+                    </button>
                 </form>
             </div>
         @endif
 
     </div>
 </div>
+
+@push('styles')
+    @vite('resources/css/pages/profile.css')
+@endpush
 
 @push('scripts')
     <!-- MODULAR JS: Memanggil file javascript eksternal -->

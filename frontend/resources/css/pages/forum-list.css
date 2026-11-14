@@ -75,3 +75,12 @@ html, body, main, #app {
     transform: translateY(-2px);
     box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .08) !important;
 }
+
+/* Horizontal chip filter scrollbar styling */
+.mg-filter-chips-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.mg-filter-chips-scroll::-webkit-scrollbar {
+    display: none;
+}

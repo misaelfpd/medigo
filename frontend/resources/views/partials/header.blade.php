@@ -1,9 +1,9 @@
 <!-- Navbar / Top Header -->
-<nav class="navbar navbar-expand-lg sticky-top">
+<nav class="navbar navbar-expand-lg sticky-top {{ request()->is('map*') ? 'd-none d-lg-block' : '' }}">
     <div class="container d-flex justify-content-between gap-5 align-items-center">
         <!-- Logo Section -->
         <a class="navbar-brand d-flex align-items-center m-0" href="/faskes">
-            <img style="max-height: 40px; width: auto;" src="{{ asset('images/medigo_logo.png') }}" alt="Logo Faskes">
+            <img style="max-height: 40px; width: auto;" src="{{ asset('storage/medigo_logo.png') }}" alt="MediGO" onerror="this.onerror=null; this.src='{{ asset('images/medigo_icon.png') }}';">
         </a>
 
         <!-- Desktop Navigation Links -->
@@ -13,12 +13,12 @@
                     <i class="bi bi-house-door-fill"></i> Beranda
                 </x-navbar.nav-link>
 
-                <x-navbar.nav-link href="/chat" :active="request()->is('chat*')">
-                    <i class="bi bi-stars"></i> Chat AI
-                </x-navbar.nav-link>
-
                 <x-navbar.nav-link href="/map" :active="request()->is('map*')">
                     <i class="bi bi-map"></i> Peta
+                </x-navbar.nav-link>
+
+                <x-navbar.nav-link href="/chat" :active="request()->is('chat*')">
+                    <i class="bi bi-stars"></i> MediBot
                 </x-navbar.nav-link>
 
                 <x-navbar.nav-link href="/discussions" :active="request()->is('discussions*')">

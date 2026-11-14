@@ -932,6 +932,20 @@ class FaskesController extends Controller
             ->orderBy('kota_kabupaten', 'asc')
             ->pluck('kota_kabupaten');
 
+        $provinsi = DB::table('faskes')
+            ->whereNotNull('provinsi')
+            ->where('provinsi', '!=', '')
+            ->distinct()
+            ->orderBy('provinsi', 'asc')
+            ->pluck('provinsi');
+
+        $jenis_faskes = DB::table('faskes')
+            ->whereNotNull('jenis_faskes')
+            ->where('jenis_faskes', '!=', '')
+            ->distinct()
+            ->orderBy('jenis_faskes', 'asc')
+            ->pluck('jenis_faskes');
+
         $kelas = DB::table('faskes')
             ->whereNotNull('kelas')
             ->where('kelas', '!=', '')
@@ -951,6 +965,8 @@ class FaskesController extends Controller
             'status' => 'success',
             'data' => [
                 'kota' => $kota,
+                'provinsi' => $provinsi,
+                'jenis_faskes' => $jenis_faskes,
                 'kelas' => $kelas,
                 'fasilitas' => $fasilitas,
                 'spesialisasi' => $spesialisasi,

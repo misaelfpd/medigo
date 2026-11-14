@@ -25,7 +25,7 @@
             'bpjs' => 'Menerima BPJS',
             'non_bpjs' => 'Non BPJS',
         ];
-        $hasExtraFilter = !empty($search) || !empty($provinsi) || !empty($kota);
+        $hasExtraFilter = !empty($search) || !empty($provinsi) || !empty($kota) || !empty($tipe) || !empty($kelas) || ($bpjs !== '' && $bpjs !== null);
     @endphp
 
     {{-- Main Card --}}
@@ -34,7 +34,7 @@
         <div class="mg-admin-toolbar">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 @foreach($chipFilters as $key => $label)
-                    <a href="{{ route('admin.faskes', array_filter(['filter' => $key === 'all' ? null : $key, 'search' => $search ?: null, 'provinsi' => $provinsi ?: null, 'kota' => $kota ?: null])) }}"
+                    <a href="{{ route('admin.faskes', array_filter(['filter' => $key === 'all' ? null : $key, 'search' => $search ?: null, 'tipe' => $tipe ?: null, 'kota' => $kota ?: null, 'kelas' => $kelas ?: null, 'bpjs' => ($bpjs !== '' ? $bpjs : null), 'provinsi' => $provinsi ?: null])) }}"
                        class="mg-filter-chip {{ $filter === $key ? 'is-active' : '' }}">{{ $label }}</a>
                 @endforeach
             </div>
@@ -44,32 +44,70 @@
             </button>
         </div>
 
-        {{-- Filter lanjutan (pencarian, provinsi, kota) --}}
+        {{-- Filter lanjutan (mengikuti format filter user: pencarian, jenis faskes, kota, kelas, bpjs) --}}
         <div class="collapse {{ $hasExtraFilter ? 'show' : '' }}" id="adminFaskesFilter">
-            <form action="{{ route('admin.faskes') }}" method="GET" class="row g-2 align-items-center px-3 pb-3">
+            <form action="{{ route('admin.faskes') }}" method="GET" class="px-3 pb-3">
                 <input type="hidden" name="filter" value="{{ $filter }}">
-                <div class="col-12 col-md-5">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama faskes / alamat..." value="{{ $search }}">
+                
+                <div class="row g-2 align-items-center">
+                    {{-- Pencarian Nama / Alamat --}}
+                    <div class="col-12 col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama faskes / alamat..." value="{{ $search }}">
+                        </div>
+                    </div>
+
+                    {{-- Jenis Faskes --}}
+                    <div class="col-6 col-md-2">
+                        <select name="tipe" class="form-select form-select-sm">
+                            <option value="">Semua Jenis</option>
+                            @foreach($typesList as $t)
+                                <option value="{{ $t }}" {{ ($tipe ?? '') === $t ? 'selected' : '' }}>{{ $t }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Kota / Kabupaten (Dinamis dari database, bukan hardcode) --}}
+                    <div class="col-6 col-md-2">
+                        <select name="kota" class="form-select form-select-sm">
+                            <option value="">Semua Kota/Kab</option>
+                            @foreach($citiesList as $c)
+                                <option value="{{ $c }}" {{ ($kota ?? '') === $c ? 'selected' : '' }}>{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Kelas RS --}}
+                    <div class="col-6 col-md-2">
+                        <select name="kelas" class="form-select form-select-sm">
+                            <option value="">Semua Kelas</option>
+                            <option value="A" {{ ($kelas ?? '') === 'A' ? 'selected' : '' }}>Kelas A</option>
+                            <option value="B" {{ ($kelas ?? '') === 'B' ? 'selected' : '' }}>Kelas B</option>
+                            <option value="C" {{ ($kelas ?? '') === 'C' ? 'selected' : '' }}>Kelas C</option>
+                            <option value="D" {{ ($kelas ?? '') === 'D' ? 'selected' : '' }}>Kelas D</option>
+                        </select>
+                    </div>
+
+                    {{-- Jaminan BPJS --}}
+                    <div class="col-6 col-md-2">
+                        <select name="bpjs" class="form-select form-select-sm">
+                            <option value="">Semua Jaminan</option>
+                            <option value="1" {{ ($bpjs ?? '') === '1' ? 'selected' : '' }}>BPJS</option>
+                            <option value="0" {{ ($bpjs ?? '') === '0' ? 'selected' : '' }}>Non BPJS</option>
+                        </select>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
-                    <select name="provinsi" class="form-select form-select-sm">
-                        <option value="">Semua Provinsi</option>
-                        @foreach($provincesList as $prov)
-                            <option value="{{ $prov }}" {{ $provinsi === $prov ? 'selected' : '' }}>{{ $prov }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-6 col-md-2">
-                    <input type="text" name="kota" class="form-control form-control-sm" placeholder="Kota / Kabupaten" value="{{ $kota }}">
-                </div>
-                <div class="col-12 col-md-2 d-flex gap-1">
-                    <button type="submit" class="btn btn-sm mg-btn-primary mg-btn-rect w-100">Terapkan</button>
+
+                <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
                     @if($hasExtraFilter || $filter !== 'all')
-                        <a href="{{ route('admin.faskes') }}" class="btn btn-sm btn-outline-secondary" title="Reset Filter"><i class="bi bi-arrow-counterclockwise"></i></a>
+                        <a href="{{ route('admin.faskes') }}" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" title="Reset Filter">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </a>
                     @endif
+                    <button type="submit" class="btn btn-sm mg-btn-primary mg-btn-rect px-3 d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-funnel"></i> Terapkan
+                    </button>
                 </div>
             </form>
         </div>
@@ -79,7 +117,7 @@
             <table class="table align-middle mb-0 mg-admin-table">
                 <thead>
                     <tr>
-                        <th scope="col" class="ps-3">Nama Rumah Sakit</th>
+                        <th scope="col" class="ps-3">Nama Fasilitas Kesehatan</th>
                         <th scope="col">Lokasi</th>
                         <th scope="col">Tipe</th>
                         <th scope="col">BPJS/Non BPJS</th>
@@ -93,7 +131,13 @@
                     <tr>
                         <td class="ps-3">
                             <div class="d-flex align-items-center gap-3">
-                                <span class="mg-admin-rowicon"><i class="bi bi-hospital"></i></span>
+                                @php
+                                    $visualKey = \App\Support\FaskesVisual::key($item['jenis_faskes'] ?? null, $item['nama_faskes'] ?? null);
+                                    $visualIcon = \App\Support\FaskesVisual::icon($item['jenis_faskes'] ?? null, $item['nama_faskes'] ?? null);
+                                @endphp
+                                <span class="mg-admin-rowicon faskes-visual-{{ $visualKey }} text-white border-0 shadow-2xs" title="{{ $item['jenis_faskes'] ?: 'Fasilitas Kesehatan' }}">
+                                    <i class="bi {{ $visualIcon }}"></i>
+                                </span>
                                 <div class="min-w-0">
                                     <div class="mg-admin-rowtitle">{{ $item['nama_faskes'] }}</div>
                                     <div class="mg-admin-rowsub">ID: {{ $item['code_id'] }}</div>

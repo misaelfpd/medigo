@@ -72,8 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <a href="/faskes/${encodeURIComponent(faskesId)}" class="btn btn-sm btn-light rounded-pill px-3 text-medigo-primary fw-semibold" style="font-size: 0.74rem;">
                                     Lihat Faskes <i class="bi bi-chevron-right ms-1"></i>
                                 </a>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-faskes-review" data-id="${esc(revId)}" style="font-size: 0.72rem;" title="Hapus Ulasan">
-                                    <i class="bi bi-trash"></i> Hapus
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2-5 py-1 fw-semibold btn-delete-faskes-review" data-id="${esc(revId)}" style="font-size: 0.72rem;" title="Hapus Ulasan">
+                                    <i class="bi bi-trash me-1"></i> Hapus
                                 </button>
                             </div>
                             `;

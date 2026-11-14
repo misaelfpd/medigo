@@ -44,12 +44,12 @@
             @endif
 
             <div class="d-flex justify-content-between align-items-center mt-2">
-                <a href="{{ url('/discussions/' . $discId) }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0-5" style="font-size: 0.72rem;" title="Lihat Diskusi">
-                    <i class="bi bi-box-arrow-up-right"></i> Lihat Diskusi
+                <a href="{{ url('/discussions/' . $discId) }}" class="btn btn-sm btn-outline-medigo-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.74rem;" title="Lihat Diskusi">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Lihat Diskusi
                 </a>
                 
-                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0-5 btn-delete-discussion" data-id="{{ $discId }}" style="font-size: 0.72rem;" title="Hapus Diskusi" onclick="return confirm('Apakah Anda yakin ingin menghapus diskusi ini?');">
-                    <i class="bi bi-trash"></i> Hapus
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2-5 py-1 fw-semibold btn-delete-discussion" data-id="{{ $discId }}" style="font-size: 0.72rem;" title="Hapus Diskusi" onclick="return confirm('Apakah Anda yakin ingin menghapus diskusi ini?');">
+                    <i class="bi bi-trash me-1"></i> Hapus
                 </button>
             </div>
         </div>

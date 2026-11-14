@@ -10,10 +10,12 @@ use App\Http\Controllers\ChatWebController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\Admin\AdminFaskesController;
 use App\Http\Controllers\Admin\AdminDiscussionReportController;
+use App\Http\Controllers\Admin\AdminFasilitasController;
+use App\Http\Controllers\Admin\AdminFaskesController;
 use App\Http\Controllers\Admin\AdminForumController;
 use App\Http\Controllers\Admin\AdminReportController;
+use App\Http\Controllers\Admin\AdminSpesialisasiController;
 use Illuminate\Support\Facades\Route;
 
 // Public User Routes
@@ -86,8 +88,17 @@ Route::prefix('admin')->group(function () {
     Route::post('/faskes/{id}/foto', [AdminFaskesController::class, 'uploadPhoto'])->name('admin.faskes.photos.upload');
     Route::delete('/faskes/{id}/foto/{fotoId}', [AdminFaskesController::class, 'deletePhoto'])->name('admin.faskes.photos.destroy');
     Route::post('/faskes/{id}/foto/{fotoId}/jadikan', [AdminFaskesController::class, 'setPhotoAs'])->name('admin.faskes.photos.set');
-    Route::post('/fasilitas', [AdminFaskesController::class, 'storeFasilitas'])->name('admin.fasilitas.store');
-    Route::post('/spesialisasi', [AdminFaskesController::class, 'storeSpesialisasi'])->name('admin.spesialisasi.store');
+    // Admin CRUD Fasilitas Penunjang
+    Route::get('/fasilitas', [AdminFasilitasController::class, 'index'])->name('admin.fasilitas');
+    Route::post('/fasilitas', [AdminFasilitasController::class, 'store'])->name('admin.fasilitas.store');
+    Route::put('/fasilitas/{id}', [AdminFasilitasController::class, 'update'])->whereNumber('id')->name('admin.fasilitas.update');
+    Route::delete('/fasilitas/{id}', [AdminFasilitasController::class, 'destroy'])->whereNumber('id')->name('admin.fasilitas.destroy');
+
+    // Admin CRUD Spesialisasi Medis
+    Route::get('/spesialisasi', [AdminSpesialisasiController::class, 'index'])->name('admin.spesialisasi');
+    Route::post('/spesialisasi', [AdminSpesialisasiController::class, 'store'])->name('admin.spesialisasi.store');
+    Route::put('/spesialisasi/{id}', [AdminSpesialisasiController::class, 'update'])->whereNumber('id')->name('admin.spesialisasi.update');
+    Route::delete('/spesialisasi/{id}', [AdminSpesialisasiController::class, 'destroy'])->whereNumber('id')->name('admin.spesialisasi.destroy');
     
     // Rute Moderasi Forum Admin
     Route::get('/forum', [AdminForumController::class, 'index'])->name('admin.forum');

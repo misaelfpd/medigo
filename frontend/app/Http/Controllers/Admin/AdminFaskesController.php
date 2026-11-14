@@ -30,6 +30,9 @@ class AdminFaskesController extends Controller
         $provinsi = trim($request->input('provinsi', ''));
         $kota = trim($request->input('kota', ''));
         $lokasi = trim($request->input('lokasi', ''));
+        $tipe = trim($request->input('tipe', ''));
+        $kelas = trim($request->input('kelas', ''));
+        $bpjs = $request->input('bpjs', '');
 
         $faskesList = [];
         $paginationData = [
@@ -56,6 +59,15 @@ class AdminFaskesController extends Controller
         }
         if (!empty($lokasi)) {
             $params['lokasi'] = $lokasi;
+        }
+        if (!empty($tipe)) {
+            $params['tipe'] = $tipe;
+        }
+        if (!empty($kelas)) {
+            $params['kelas'] = $kelas;
+        }
+        if ($bpjs !== '' && $bpjs !== null) {
+            $params['_support_bpjs'] = $bpjs;
         }
         // Chip filter sesuai desain: Kelas A, Kelas B, Menerima BPJS, Non BPJS
         if ($filter === 'kelas_a') {
@@ -139,16 +151,23 @@ class AdminFaskesController extends Controller
             Log::warning('Failed to fetch faskes for admin: ' . $e->getMessage());
         }
 
-        // Complete List of Indonesian provinces for selection
-        $provincesList = [
-            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Banten', 
-            'DI Yogyakarta', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
-            'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Riau', 'Kepulauan Riau',
-            'Jambi', 'Bengkulu', 'Lampung', 'Kepulauan Bangka Belitung', 'Aceh',
-            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
-            'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tenggara',
-            'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Tengah', 'Papua Selatan', 'Papua Pegunungan'
-        ];
+        // Ambil opsi filter dinamis dari backend (kota, provinsi, jenis faskes, kelas) tanpa hardcoding
+        $citiesList = [];
+        $provincesList = [];
+        $typesList = [];
+        $kelasList = [];
+        try {
+            $filterRes = Http::timeout(4)->acceptJson()->get("{$backendUrl}/api/faskes/filter-options");
+            if ($filterRes->successful()) {
+                $fData = $filterRes->json('data') ?? [];
+                $citiesList = $fData['kota'] ?? [];
+                $provincesList = $fData['provinsi'] ?? [];
+                $typesList = $fData['jenis_faskes'] ?? [];
+                $kelasList = $fData['kelas'] ?? [];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch filter options for admin: ' . $e->getMessage());
+        }
 
         // Global stats for filter pills counts
         $totalStats = $paginationData['total'];
@@ -200,7 +219,12 @@ class AdminFaskesController extends Controller
 
         $totalCount = $paginationData['total'];
 
-        return view('admin.faskes', compact('faskesList', 'totalCount', 'paginationData', 'counts', 'filter', 'search', 'sort', 'provinsi', 'kota', 'lokasi', 'provincesList', 'allFasilitas', 'allSpesialisasi'));
+        return view('admin.faskes', compact(
+            'faskesList', 'totalCount', 'paginationData', 'counts', 'filter', 'search', 'sort',
+            'provinsi', 'kota', 'lokasi', 'tipe', 'kelas', 'bpjs',
+            'provincesList', 'citiesList', 'typesList', 'kelasList',
+            'allFasilitas', 'allSpesialisasi'
+        ));
     }
 
     /**
@@ -239,6 +263,7 @@ class AdminFaskesController extends Controller
 
         $allFasilitas = [];
         $allSpesialisasi = [];
+        $provincesList = [];
         try {
             $fasRes = Http::timeout(4)->acceptJson()->get("{$backendUrl}/api/fasilitas");
             if ($fasRes->successful()) {
@@ -248,19 +273,13 @@ class AdminFaskesController extends Controller
             if ($specRes->successful()) {
                 $allSpesialisasi = $specRes->json('data') ?? [];
             }
+            $filterRes = Http::timeout(4)->acceptJson()->get("{$backendUrl}/api/faskes/filter-options");
+            if ($filterRes->successful()) {
+                $provincesList = $filterRes->json('data.provinsi') ?? [];
+            }
         } catch (\Exception $e) {
-            Log::warning('Failed to fetch facilities or specialties for faskes form: ' . $e->getMessage());
+            Log::warning('Failed to fetch facilities, specialties, or provinces for faskes form: ' . $e->getMessage());
         }
-
-        $provincesList = [
-            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Banten',
-            'DI Yogyakarta', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
-            'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Riau', 'Kepulauan Riau',
-            'Jambi', 'Bengkulu', 'Lampung', 'Kepulauan Bangka Belitung', 'Aceh',
-            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
-            'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tenggara',
-            'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Tengah', 'Papua Selatan', 'Papua Pegunungan',
-        ];
 
         return compact('allFasilitas', 'allSpesialisasi', 'provincesList');
     }

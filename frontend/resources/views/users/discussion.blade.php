@@ -29,8 +29,8 @@
 <div class="container py-4">
     <div class="row g-4 align-items-start">
 
-        <!-- Sidebar Kiri (Diam di Tempat / Tidak Ikut Scroll) -->
-        <div class="col-lg-3">
+        <!-- Sidebar Kiri (Desktop Only: Diam di Tempat / Tidak Ikut Scroll) -->
+        <div class="col-lg-3 d-none d-lg-block">
             <div class="medigo-sidebar-sticky">
 
                 <!-- Tombol Diskusi Baru -->
@@ -151,13 +151,71 @@
         <!-- Area Konten Utama (Hanya Bagian Ini yang Scroll) -->
         <div class="col-lg-9">
             <div class="medigo-main-scroll pt-1 pb-3 pe-lg-2">
+                <!-- Mobile Filter & Quick Action Bar (d-lg-none) -->
+                <div class="d-lg-none mb-3">
+                    <div class="card border rounded-4 shadow-sm bg-white p-3 mb-2">
+                        <!-- Dropdown Kategori & Tombol Diskusi Baru -->
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="flex-grow-1">
+                                <select id="mobileForumCategorySelect" class="form-select rounded-pill px-3 py-2 shadow-none border" style="font-size: 0.88rem; background-color: #f8fafc;">
+                                    <option value="{{ route('discussions') }}">Semua Kategori</option>
+                                    @if(Auth::check())
+                                        <option value="{{ route('discussions', ['tab' => 'my_discussions']) }}" {{ ($tab ?? '') === 'my_discussions' ? 'selected' : '' }}>Diskusi Saya</option>
+                                    @endif
+                                    @foreach($forumCategories as $cat)
+                                        <option value="{{ route('discussions', ['category' => $cat['value']]) }}" {{ ($category ?? '') === $cat['value'] ? 'selected' : '' }}>
+                                            {{ $cat['label'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                @if(Auth::check())
+                                    <a href="{{ route('discussions.create') }}"
+                                       class="btn btn-medigo-primary rounded-pill px-3 py-2 fw-semibold text-white d-flex align-items-center gap-1 shadow-sm text-nowrap"
+                                       style="background-color: #002b5e; font-size: 0.85rem;">
+                                        <i class="bi bi-plus-lg"></i>
+                                        <span>Diskusi</span>
+                                    </a>
+                                @else
+                                    <a href="{{ route('login') }}"
+                                       class="btn btn-medigo-primary rounded-pill px-3 py-2 fw-semibold text-white d-flex align-items-center gap-1 shadow-sm text-nowrap"
+                                       style="background-color: #002b5e; font-size: 0.85rem;">
+                                        <i class="bi bi-box-arrow-in-right"></i>
+                                        <span>Masuk</span>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Filter Chips: Semua, Sedang Tren, Faskes Terdekat -->
+                        <div class="d-flex gap-2 overflow-x-auto pt-1 mg-filter-chips-scroll" style="scrollbar-width: none;">
+                            <a href="{{ route('discussions', array_filter(['category' => $category, 'tab' => $tab])) }}"
+                               class="btn btn-sm rounded-pill px-3 py-1 text-nowrap {{ empty($sort) && empty($filter) ? 'btn-medigo-primary text-white shadow-sm' : 'btn-outline-secondary border' }}"
+                               style="{{ empty($sort) && empty($filter) ? 'background-color: #002b5e; border-color: #002b5e;' : '' }}">
+                                Semua
+                            </a>
+                            <a href="{{ route('discussions', array_filter(['category' => $category, 'sort' => 'terpopuler'])) }}"
+                               class="btn btn-sm rounded-pill px-3 py-1 text-nowrap {{ ($sort ?? '') === 'terpopuler' ? 'btn-medigo-primary text-white shadow-sm' : 'btn-outline-secondary border' }}"
+                               style="{{ ($sort ?? '') === 'terpopuler' ? 'background-color: #002b5e; border-color: #002b5e;' : '' }}">
+                                <i class="bi bi-graph-up-arrow text-danger me-1"></i> Sedang Tren
+                            </a>
+                            <a href="{{ route('discussions', array_filter(['category' => $category, 'filter' => 'terdekat'])) }}"
+                               class="btn btn-sm rounded-pill px-3 py-1 text-nowrap {{ ($filter ?? '') === 'terdekat' ? 'btn-medigo-primary text-white shadow-sm' : 'btn-outline-secondary border' }}"
+                               style="{{ ($filter ?? '') === 'terdekat' ? 'background-color: #002b5e; border-color: #002b5e;' : '' }}">
+                                <i class="bi bi-geo-alt text-primary me-1"></i> Faskes Terdekat
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 @if(!empty($faskesFilterId))
                     <div class="alert alert-light border d-flex align-items-center justify-content-between gap-2 py-2 px-3 mb-3 rounded-3" style="font-size: 0.85rem;">
                         <span><i class="bi bi-funnel me-1"></i> Menampilkan diskusi yang membahas faskes pilihan.</span>
                         <a href="{{ route('discussions') }}" class="text-decoration-none fw-semibold">Hapus filter</a>
                     </div>
                 @endif
-                <div class="row g-3">
+                <div class="row g-3" id="forumDiscussionsList">
                     @forelse($discussions as $discussion)
                         @php
                             $discId = $discussion['id_diskusi'] ?? $discussion['id'] ?? null;
@@ -324,46 +382,74 @@
                     @endforelse
                 </div>
 
-                <!-- UI Pagination Custom MediGO -->
-                @if(!empty($pagination) && isset($pagination['last_page']) && $pagination['last_page'] > 1)
-                    <div class="d-flex justify-content-center mt-4 mb-2">
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination pagination-sm mb-0 gap-1">
-                                <li class="page-item {{ $pagination['current_page'] <= 1 ? 'disabled' : '' }}">
-                                    <a class="page-link rounded-pill px-3 py-2 border-0 fw-semibold shadow-sm text-dark hover-primary {{ $pagination['current_page'] <= 1 ? 'opacity-50' : 'bg-white' }}"
-                                       href="{{ $pagination['current_page'] <= 1 ? '#' : request()->fullUrlWithQuery(['page' => $pagination['current_page'] - 1]) }}"
-                                       style="transition: all 0.2s ease;">
-                                        <i class="bi bi-chevron-left me-1" style="font-size: 0.75rem;"></i> Prev
-                                    </a>
-                                </li>
+                <!-- Lazy Loading Controller -->
+                @php
+                    $currentPage = (int) ($pagination['current_page'] ?? 1);
+                    $lastPage = (int) ($pagination['last_page'] ?? 1);
+                    $hasMore = $currentPage < $lastPage;
+                @endphp
 
-                                @for($i = 1; $i <= $pagination['last_page']; $i++)
-                                    @if($i == 1 || $i == $pagination['last_page'] || ($i >= $pagination['current_page'] - 1 && $i <= $pagination['current_page'] + 1))
-                                        <li class="page-item {{ $pagination['current_page'] == $i ? 'active' : '' }}">
-                                            <a class="page-link rounded-circle border-0 fw-bold shadow-sm d-flex align-items-center justify-content-center {{ $pagination['current_page'] == $i ? 'btn-medigo-primary text-white' : 'bg-white text-dark hover-primary' }}"
-                                               href="{{ request()->fullUrlWithQuery(['page' => $i]) }}"
-                                               style="width: 36px; height: 36px; transition: all 0.2s ease; {{ $pagination['current_page'] == $i ? 'background-color: #002b5e !important;' : '' }}">
-                                                {{ $i }}
-                                            </a>
-                                        </li>
-                                    @elseif($i == 2 && $pagination['current_page'] > 3)
-                                        <li class="page-item disabled"><span class="page-link border-0 bg-transparent text-muted px-1">...</span></li>
-                                    @elseif($i == $pagination['last_page'] - 1 && $pagination['current_page'] < $pagination['last_page'] - 2)
-                                        <li class="page-item disabled"><span class="page-link border-0 bg-transparent text-muted px-1">...</span></li>
-                                    @endif
-                                @endfor
-
-                                <li class="page-item {{ $pagination['current_page'] >= $pagination['last_page'] ? 'disabled' : '' }}">
-                                    <a class="page-link rounded-pill px-3 py-2 border-0 fw-semibold shadow-sm text-dark hover-primary {{ $pagination['current_page'] >= $pagination['last_page'] ? 'opacity-50' : 'bg-white' }}"
-                                       href="{{ $pagination['current_page'] >= $pagination['last_page'] ? '#' : request()->fullUrlWithQuery(['page' => $pagination['current_page'] + 1]) }}"
-                                       style="transition: all 0.2s ease;">
-                                        Next <i class="bi bi-chevron-right ms-1" style="font-size: 0.75rem;"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
+                <div id="forumLazyLoadingTrigger"
+                     class="text-center py-4 my-2 {{ !$hasMore ? 'd-none' : '' }}"
+                     data-current-page="{{ $currentPage }}"
+                     data-last-page="{{ $lastPage }}"
+                     data-url="{{ route('discussions') }}"
+                     data-query-params='@json(request()->except('page'))'>
+                    <div id="forumLazySpinner" class="d-none py-2">
+                        <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem; color: #002b5e !important;">
+                            <span class="visually-hidden">Memuat...</span>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Memuat diskusi lebih banyak...</p>
                     </div>
-                @endif
+                    <button type="button" id="btnForumLoadMore" class="btn btn-medigo-outline rounded-pill px-4 py-2 fw-semibold shadow-sm" style="border-color: #002b5e; color: #002b5e;">
+                        <i class="bi bi-arrow-down-circle me-1"></i> Muat Lebih Banyak Diskusi
+                    </button>
+                </div>
+
+                <div id="forumEndOfList" class="text-center py-3 text-muted small {{ empty($discussions) || $hasMore ? 'd-none' : '' }}">
+                    <i class="bi bi-check2-circle me-1 text-success"></i> Anda telah melihat semua diskusi.
+                </div>
+
+                <!-- Fallback Pagination (Hanya jika Javascript Dinonaktifkan) -->
+                <noscript>
+                    @if(!empty($pagination) && isset($pagination['last_page']) && $pagination['last_page'] > 1)
+                        <div class="d-flex justify-content-center mt-4 mb-2">
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination pagination-sm mb-0 gap-1">
+                                    <li class="page-item {{ $pagination['current_page'] <= 1 ? 'disabled' : '' }}">
+                                        <a class="page-link rounded-pill px-3 py-2 border-0 fw-semibold shadow-sm text-dark hover-primary {{ $pagination['current_page'] <= 1 ? 'opacity-50' : 'bg-white' }}"
+                                           href="{{ $pagination['current_page'] <= 1 ? '#' : request()->fullUrlWithQuery(['page' => $pagination['current_page'] - 1]) }}">
+                                            <i class="bi bi-chevron-left me-1" style="font-size: 0.75rem;"></i> Prev
+                                        </a>
+                                    </li>
+
+                                    @for($i = 1; $i <= $pagination['last_page']; $i++)
+                                        @if($i == 1 || $i == $pagination['last_page'] || ($i >= $pagination['current_page'] - 1 && $i <= $pagination['current_page'] + 1))
+                                            <li class="page-item {{ $pagination['current_page'] == $i ? 'active' : '' }}">
+                                                <a class="page-link rounded-circle border-0 fw-bold shadow-sm d-flex align-items-center justify-content-center {{ $pagination['current_page'] == $i ? 'btn-medigo-primary text-white' : 'bg-white text-dark hover-primary' }}"
+                                                   href="{{ request()->fullUrlWithQuery(['page' => $i]) }}"
+                                                   style="width: 36px; height: 36px; {{ $pagination['current_page'] == $i ? 'background-color: #002b5e !important;' : '' }}">
+                                                    {{ $i }}
+                                                </a>
+                                            </li>
+                                        @elseif($i == 2 && $pagination['current_page'] > 3)
+                                            <li class="page-item disabled"><span class="page-link border-0 bg-transparent text-muted px-1">...</span></li>
+                                        @elseif($i == $pagination['last_page'] - 1 && $pagination['current_page'] < $pagination['last_page'] - 2)
+                                            <li class="page-item disabled"><span class="page-link border-0 bg-transparent text-muted px-1">...</span></li>
+                                        @endif
+                                    @endfor
+
+                                    <li class="page-item {{ $pagination['current_page'] >= $pagination['last_page'] ? 'disabled' : '' }}">
+                                        <a class="page-link rounded-pill px-3 py-2 border-0 fw-semibold shadow-sm text-dark hover-primary {{ $pagination['current_page'] >= $pagination['last_page'] ? 'opacity-50' : 'bg-white' }}"
+                                           href="{{ $pagination['current_page'] >= $pagination['last_page'] ? '#' : request()->fullUrlWithQuery(['page' => $pagination['current_page'] + 1]) }}">
+                                            Next <i class="bi bi-chevron-right ms-1" style="font-size: 0.75rem;"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    @endif
+                </noscript>
             </div>
         </div>
 

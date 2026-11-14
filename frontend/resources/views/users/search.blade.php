@@ -37,7 +37,7 @@
                                    id="searchKeywordInput" 
                                    name="q" 
                                    class="form-control border-0 shadow-none ps-1 bg-transparent" 
-                                   placeholder="Cari nama rumah sakit, klinik, atau wilayah..." 
+                                   placeholder="Cari nama rumah sakit, klinik, atau wilayah di Jabodetabek..." 
                                    value="{{ $initialQuery['q'] ?? '' }}"
                                    autocomplete="off">
                             <button type="submit" 
@@ -71,7 +71,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3 pb-2 mb-3 border-top" style="border-color: #f1f5f9 !important;">
                         <div>
                             <h5 class="fw-bold mb-1" style="color: #0b2b52; font-size: 1.15rem;">
-                                Filter & Spesifikasi Faskes
+                                Filter & Spesifikasi Faskes di Jabodetabek
                             </h5>
                             <p class="text-muted mb-0 small d-none d-md-block" style="font-size: 0.82rem;">
                                 Saring fasilitas kesehatan berdasarkan wilayah, kelas, jaminan BPJS, dan layanan medis
@@ -164,18 +164,6 @@
                             <i class="bi bi-chevron-down fs-7 text-muted"></i>
                         </button>
 
-                    </div>
-
-                    {{-- Popular Search Tags Row --}}
-                    <div class="d-flex align-items-center gap-2 pt-2.5 mb-1 border-top" style="border-color: #f1f5f9 !important;">
-                        <span class="text-muted fw-semibold d-none d-sm-inline" style="font-size: 0.8rem;">Pencarian Populer:</span>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <button type="button" class="popular-search-tag" data-tag="IGD">IGD 24 Jam</button>
-                            <button type="button" class="popular-search-tag" data-tag="Kelas A">RSUP Rujukan</button>
-                            <button type="button" class="popular-search-tag" data-tag="Ambulans">Ambulan</button>
-                            <button type="button" class="popular-search-tag" data-tag="Penyakit Dalam">Dokter Penyakit Dalam</button>
-                            <button type="button" class="popular-search-tag" data-tag="Mata">Spesialis Mata</button>
-                        </div>
                     </div>
 
                 </div>

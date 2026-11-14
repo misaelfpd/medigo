@@ -365,8 +365,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return `
             <div class="leaflet-faskes-popup-card">
-                <div class="popup-card-header faskes-avatar-banner faskes-avatar-${typeSlug} faskes-visual-${visual.key}">
+                <div class="popup-card-header faskes-avatar-banner faskes-avatar-${typeSlug} faskes-visual-${visual.key} ${item.thumbnail_url ? 'has-photo' : ''}">
                     <i class="bi ${typeIcon} faskes-avatar-icon text-white"></i>
+                    ${item.thumbnail_url ? `<img src="${item.thumbnail_url}" alt="Foto ${displayName}" class="hospital-card-photo" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">` : ''}
                     <div class="popup-header-badges">
                         <span class="badge bg-white text-dark rounded-pill px-2 py-1 shadow-xs" style="font-size: 0.68rem;">
                             ${item.type || "Fasilitas Medis"}
@@ -983,9 +984,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 item.name.toLowerCase().includes(query) ||
                 item.address.toLowerCase().includes(query);
 
+            const itemVisualKey = faskesVisual(item.jenis_faskes || item.type || "", item.name || "").key;
             const itemType = (item.type_slug || "").toLowerCase();
             const matchType =
-                filterState.types.size === 0 || filterState.types.has(itemType);
+                filterState.types.size === 0 ||
+                filterState.types.has(itemVisualKey) ||
+                filterState.types.has(itemType) ||
+                (filterState.types.has("rumah-sakit") && (itemVisualKey === "rumah-sakit" || itemType === "hospital")) ||
+                (filterState.types.has("hospital") && (itemVisualKey === "rumah-sakit" || itemType === "hospital")) ||
+                (filterState.types.has("klinik") && (itemVisualKey === "klinik" || itemType === "clinic")) ||
+                (filterState.types.has("clinic") && (itemVisualKey === "klinik" || itemType === "clinic")) ||
+                (filterState.types.has("puskesmas") && (itemVisualKey === "puskesmas" || itemType === "puskesmas"));
             const matchBpjs =
                 !filterState.bpjsOnly || item.bpjs_support === true;
 
@@ -1123,12 +1132,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 15. UI Sync for Multi-Select Filter Chips
     function syncFilterChipsUI() {
-        ["hospital", "clinic", "puskesmas"].forEach((type) => {
+        const allTypes = ["rumah-sakit", "hospital", "puskesmas", "klinik", "clinic", "apotek", "laboratorium", "optik", "dokter-gigi", "dokter-umum"];
+        allTypes.forEach((type) => {
             document
                 .querySelectorAll(`[data-filter="${type}"]`)
                 .forEach((btn) => {
-                    btn.classList.toggle("active", filterState.types.has(type));
+                    const isActive = filterState.types.has(type) || 
+                                     (type === "rumah-sakit" && filterState.types.has("hospital")) ||
+                                     (type === "hospital" && filterState.types.has("rumah-sakit")) ||
+                                     (type === "klinik" && filterState.types.has("clinic")) ||
+                                     (type === "clinic" && filterState.types.has("klinik"));
+                    btn.classList.toggle("active", isActive);
                 });
+        });
+
+        document.querySelectorAll('[data-filter="all"]').forEach((btn) => {
+            btn.classList.toggle("active", filterState.types.size === 0);
         });
 
         document.querySelectorAll('[data-filter="bpjs"]').forEach((btn) => {
@@ -1254,15 +1273,16 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-filter]").forEach((chip) => {
         chip.addEventListener("click", function () {
             const filterType = this.dataset.filter;
-            if (filterType === "bpjs") {
+            if (filterType === "all") {
+                filterState.types.clear();
+            } else if (filterType === "bpjs") {
                 filterState.bpjsOnly = !filterState.bpjsOnly;
-            } else if (
-                ["hospital", "clinic", "puskesmas"].includes(filterType)
-            ) {
-                if (filterState.types.has(filterType)) {
-                    filterState.types.delete(filterType);
+            } else {
+                const normalizedType = filterType === "hospital" ? "rumah-sakit" : (filterType === "clinic" ? "klinik" : filterType);
+                if (filterState.types.has(normalizedType)) {
+                    filterState.types.delete(normalizedType);
                 } else {
-                    filterState.types.add(filterType);
+                    filterState.types.add(normalizedType);
                 }
             }
             syncFilterChipsUI();

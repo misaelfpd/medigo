@@ -76,6 +76,7 @@
      data-id="{{ $id }}"
      data-name="{{ $formattedHospitalName }}"
      data-type="{{ $type_slug }}"
+     data-visual="{{ $visualKey }}"
      data-class="{{ $hospital_class }}"
      data-rating="{{ $hospital_rating }}"
      data-bpjs="{{ $bpjs_support ? '1' : '0' }}"
@@ -89,11 +90,6 @@
                 @if($thumbnail)
                     <img src="{{ $thumbnail }}" alt="Foto {{ $formattedHospitalName }}" class="hospital-card-photo" loading="lazy"
                          onerror="this.parentElement.classList.remove('has-photo'); this.remove();">
-                @endif
-                @if($is_open)
-                    <span class="badge-status-open d-md-none">
-                        <span class="status-dot"></span> Buka
-                    </span>
                 @endif
             </div>
 

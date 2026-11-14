@@ -250,6 +250,7 @@ document.addEventListener("DOMContentLoaded", function () {
                  data-id="${hospitalId}"
                  data-name="${name}"
                  data-type="${typeSlug}"
+                 data-visual="${visual.key}"
                  data-class="${item.hospital_class || item.kelas || ""}"
                  data-rating="${hasValidRating ? rating : ""}"
                  data-bpjs="${isBpjsSupport ? "1" : "0"}"
@@ -261,14 +262,6 @@ document.addEventListener("DOMContentLoaded", function () {
                             <i class="bi ${typeIcon} faskes-avatar-icon text-white"></i>
                             ${item.thumbnail_url
                 ? `<img src="${item.thumbnail_url}" alt="Foto ${name}" class="hospital-card-photo" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">`
-                : ""
-            }
-                            ${item.is_open
-                ? `
-                                <span class="badge-status-open d-md-none">
-                                    <span class="status-dot"></span> Buka
-                                </span>
-                            `
                 : ""
             }
                         </div>
@@ -403,8 +396,23 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             let matchType = true;
-            if (filterState.types.size > 0) {
-                matchType = filterState.types.has(item.type_slug);
+            if (filterState.types.size > 0 && !filterState.types.has("all")) {
+                const cardCol = document.getElementById(`home-card-col-${item.id}`);
+                const cardVisual = cardCol?.dataset.visual || item.visualKey || faskesVisual(item.jenis_faskes || item.type || "", item.hospital_name || item.name || "").key;
+                const cardType = cardCol?.dataset.type || item.type_slug || "";
+
+                let matched = filterState.types.has(cardVisual);
+                if (!matched) {
+                    if (filterState.types.has("rumah-sakit") && (cardType === "hospital" || cardVisual === "rumah-sakit")) matched = true;
+                    if (filterState.types.has("klinik") && (cardType === "clinic" || cardVisual === "klinik")) matched = true;
+                    if (filterState.types.has("puskesmas") && cardVisual === "puskesmas") matched = true;
+                    if (filterState.types.has("apotek") && (cardVisual === "apotek" || cardType === "apotek")) matched = true;
+                    if (filterState.types.has("laboratorium") && cardVisual === "laboratorium") matched = true;
+                    if (filterState.types.has("optik") && cardVisual === "optik") matched = true;
+                    if (filterState.types.has("dokter-gigi") && cardVisual === "dokter-gigi") matched = true;
+                    if (filterState.types.has("dokter-umum") && cardVisual === "dokter-umum") matched = true;
+                }
+                matchType = matched;
             }
 
             let matchBpjs = true;
@@ -599,6 +607,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             hospital_name: fName,
                             type: resolvedType,
                             type_slug: typeSlug,
+                            thumbnail_url: item.thumbnail_url || item.thumbnail || null,
                             hospital_address: cleanAddress, // Alamat jalan & kota sekarang masuk ke sini dengan aman!
                             hospital_rating: rating,
                             hospital_class: item.kelas || item.hospital_class || null,
@@ -757,6 +766,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             hospital_name: fName,
                             type: resolvedType,
                             type_slug: typeSlug,
+                            thumbnail_url: item.thumbnail_url || item.thumbnail || null,
                             hospital_address: cleanAddress,
                             hospital_rating: rating,
                             hospital_class: item.kelas || item.hospital_class || null,
@@ -926,17 +936,30 @@ document.addEventListener("DOMContentLoaded", function () {
         updateDistancesAndFilter();
     });
 
+    const allTypeChip = document.getElementById("homeChipAll");
     document
         .querySelectorAll('#homeFilterChips .chip-filter[data-toggle="type"]')
         .forEach((chip) => {
             chip.addEventListener("click", function () {
                 const type = this.dataset.type;
-                if (filterState.types.has(type)) {
-                    filterState.types.delete(type);
-                    this.classList.remove("active");
-                } else {
-                    filterState.types.add(type);
+                if (type === "all") {
+                    filterState.types.clear();
+                    document
+                        .querySelectorAll('#homeFilterChips .chip-filter[data-toggle="type"]')
+                        .forEach((c) => c.classList.remove("active"));
                     this.classList.add("active");
+                } else {
+                    allTypeChip?.classList.remove("active");
+                    if (filterState.types.has(type)) {
+                        filterState.types.delete(type);
+                        this.classList.remove("active");
+                        if (filterState.types.size === 0) {
+                            allTypeChip?.classList.add("active");
+                        }
+                    } else {
+                        filterState.types.add(type);
+                        this.classList.add("active");
+                    }
                 }
                 updateDistancesAndFilter();
             });
@@ -958,6 +981,7 @@ document.addEventListener("DOMContentLoaded", function () {
             document
                 .querySelectorAll("#homeFilterChips .chip-filter")
                 .forEach((c) => c.classList.remove("active"));
+            allTypeChip?.classList.add("active");
             updateDistancesAndFilter();
         });
 

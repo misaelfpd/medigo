@@ -16,8 +16,8 @@ class FaskesVisual
         'apotek' => ['bi-capsule-pill', 'Apotek'],
         'laboratorium' => ['bi-eyedropper', 'Laboratorium'],
         'optik' => ['bi-eyeglasses', 'Optik'],
-        'dokter-gigi' => ['bi-emoji-smile-fill', 'Dokter Gigi'],
-        'dokter-umum' => ['bi-person-badge-fill', 'Dokter Umum'],
+        'dokter-gigi' => ['bi-tooth', 'Dokter Gigi'],
+        'dokter-umum' => ['bi-stethoscope', 'Dokter Umum'],
         'lainnya' => ['bi-plus-square-fill', 'Fasilitas Kesehatan'],
     ];
 
@@ -37,6 +37,29 @@ class FaskesVisual
     public static function icon(?string $jenis, ?string $nama = null): string
     {
         return self::TYPES[self::key($jenis, $nama)][0];
+    }
+
+    /**
+     * Pastikan URL thumbnail atau banner mengarah ke backend storage yang benar.
+     */
+    public static function normalizeStorageUrl(?string $url): ?string
+    {
+        if (empty($url)) {
+            return null;
+        }
+
+        $beUrl = rtrim(config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005')), '/');
+
+        if (str_starts_with($url, '/storage') || str_starts_with($url, 'storage/')) {
+            return $beUrl . '/' . ltrim($url, '/');
+        }
+
+        // Jika URL dari backend terlanjur memakai port 8000 (frontend)
+        if (preg_match('#^https?://(?:localhost|127\.0\.0\.1):8000/storage/(.*)$#i', $url, $m)) {
+            return "{$beUrl}/storage/{$m[1]}";
+        }
+
+        return $url;
     }
 
     private static function match(string $text): ?string
