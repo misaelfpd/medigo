@@ -22,8 +22,18 @@ class FaskesController extends Controller
             return 'hospital';
         } elseif (str_contains($tipeLower, 'puskesmas')) {
             return 'puskesmas';
-        } elseif (str_contains($tipeLower, 'klinik') || str_contains($tipeLower, 'dokter') || str_contains($tipeLower, 'apotek')) {
-            return 'clinic';
+        } elseif (str_contains($tipeLower, 'klinik')) {
+            return 'klinik';
+        } elseif (str_contains($tipeLower, 'apotek') || str_contains($tipeLower, 'apotik')) {
+            return 'apotek';
+        } elseif (str_contains($tipeLower, 'laboratorium') || str_contains($tipeLower, 'lab')) {
+            return 'laboratorium';
+        } elseif (str_contains($tipeLower, 'optik')) {
+            return 'optik';
+        } elseif (str_contains($tipeLower, 'dokter gigi')) {
+            return 'dokter-gigi';
+        } elseif (str_contains($tipeLower, 'dokter')) {
+            return 'dokter-umum';
         }
 
         return 'other';
@@ -154,9 +164,9 @@ class FaskesController extends Controller
         }
 
         // Filter Jenis / Tipe Faskes
-        if ($request->filled('jenis_faskes') || $request->filled('tipe') || $request->filled('type')) {
-            $typeInput = $request->input('jenis_faskes') ?? $request->input('tipe') ?? $request->input('type');
-            if ($typeInput === 'hospital') {
+        if ($request->filled('jenis_faskes') || $request->filled('tipe') || $request->filled('type') || $request->filled('jenis')) {
+            $typeInput = $request->input('jenis_faskes') ?? $request->input('tipe') ?? $request->input('type') ?? $request->input('jenis');
+            if ($typeInput === 'hospital' || $typeInput === 'rumah-sakit') {
                 $query->where(function ($q) {
                     $q->where('faskes.jenis_faskes', 'like', '%Rumah Sakit%')
                         ->orWhere('faskes.jenis_faskes', 'like', '%RS%');
@@ -167,6 +177,18 @@ class FaskesController extends Controller
                         ->orWhere('faskes.jenis_faskes', 'like', '%Dokter%')
                         ->orWhere('faskes.jenis_faskes', 'like', '%Apotek%');
                 });
+            } elseif ($typeInput === 'klinik') {
+                $query->where('faskes.jenis_faskes', 'like', '%Klinik%');
+            } elseif ($typeInput === 'apotek') {
+                $query->where('faskes.jenis_faskes', 'like', '%Apotek%');
+            } elseif ($typeInput === 'laboratorium' || $typeInput === 'lab') {
+                $query->where('faskes.jenis_faskes', 'like', '%Laboratorium%');
+            } elseif ($typeInput === 'optik') {
+                $query->where('faskes.jenis_faskes', 'like', '%Optik%');
+            } elseif ($typeInput === 'dokter-gigi') {
+                $query->where('faskes.jenis_faskes', 'like', '%Dokter Gigi%');
+            } elseif ($typeInput === 'dokter-umum') {
+                $query->where('faskes.jenis_faskes', 'like', '%Dokter Umum%');
             } elseif ($typeInput === 'puskesmas') {
                 $query->where('faskes.jenis_faskes', 'like', '%Puskesmas%');
             } else {
@@ -1091,10 +1113,37 @@ class FaskesController extends Controller
             $query->where('faskes.kelas', 'like', "%{$params['kelas']}%");
         }
 
-        // 8. Filter Jenis Faskes (Rumah Sakit, Klinik, Puskesmas)
-        if (! empty($params['jenis_faskes'])) {
-            $jenis = $params['jenis_faskes'];
-            $query->where('faskes.jenis_faskes', 'like', "%{$jenis}%");
+        // 8. Filter Jenis Faskes (Rumah Sakit, Klinik, Puskesmas, Apotek, Lab, dll)
+        $jenisInput = $params['jenis_faskes'] ?? ($params['type'] ?? ($params['tipe'] ?? null));
+        if (! empty($jenisInput)) {
+            if ($jenisInput === 'hospital' || $jenisInput === 'rumah-sakit') {
+                $query->where(function ($q) {
+                    $q->where('faskes.jenis_faskes', 'like', '%Rumah Sakit%')
+                        ->orWhere('faskes.jenis_faskes', 'like', '%RS%');
+                });
+            } elseif ($jenisInput === 'clinic') {
+                $query->where(function ($q) {
+                    $q->where('faskes.jenis_faskes', 'like', '%Klinik%')
+                        ->orWhere('faskes.jenis_faskes', 'like', '%Dokter%')
+                        ->orWhere('faskes.jenis_faskes', 'like', '%Apotek%');
+                });
+            } elseif ($jenisInput === 'klinik') {
+                $query->where('faskes.jenis_faskes', 'like', '%Klinik%');
+            } elseif ($jenisInput === 'apotek') {
+                $query->where('faskes.jenis_faskes', 'like', '%Apotek%');
+            } elseif ($jenisInput === 'laboratorium' || $jenisInput === 'lab') {
+                $query->where('faskes.jenis_faskes', 'like', '%Laboratorium%');
+            } elseif ($jenisInput === 'optik') {
+                $query->where('faskes.jenis_faskes', 'like', '%Optik%');
+            } elseif ($jenisInput === 'dokter-gigi') {
+                $query->where('faskes.jenis_faskes', 'like', '%Dokter Gigi%');
+            } elseif ($jenisInput === 'dokter-umum') {
+                $query->where('faskes.jenis_faskes', 'like', '%Dokter Umum%');
+            } elseif ($jenisInput === 'puskesmas') {
+                $query->where('faskes.jenis_faskes', 'like', '%Puskesmas%');
+            } else {
+                $query->where('faskes.jenis_faskes', 'like', "%{$jenisInput}%");
+            }
         }
 
         // Batasi hasil maksimal

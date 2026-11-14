@@ -213,6 +213,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (low.includes("puskesmas")) return "Puskesmas";
         if (low.includes("klinik")) return "Klinik";
         if (low.includes("apotik") || low.includes("apotek")) return "Apotek";
+        if (low.includes("laboratorium") || low.includes("lab")) return "Laboratorium";
+        if (low.includes("optik")) return "Optik";
+        if (low.includes("dokter gigi") || low.includes("drg")) return "Dokter Gigi";
+        if (low.includes("dokter")) return "Dokter Umum";
         return resolved.charAt(0).toUpperCase() + resolved.slice(1);
     }
 
@@ -771,9 +775,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 13. Dynamic Live Fetch of Nearest Facilities from Backend API
+    let fetchNearbyAbortController = null;
     async function fetchNearbyFaskes(shouldFit = false) {
-        if (isFetchingNearby) return;
-        isFetchingNearby = true;
+        if (fetchNearbyAbortController) {
+            fetchNearbyAbortController.abort();
+        }
+        const currentAbort = new AbortController();
+        fetchNearbyAbortController = currentAbort;
 
         const mapOverlay = document.getElementById("mapLoadingOverlay");
         const mapCardsLoadingState = document.getElementById(
@@ -804,8 +812,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 params.append("bpjs", "1");
             }
 
+            if (filterState.types.size === 1) {
+                const selectedType = Array.from(filterState.types)[0];
+                if (selectedType && selectedType !== "all") {
+                    params.append("type", selectedType);
+                }
+            }
+
             const response = await fetch(
                 `${backendApiUrl}/api/faskes?${params.toString()}`,
+                { signal: currentAbort.signal }
             );
             if (response.ok) {
                 const resData = await response.json();
@@ -815,29 +831,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     faskesData = rawItems.map((item) => {
                         const lat = parseFloat(item.latitude || item.lat);
                         const lng = parseFloat(item.longitude || item.lng);
-                        // UPDATE: BE menggunakan jenis_faskes, bukan tipe
+                        const rawName =
+                            item.nama_faskes ||
+                            item.nama ||
+                            item.name ||
+                            "Fasilitas Kesehatan";
+                        let fName = rawName.trim();
+                        const jenisFaskes =
+                            item.jenis_faskes || item.tipe || item.type || "";
+                        const visual = faskesVisual(jenisFaskes, fName);
                         const typeSlug =
                             item.type_slug ||
-                            (() => {
-                                const j = (
-                                    item.jenis_faskes ||
-                                    item.tipe ||
-                                    ""
-                                ).toLowerCase();
-                                if (
-                                    j.includes("rumah sakit") ||
-                                    j.includes("rs")
-                                )
-                                    return "hospital";
-                                if (j.includes("puskesmas")) return "puskesmas";
-                                if (
-                                    j.includes("klinik") ||
-                                    j.includes("dokter") ||
-                                    j.includes("apotek")
-                                )
-                                    return "clinic";
-                                return "hospital";
-                            })();
+                            (visual.key === "rumah-sakit"
+                                ? "hospital"
+                                : visual.key === "klinik"
+                                ? "clinic"
+                                : visual.key);
                         const rating =
                             item.avg_rating && parseFloat(item.avg_rating) > 0
                                 ? parseFloat(item.avg_rating).toFixed(1)
@@ -863,15 +872,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                     : "images/hospital.jpg"
                                 : "images/clinic.jpg";
 
-                        const rawName =
-                            item.nama_faskes ||
-                            item.nama ||
-                            item.name ||
-                            "Fasilitas Kesehatan";
-                        let fName = rawName.trim();
-                        // UPDATE: BE menggunakan jenis_faskes, bukan tipe
-                        const jenisFaskes =
-                            item.jenis_faskes || item.tipe || item.type || "";
                         if (
                             (typeSlug === "puskesmas" ||
                                 (jenisFaskes &&
@@ -899,13 +899,13 @@ document.addEventListener("DOMContentLoaded", function () {
                             id: item.id_faskes ?? item.id,
                             name: fName,
                             type: resolvedType,
+                            jenis_faskes: jenisFaskes,
                             type_slug: typeSlug,
                             address: cleanAddress,
                             rating: rating,
                             total_reviews: item.total_reviews || 0,
                             hospital_class:
                                 item.kelas || item.hospital_class || null,
-                            // UPDATE: BE menggunakan _support_bpjs, bukan is_support_bpjs
                             bpjs_support:
                                 !!(
                                     item._support_bpjs ?? item.is_support_bpjs
@@ -932,24 +932,84 @@ document.addEventListener("DOMContentLoaded", function () {
                             detail_url: `/faskes/${item.id_faskes ?? item.id}`,
                         };
                     });
+                } else if (Array.isArray(rawItems) && rawItems.length === 0) {
+                    faskesData = [];
                 }
             }
         } catch (err) {
+            if (err.name === "AbortError") {
+                return;
+            }
             console.warn(
                 "Live nearby faskes fetch error:",
                 err,
             );
         } finally {
-            isFetchingNearby = false;
-            if (mapOverlay) mapOverlay.classList.add("d-none");
-            if (mapCardsLoadingState)
-                mapCardsLoadingState.classList.add("d-none");
-            if (mobileCardsLoadingState)
-                mobileCardsLoadingState.classList.add("d-none");
+            if (fetchNearbyAbortController === currentAbort) {
+                if (mapOverlay) mapOverlay.classList.add("d-none");
+                if (mapCardsLoadingState)
+                    mapCardsLoadingState.classList.add("d-none");
+                if (mobileCardsLoadingState)
+                    mobileCardsLoadingState.classList.add("d-none");
 
-            renderAllPins();
-            updateFaskesDistancesAndFilter(shouldFit);
+                renderAllPins();
+                updateFaskesDistancesAndFilter(shouldFit);
+            }
         }
+    }
+
+    // Helper to accurately match facility type against selected filter chips
+    function matchesFacilityType(item, filterSet) {
+        if (!filterSet || filterSet.size === 0) return true;
+
+        const rawType = (item.jenis_faskes || item.type || item.tipe || "").toLowerCase();
+        const rawName = (item.name || item.nama_faskes || "").toLowerCase();
+        const visualKey = faskesVisual(item.jenis_faskes || item.type || "", item.name || "").key;
+        const slug = (item.type_slug || "").toLowerCase();
+
+        for (const fType of filterSet) {
+            if (fType === "all") return true;
+
+            if (fType === "klinik" || fType === "clinic") {
+                if (rawType.includes("apotek") || rawType.includes("apotik") || rawName.includes("apotek") || rawName.includes("apotik") || rawName.includes("kimia farma")) {
+                    continue;
+                }
+                if (visualKey === "klinik" || rawType.includes("klinik") || rawName.includes("klinik") || rawName.includes("clinic") || (slug === "clinic" && !rawType.includes("apotek") && !rawType.includes("dokter"))) {
+                    return true;
+                }
+            } else if (fType === "apotek") {
+                if (visualKey === "apotek" || rawType.includes("apotek") || rawType.includes("apotik") || rawType.includes("farmasi") || rawName.includes("apotek") || rawName.includes("apotik") || rawName.includes("kimia farma") || rawName.includes("k24") || rawName.includes("k-24")) {
+                    return true;
+                }
+            } else if (fType === "laboratorium" || fType === "lab") {
+                if (visualKey === "laboratorium" || rawType.includes("laboratorium") || rawType.includes("lab") || rawName.includes("laboratorium") || rawName.includes(" prodia") || rawName.includes(" pramita") || /\blab\b/i.test(rawName)) {
+                    return true;
+                }
+            } else if (fType === "rumah-sakit" || fType === "hospital") {
+                if (visualKey === "rumah-sakit" || slug === "hospital" || rawType.includes("rumah sakit") || rawType.includes("rs") || rawName.includes("rumah sakit") || /^rs\b/i.test(rawName)) {
+                    return true;
+                }
+            } else if (fType === "puskesmas") {
+                if (visualKey === "puskesmas" || slug === "puskesmas" || rawType.includes("puskesmas") || rawName.includes("puskesmas") || rawName.includes("pkm")) {
+                    return true;
+                }
+            } else if (fType === "optik") {
+                if (visualKey === "optik" || rawType.includes("optik") || rawName.includes("optik") || rawName.includes("optical")) {
+                    return true;
+                }
+            } else if (fType === "dokter-gigi") {
+                if (visualKey === "dokter-gigi" || rawType.includes("dokter gigi") || rawName.includes("dokter gigi") || rawName.includes("drg") || rawName.includes("dental")) {
+                    return true;
+                }
+            } else if (fType === "dokter-umum") {
+                if (visualKey === "dokter-umum" || rawType.includes("dokter umum") || rawName.includes("dokter umum") || rawName.includes("praktik dokter") || rawName.includes("praktek dokter")) {
+                    return true;
+                }
+            } else if (visualKey === fType || slug === fType) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // 14. Distance Recalculation, Multi-Filter & UI List Update
@@ -984,17 +1044,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 item.name.toLowerCase().includes(query) ||
                 item.address.toLowerCase().includes(query);
 
-            const itemVisualKey = faskesVisual(item.jenis_faskes || item.type || "", item.name || "").key;
-            const itemType = (item.type_slug || "").toLowerCase();
-            const matchType =
-                filterState.types.size === 0 ||
-                filterState.types.has(itemVisualKey) ||
-                filterState.types.has(itemType) ||
-                (filterState.types.has("rumah-sakit") && (itemVisualKey === "rumah-sakit" || itemType === "hospital")) ||
-                (filterState.types.has("hospital") && (itemVisualKey === "rumah-sakit" || itemType === "hospital")) ||
-                (filterState.types.has("klinik") && (itemVisualKey === "klinik" || itemType === "clinic")) ||
-                (filterState.types.has("clinic") && (itemVisualKey === "klinik" || itemType === "clinic")) ||
-                (filterState.types.has("puskesmas") && (itemVisualKey === "puskesmas" || itemType === "puskesmas"));
+            const matchType = matchesFacilityType(item, filterState.types);
             const matchBpjs =
                 !filterState.bpjsOnly || item.bpjs_support === true;
 
@@ -1280,13 +1330,15 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 const normalizedType = filterType === "hospital" ? "rumah-sakit" : (filterType === "clinic" ? "klinik" : filterType);
                 if (filterState.types.has(normalizedType)) {
-                    filterState.types.delete(normalizedType);
+                    filterState.types.clear();
                 } else {
+                    filterState.types.clear();
                     filterState.types.add(normalizedType);
                 }
             }
             syncFilterChipsUI();
             updateFaskesDistancesAndFilter(false);
+            fetchNearbyFaskes(false);
         });
     });
 

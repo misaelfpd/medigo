@@ -15,8 +15,18 @@ class MapController extends Controller
             return 'hospital';
         } elseif (str_contains($tipeLower, 'puskesmas')) {
             return 'puskesmas';
-        } elseif (str_contains($tipeLower, 'klinik') || str_contains($tipeLower, 'dokter') || str_contains($tipeLower, 'apotek')) {
-            return 'clinic';
+        } elseif (str_contains($tipeLower, 'klinik')) {
+            return 'klinik';
+        } elseif (str_contains($tipeLower, 'apotek') || str_contains($tipeLower, 'apotik')) {
+            return 'apotek';
+        } elseif (str_contains($tipeLower, 'laboratorium') || str_contains($tipeLower, 'lab')) {
+            return 'laboratorium';
+        } elseif (str_contains($tipeLower, 'optik')) {
+            return 'optik';
+        } elseif (str_contains($tipeLower, 'dokter gigi')) {
+            return 'dokter-gigi';
+        } elseif (str_contains($tipeLower, 'dokter')) {
+            return 'dokter-umum';
         }
         return 'other';
     }
@@ -127,12 +137,13 @@ class MapController extends Controller
         $errorMessage = null;
 
         try {
+            $typeParam = $request->input('type') ?? $request->input('jenis') ?? $request->input('jenis_faskes');
             $queryParams = [
                 'with_coords' => 1,
-                'limit' => 50,
+                'limit' => 100,
                 'search' => $request->input('search'),
                 'bpjs' => $request->input('bpjs'),
-                'jenis' => $request->input('jenis'),
+                'type' => $typeParam,
             ];
 
             // Hanya sertakan koordinat jika dikirimkan oleh browser/client (tanpa hardcode lokasi default)
@@ -191,6 +202,7 @@ class MapController extends Controller
                         'id' => $item['id_faskes'] ?? $item['id'],
                         'name' => $formattedName,
                         'type' => $resolvedType,
+                        'jenis_faskes' => $jenisFaskes,
                         'type_slug' => $typeSlug,
                         'address' => $cleanAddress,
                         'rating' => $rating,

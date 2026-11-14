@@ -559,7 +559,7 @@ body {
 }
 .mg-mention-input-wrap > i {
     position: absolute;
-    left: 14px;
+    left: 15px;
     top: 50%;
     transform: translateY(-50%);
     color: #94a3b8;
@@ -568,18 +568,18 @@ body {
     z-index: 2;
 }
 .mg-mention-input {
-    background: #ffffff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 10px 40px 10px 42px;
-    font-size: 0.9rem;
-    color: var(--mg-text);
+    background: #ffffff !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 10px 40px 10px 44px !important;
+    font-size: 0.92rem !important;
+    color: var(--mg-text) !important;
     transition: all 0.2s ease;
 }
 .mg-mention-input:focus {
-    background: #ffffff;
-    border-color: #002b5e;
-    box-shadow: 0 0 0 3px rgba(0, 43, 94, 0.1);
+    background: #ffffff !important;
+    border-color: #002b5e !important;
+    box-shadow: 0 0 0 3px rgba(0, 43, 94, 0.1) !important;
 }
 .mg-mention-clear {
     position: absolute;

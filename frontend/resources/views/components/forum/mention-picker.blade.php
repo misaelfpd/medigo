@@ -3,7 +3,7 @@
 {{-- Mention 1 faskes di diskusi: cari dari database faskes (via backend), hasilnya disimpan di input hidden name="faskes_id" --}}
 <div class="mg-mention-picker" data-mention-picker>
     <div class="mg-mention-input-wrap position-relative">
-        <i class="bi bi-hospital"></i>
+        <i class="bi bi-search"></i>
         <input type="text"
                class="form-control shadow-none mg-mention-input"
                id="mentionSearch-{{ $suffix }}"
