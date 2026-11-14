@@ -30,7 +30,7 @@
         <!-- =====================================================================
              ADMIN SIDEBAR (LEFT)
              ===================================================================== -->
-        <aside class="admin-sidebar d-flex flex-column justify-content-between p-3 border-end bg-white" id="adminSidebar">
+        <aside class="admin-sidebar d-flex flex-column p-3 border-end bg-white" id="adminSidebar">
             <div>
                 <!-- Brand Section -->
                 <div class="admin-brand-wrapper px-3 py-3 mb-4">
@@ -67,14 +67,6 @@
                         </a>
                     @endforeach
                 </nav>
-            </div>
-
-            <!-- Bottom Section: Keluar (Logout) -->
-            <div class="admin-sidebar-bottom pt-3 border-top mt-auto">
-                <a href="{{ route('admin.logout') }}" class="admin-logout-btn w-100 d-flex align-items-center gap-2 px-3 py-2 rounded-3 text-decoration-none bg-danger-subtle text-danger">
-                    <i class="bi bi-box-arrow-left fs-5 text-danger"></i>
-                    <span class="fw-semibold text-danger">Keluar</span>
-                </a>
             </div>
         </aside>
 
@@ -154,18 +146,18 @@
                             </li>
                             <li><hr class="dropdown-divider my-1"></li>
                             <li>
-                                <a href="{{ route('admin.logout') }}" class="dropdown-item rounded-3 py-2 text-danger small d-flex align-items-center gap-2">
+                                <button type="button" class="dropdown-item rounded-3 py-2 text-danger small d-flex align-items-center gap-2 border-0 bg-transparent w-100 text-start" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal">
                                     <i class="bi bi-box-arrow-left"></i> Keluar
-                                </a>
+                                </button>
                             </li>
                         </ul>
                     </div>
 
                     <!-- Direct Header Logout Button -->
-                    <a href="{{ route('admin.logout') }}" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1 shadow-2xs text-decoration-none" title="Keluar">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1 shadow-2xs text-decoration-none" title="Keluar" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal">
                         <i class="bi bi-box-arrow-left"></i>
                         <span>Keluar</span>
-                    </a>
+                    </button>
                 </div>
             </header>
 

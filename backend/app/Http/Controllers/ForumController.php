@@ -232,11 +232,14 @@ class ForumController extends Controller
                 ->whereRaw("{$distance} <= ?", [$radius]);
         }
 
-        $query->orderByDesc('likes_count');
-        if ($lat !== null) {
-            $query->orderBy('distance_km');
+        if ($lat !== null && $lng !== null) {
+            $query->orderBy('distance_km', 'asc')
+                ->orderByDesc('likes_count')
+                ->orderByDesc('comments_count');
         } else {
-            $query->orderByDesc('comments_count')->orderByDesc('diskusi.id_diskusi');
+            $query->orderByDesc('likes_count')
+                ->orderByDesc('comments_count')
+                ->orderByDesc('diskusi.id_diskusi');
         }
 
         return $query->limit($limit);
@@ -263,11 +266,10 @@ class ForumController extends Controller
             $lngDelta = $radius / max(0.01, 111.0 * cos(deg2rad($lat)));
             $query->whereBetween('faskes.latitude', [$lat - $latDelta, $lat + $latDelta])
                 ->whereBetween('faskes.longitude', [$lng - $lngDelta, $lng + $lngDelta])
-                ->whereRaw("{$distance} <= ?", [$radius])
-                ->orderByDesc('total_like');
+                ->whereRaw("{$distance} <= ?", [$radius]);
         }
 
-        return $query->orderBy('distance_km')->limit($limit);
+        return $query->orderBy('distance_km', 'asc')->orderByDesc('total_like')->limit($limit);
     }
 
     /**

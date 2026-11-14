@@ -240,11 +240,15 @@ class SearchController extends Controller
                         $detailUrl .= "?lat={$userLat}&lng={$userLng}{$distParam}";
                     }
 
+                    $rawThumb = $item['thumbnail_url'] ?? ($item['thumbnail'] ?? ($item['foto'] ?? null));
+                    $thumbnailUrl = \App\Support\FaskesVisual::normalizeStorageUrl($rawThumb);
+
                     return [
                         'id_faskes' => $item['id_faskes'] ?? 0,
                         'nama_faskes' => $formattedName,
                         'jenis_faskes' => $displayType,
                         'type_slug' => $typeSlug,
+                        'thumbnail_url' => $thumbnailUrl,
                         'kota_kabupaten' => $item['kota_kabupaten'] ?? '',
                         'alamat_faskes' => $cleanAddress,
                         'kelas' => $item['kelas'] ?? '',

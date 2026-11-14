@@ -261,11 +261,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const mapUrl = faskes.maps_url || '#';
         const detailUrl = faskes.detail_url || `/faskes/${id}`;
 
+        const thumbUrl = faskes.thumbnail_url || faskes.thumbnail || faskes.foto || '';
+        const hasPhotoClass = thumbUrl ? 'has-photo' : '';
+        const photoImgHtml = thumbUrl
+            ? `<img src="${thumbUrl}" alt="Foto ${name}" class="facility-thumb-photo" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">`
+            : '';
+
         return `
             <div class="facility-item-card card h-100 shadow-xs border p-3" id="card-faskes-${id}">
                 <div class="d-flex gap-3 align-items-start mb-2">
-                    <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key} rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                    <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key} ${hasPhotoClass} rounded-3 d-flex align-items-center justify-content-center position-relative overflow-hidden" style="width: 48px; height: 48px;">
                         <i class="bi ${typeIcon} text-white fs-4"></i>
+                        ${photoImgHtml}
                     </div>
                     <div class="facility-info-wrap flex-grow-1 min-w-0">
                         <h6 class="facility-name fw-bold mb-1 text-dark text-truncate" title="${name}">

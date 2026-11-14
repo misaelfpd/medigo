@@ -89,7 +89,7 @@
     <header class="mg-landing-topbar" id="mgLandingTopbar">
         <div class="container mg-landing-topbar__inner">
             <a href="{{ url('/') }}" class="mg-landing-topbar__brand" aria-label="MediGO">
-                <img src="{{ asset('images/medigo_logo.png') }}" alt="MediGO - Your Health, Faster." class="mg-landing-logo">
+                <img src="{{ asset('images/medigo_logo.png') }}" alt="MediGO - Your Health, Faster." class="mg-landing-logo" onerror="this.onerror=null; this.src='{{ asset('storage/medigo_logo.png') }}';">
             </a>
 
             <div class="mg-landing-topbar__actions">
@@ -103,13 +103,16 @@
     {{-- Hero: Layar Penuh (100dvh) --}}
     <section class="mg-landing-hero" id="landingHero" style="--hero-bg: url('{{ asset('images/reception.jpg') }}');">
         <div class="container mg-landing-hero__inner">
+            <div class="mg-landing-hero__brand mb-3 mb-md-4">
+                <img src="{{ asset('images/medigo_logo.png') }}" alt="MediGO" class="mg-hero-logo" onerror="this.onerror=null; this.src='{{ asset('storage/medigo_logo.png') }}';">
+            </div>
             <h1 class="mg-landing-hero__title">Temukan Layanan Kesehatan Terdekat</h1>
             <p class="mg-landing-hero__subtitle">
                 Temukan rumah sakit dan klinik terbaik di dekat Anda dengan cepat. Akses layanan kesehatan yang dapat diandalkan saat Anda sangat membutuhkannya.
             </p>
             <div class="mg-landing-hero__actions" id="landingHeroActions">
                 <a href="{{ route('faskes.index') }}" class="mg-landing-btn">
-                    <span>Cari RS</span> <i class="bi bi-hospital"></i>
+                    <span>Cari Faskes</span>
                 </a>
                 <a href="{{ route('chat') }}" class="mg-landing-btn">
                     <span>Tanya AI</span> <i class="bi bi-stars"></i>

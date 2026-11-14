@@ -79,7 +79,7 @@
                     <div class="mg-admin-gallery">
                         @foreach($galeri as $foto)
                             <div class="mg-admin-gallery-item">
-                                <img src="{{ $foto['url'] }}" alt="Foto galeri {{ $namaFaskes }}" loading="lazy">
+                                <img src="{{ $foto['url'] }}" alt="Foto galeri {{ $namaFaskes }}" loading="lazy" role="button" class="cursor-pointer" data-bs-toggle="modal" data-bs-target="#adminPhotoPreviewModal" data-preview-url="{{ $foto['url'] }}" title="Klik untuk memperbesar">
                                 <div class="mg-admin-gallery-actions">
                                     <form action="{{ route('admin.faskes.photos.set', [$faskesId, $foto['id_foto']]) }}" method="POST">
                                         @csrf
@@ -110,4 +110,34 @@
         </div>
     </div>
 </div>
+
+{{-- Modal Pratinjau Foto Galeri Admin --}}
+<div class="modal fade" id="adminPhotoPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-dark text-white">
+            <div class="modal-header border-0 pb-0 pt-3 px-3 justify-content-end">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body text-center p-3 d-flex align-items-center justify-content-center" style="min-height: 250px;">
+                <img id="adminPreviewModalImg" src="" alt="Pratinjau Foto" class="img-fluid rounded-3 shadow" style="max-height: 80vh; max-width: 100%; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const previewModal = document.getElementById('adminPhotoPreviewModal');
+    if (previewModal) {
+        previewModal.addEventListener('show.bs.modal', (e) => {
+            const trigger = e.relatedTarget;
+            const url = trigger?.getAttribute('data-preview-url') || trigger?.src;
+            const img = document.getElementById('adminPreviewModalImg');
+            if (img && url) img.src = url;
+        });
+    }
+});
+</script>
+@endpush
 @endsection

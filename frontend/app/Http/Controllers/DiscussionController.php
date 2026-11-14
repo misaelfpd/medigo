@@ -147,12 +147,21 @@ class DiscussionController extends Controller
         // Filter Faskes Terdekat untuk Forum
         if ($filter === 'terdekat') {
             try {
+                $lat = $request->query('lat') ?? $request->cookie('medigo_user_lat') ?? session('user_lat');
+                $lng = $request->query('lng') ?? $request->cookie('medigo_user_lng') ?? session('user_lng');
+
+                // Jika lat & lng kosong, gunakan titik pusat Jabodetabek (-6.2088, 106.8456)
+                if (empty($lat) || empty($lng)) {
+                    $lat = -6.2088;
+                    $lng = 106.8456;
+                }
+
                 $nearbyParams = [
-                    'limit' => 15,
-                    'lat' => $request->query('lat'),
-                    'lng' => $request->query('lng'),
+                    'limit' => 20,
+                    'lat' => (float) $lat,
+                    'lng' => (float) $lng,
                 ];
-                $nearbyRes = Http::timeout(5)->acceptJson()->get("{$backendUrl}/api/forum/diskusi-terdekat", array_filter($nearbyParams));
+                $nearbyRes = Http::timeout(5)->acceptJson()->get("{$backendUrl}/api/forum/diskusi-terdekat", $nearbyParams);
                 if ($nearbyRes->successful()) {
                     $rawNearby = $nearbyRes->json('data') ?? [];
                     $discussions = collect($rawNearby)->map(function ($item) {
@@ -173,6 +182,7 @@ class DiscussionController extends Controller
                             'nama_user' => $authorName,
                             'author_avatar' => $item['author_avatar'] ?? null,
                             'created_at' => $item['created_at'] ?? now()->toIso8601String(),
+                            'distance_km' => $f['distance_km'] ?? null,
                         ];
                     })->all();
 

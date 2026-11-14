@@ -182,6 +182,7 @@
                                 <i class="bi bi-graph-up-arrow text-danger me-1"></i> Sedang Tren
                             </a>
                             <a href="{{ route('discussions', array_filter(['category' => $category, 'filter' => 'terdekat'])) }}"
+                               id="mobileChipFaskesTerdekat"
                                class="btn btn-sm rounded-pill px-3 py-1 text-nowrap {{ ($filter ?? '') === 'terdekat' ? 'btn-medigo-primary text-white shadow-sm' : 'btn-outline-secondary border' }}"
                                style="{{ ($filter ?? '') === 'terdekat' ? 'background-color: #002b5e; border-color: #002b5e;' : '' }}">
                                 <i class="bi bi-geo-alt text-primary me-1"></i> Faskes Terdekat
@@ -203,6 +204,11 @@
                 @if(!empty($faskesFilterId))
                     <div class="alert alert-light border d-flex align-items-center justify-content-between gap-2 py-2 px-3 mb-3 rounded-3" style="font-size: 0.85rem;">
                         <span><i class="bi bi-funnel me-1"></i> Menampilkan diskusi yang membahas faskes pilihan.</span>
+                        <a href="{{ route('discussions') }}" class="text-decoration-none fw-semibold">Hapus filter</a>
+                    </div>
+                @elseif(($filter ?? '') === 'terdekat')
+                    <div class="alert alert-light border d-flex align-items-center justify-content-between gap-2 py-2 px-3 mb-3 rounded-3 shadow-xs" style="font-size: 0.85rem;">
+                        <span><i class="bi bi-geo-alt-fill text-primary me-1"></i> Menampilkan diskusi fasilitas kesehatan terdekat dari lokasi Anda (diurutkan berdasarkan jarak terdekat).</span>
                         <a href="{{ route('discussions') }}" class="text-decoration-none fw-semibold">Hapus filter</a>
                     </div>
                 @endif
@@ -255,6 +261,7 @@
                             $discLikedByMe = (bool) ($discussion['liked_by_me'] ?? false);
                             $discMentionName = is_array($discMention) ? ($discMention['nama_faskes'] ?? null) : null;
                             $discMentionId = is_array($discMention) ? ($discMention['id_faskes'] ?? null) : null;
+                            $discDistance = !empty($discussion['distance_km']) ? $discussion['distance_km'] : (is_array($discMention) && !empty($discMention['distance_km']) ? $discMention['distance_km'] : null);
                         @endphp
 
                         <div class="col-12">
@@ -277,6 +284,11 @@
                                         <a href="{{ $discMentionId ? route('faskes.detail', $discMentionId) : '#' }}" class="mg-chip mg-chip--mention" title="Faskes yang dibahas">
                                             <i class="bi bi-hospital"></i> {{ $discMentionName }}
                                         </a>
+                                        @if(!empty($discDistance))
+                                            <span class="badge bg-light text-primary border rounded-pill px-2 py-1 small fw-semibold" title="Jarak faskes dari lokasi Anda">
+                                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ number_format((float) $discDistance, 1) }} km
+                                            </span>
+                                        @endif
                                     @endif
                                     <span class="mg-discussion-author">
                                         @if($authorAvatarUrl)

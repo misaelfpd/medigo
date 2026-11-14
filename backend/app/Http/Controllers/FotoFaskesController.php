@@ -338,11 +338,22 @@ class FotoFaskesController extends Controller
             return [];
         }
 
-        return FotoFaskes::whereIn('id_faskes', $faskesIds)
-            ->where('tipe', FotoFaskes::TIPE_THUMBNAIL)
-            ->get(['id_faskes', 'path_foto'])
-            ->mapWithKeys(fn ($f) => [$f->id_faskes => FotoFaskes::urlFromPath($f->path_foto)])
-            ->all();
+        $photos = FotoFaskes::whereIn('id_faskes', $faskesIds)
+            ->get(['id_faskes', 'tipe', 'path_foto']);
+
+        $result = [];
+        foreach ($faskesIds as $id) {
+            $faskesPhotos = $photos->where('id_faskes', $id);
+            $chosen = $faskesPhotos->firstWhere('tipe', FotoFaskes::TIPE_THUMBNAIL)
+                ?? $faskesPhotos->firstWhere('tipe', FotoFaskes::TIPE_BANNER)
+                ?? $faskesPhotos->first();
+
+            if ($chosen && $chosen->path_foto) {
+                $result[$id] = FotoFaskes::urlFromPath($chosen->path_foto);
+            }
+        }
+
+        return $result;
     }
 
     /**

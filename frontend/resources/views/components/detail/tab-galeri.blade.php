@@ -27,12 +27,52 @@
         @if($galeri->isNotEmpty())
             <div class="mg-gallery-grid">
                 @foreach($galeri as $index => $foto)
-                    <a href="{{ $foto['url'] }}" target="_blank" rel="noopener"
+                    <a href="javascript:void(0)" role="button"
                        class="mg-gallery-item {{ $index >= $perPage ? 'd-none' : '' }}"
-                       data-gallery-index="{{ $index }}">
+                       data-gallery-index="{{ $index }}"
+                       data-gallery-src="{{ $foto['url'] }}"
+                       data-gallery-caption="{{ $foto['keterangan'] ?: 'Foto ' . $faskesDisplayName }}"
+                       data-bs-toggle="modal"
+                       data-bs-target="#galleryImageModal"
+                       aria-label="Lihat foto {{ $index + 1 }}">
                         <img src="{{ $foto['url'] }}" alt="{{ $foto['keterangan'] ?: 'Foto ' . $faskesDisplayName }}" loading="lazy">
                     </a>
                 @endforeach
+            </div>
+
+            {{-- Modal Pratinjau Foto Galeri --}}
+            <div class="modal fade" id="galleryImageModal" tabindex="-1" aria-labelledby="galleryImageModalCaption" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-xl">
+                    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-dark text-white">
+                        <div class="modal-header border-0 pb-0 pt-3 px-3 px-md-4 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2 text-truncate pe-3">
+                                <i class="bi bi-image text-white-50"></i>
+                                <span class="small fw-semibold text-white-50 text-truncate" id="galleryImageModalCaption">Foto Galeri</span>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body position-relative text-center p-2 p-md-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                            @if($galeri->count() > 1)
+                                <button type="button" class="btn btn-dark bg-black bg-opacity-50 text-white rounded-circle position-absolute start-0 top-50 translate-middle-y ms-2 ms-md-4 d-flex align-items-center justify-content-center border-0 shadow" id="galleryModalPrev" style="width: 44px; height: 44px; z-index: 10;" aria-label="Foto Sebelumnya">
+                                    <i class="bi bi-chevron-left fs-5"></i>
+                                </button>
+                            @endif
+
+                            <img id="galleryModalImage" src="" alt="Pratinjau Foto" class="img-fluid rounded-3 shadow" style="max-height: 80vh; max-width: 100%; object-fit: contain; transition: opacity .2s ease;">
+
+                            @if($galeri->count() > 1)
+                                <button type="button" class="btn btn-dark bg-black bg-opacity-50 text-white rounded-circle position-absolute end-0 top-50 translate-middle-y me-2 me-md-4 d-flex align-items-center justify-content-center border-0 shadow" id="galleryModalNext" style="width: 44px; height: 44px; z-index: 10;" aria-label="Foto Berikutnya">
+                                    <i class="bi bi-chevron-right fs-5"></i>
+                                </button>
+                            @endif
+                        </div>
+                        @if($galeri->count() > 1)
+                            <div class="modal-footer border-0 pt-0 pb-3 px-4 justify-content-center">
+                                <span class="small text-white-50"><span id="galleryModalCurrentIdx">1</span> / {{ $galeri->count() }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
         @else
             <div class="mg-empty-state">

@@ -167,6 +167,66 @@ function initMobileFilter() {
             }
         });
     }
+
+    const nearbyChip = document.getElementById("mobileChipFaskesTerdekat");
+    if (nearbyChip) {
+        nearbyChip.addEventListener("click", function (e) {
+            const currentUrl = new URL(this.href, window.location.origin);
+            if (currentUrl.searchParams.has("lat") && currentUrl.searchParams.has("lng")) {
+                return;
+            }
+
+            // Ambil koordinat tersimpan dari sesi forum atau peta
+            let saved = null;
+            try {
+                saved = JSON.parse(sessionStorage.getItem("medigoForumLoc") || "null");
+                if (!saved) {
+                    const lat = sessionStorage.getItem("medigo_user_lat");
+                    const lng = sessionStorage.getItem("medigo_user_lng");
+                    if (lat && lng) saved = [lat, lng];
+                }
+            } catch (_) {
+                saved = null;
+            }
+
+            if (Array.isArray(saved) && saved.length === 2) {
+                e.preventDefault();
+                currentUrl.searchParams.set("lat", saved[0]);
+                currentUrl.searchParams.set("lng", saved[1]);
+                window.location.href = currentUrl.toString();
+                return;
+            }
+
+            // Minta lokasi perangkat bila belum ada di cache
+            if (navigator.geolocation && window.isSecureContext) {
+                e.preventDefault();
+                const originalHtml = nearbyChip.innerHTML;
+                nearbyChip.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mendeteksi Lokasi...';
+                nearbyChip.style.pointerEvents = 'none';
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const coords = [pos.coords.latitude, pos.coords.longitude];
+                        try {
+                            sessionStorage.setItem("medigoForumLoc", JSON.stringify(coords));
+                            document.cookie = `medigo_user_lat=${pos.coords.latitude}; path=/; max-age=86400`;
+                            document.cookie = `medigo_user_lng=${pos.coords.longitude}; path=/; max-age=86400`;
+                        } catch (_) {}
+                        currentUrl.searchParams.set("lat", pos.coords.latitude);
+                        currentUrl.searchParams.set("lng", pos.coords.longitude);
+                        window.location.href = currentUrl.toString();
+                    },
+                    () => {
+                        // Jika izin ditolak/gagal, lanjutkan navigasi (server akan menghitung dari titik pusat default)
+                        nearbyChip.innerHTML = originalHtml;
+                        nearbyChip.style.pointerEvents = 'auto';
+                        window.location.href = currentUrl.toString();
+                    },
+                    { enableHighAccuracy: false, timeout: 3500, maximumAge: 300000 }
+                );
+            }
+        });
+    }
 }
 
 function timeAgo(dateString) {
@@ -218,10 +278,15 @@ function renderDiscussionCard(d) {
 
     let faskesBadgeHtml = "";
     if (faskesName) {
+        const distanceVal = d.distance_km ?? (faskes && typeof faskes === "object" ? faskes.distance_km : null);
+        const distanceBadge = (distanceVal !== null && distanceVal !== undefined)
+            ? `<span class="badge bg-light text-primary border rounded-pill px-2 py-1 small fw-semibold" title="Jarak faskes dari lokasi Anda"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${Number(distanceVal).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km</span>`
+            : "";
         faskesBadgeHtml = `
             <a href="/faskes/${encodeURIComponent(faskesId || "")}" class="mg-chip mg-chip--mention" title="Faskes yang dibahas">
                 <i class="bi bi-hospital"></i> ${esc(faskesName)}
             </a>
+            ${distanceBadge}
         `;
     }
 
