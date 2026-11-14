@@ -3,176 +3,158 @@
 @section('title', 'Masukan Data Faskes - Admin MediGO')
 @section('page_title', 'Masukan Data Faskes')
 
+@php
+    $categoryLabels = [
+        'lokasi_salah' => 'Titik lokasi / peta salah',
+        'bpjs_tidak_sesuai' => 'Status BPJS tidak sesuai',
+        'kontak_keliru' => 'Nomor kontak keliru',
+        'tutup_permanen' => 'Faskes sudah tutup',
+        'lainnya' => 'Lainnya',
+    ];
+    $feedbackStatusLabels = ['pending' => 'Menunggu', 'resolved' => 'Diterapkan', 'dismissed' => 'Ditolak'];
+@endphp
+
 @section('content')
-<div class="container-fluid">
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-3 shadow-xs" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="admin-report-card">
+    <div class="admin-report-head">
+        <div>
+            <h5>Masukan &amp; Koreksi Data Faskes</h5>
+            <p>Masukan pengguna tentang data faskes yang keliru: lokasi peta, status BPJS, kontak, atau faskes yang sudah tutup.</p>
         </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3 shadow-xs" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
+        <span class="admin-status admin-status--pending">{{ count($feedbacks) }} masukan</span>
+    </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <h5 class="mb-1 fw-bold text-dark">Daftar Masukan & Koreksi Data Faskes</h5>
-                <p class="text-muted small mb-0">Laporan dari pengguna terkait kesalahan lokasi peta, status BPJS, kontak, atau data faskes lainnya.</p>
-            </div>
-            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 fw-semibold">
-                {{ count($feedbacks) }} Total Masukan
-            </span>
-        </div>
-        
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col" class="px-4 py-3" width="5%">ID</th>
-                            <th scope="col" class="py-3" width="22%">Fasilitas Kesehatan</th>
-                            <th scope="col" class="py-3" width="18%">Kategori Masukan</th>
-                            <th scope="col" class="py-3" width="25%">Catatan & Usulan Koreksi</th>
-                            <th scope="col" class="py-3" width="12%">Pelapor</th>
-                            <th scope="col" class="py-3" width="10%">Status</th>
-                            <th scope="col" class="py-3 text-center" width="8%">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($feedbacks as $fb)
-                        <tr>
-                            <td class="px-4 text-muted fw-semibold">#{{ $fb->id }}</td>
-                            <td>
-                                <div class="fw-bold text-dark">{{ $fb->nama_faskes }}</div>
-                                <div class="text-muted small">
-                                    <span class="badge bg-light text-secondary border me-1">{{ $fb->faskes_tipe ?? 'Faskes' }}</span>
-                                    {{ $fb->kota_kabupaten }}
-                                </div>
-                            </td>
-                            <td>
-                                @php
-                                    $catLabels = [
-                                        'lokasi_salah' => ['label' => 'Titik Lokasi / Peta Salah', 'badge' => 'bg-danger-subtle text-danger border-danger-subtle'],
-                                        'bpjs_tidak_sesuai' => ['label' => 'Status BPJS Tidak Sesuai', 'badge' => 'bg-warning-subtle text-dark border-warning-subtle'],
-                                        'kontak_keliru' => ['label' => 'Nomor Kontak / Telepon Keliru', 'badge' => 'bg-info-subtle text-info-emphasis border-info-subtle'],
-                                        'tutup_permanen' => ['label' => 'Faskes Sudah Tutup', 'badge' => 'bg-secondary-subtle text-secondary border-secondary-subtle'],
-                                        'lainnya' => ['label' => 'Lainnya', 'badge' => 'bg-light text-dark border'],
-                                    ];
-                                    $catInfo = $catLabels[$fb->category] ?? ['label' => ucwords(str_replace('_', ' ', $fb->category)), 'badge' => 'bg-light text-dark border'];
-                                @endphp
-                                <span class="badge {{ $catInfo['badge'] }} border rounded-pill px-2-5 py-1" style="font-size: 0.72rem;">
-                                    {{ $catInfo['label'] }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="text-dark small fw-medium text-break" style="max-height: 80px; overflow-y: auto;">
-                                    {{ $fb->notes }}
-                                </div>
-                                @if(!empty($fb->suggested_correction))
-                                    <div class="mt-1 small text-primary fst-italic text-break">
-                                        <i class="bi bi-arrow-right-short"></i> Usulan: {{ $fb->suggested_correction }}
-                                    </div>
+    <div class="admin-report-toolbar">
+        @include('admin.partials.report-tabs', [
+            'route' => 'admin.faskes-feedbacks',
+            'tabs' => ['' => 'Semua', 'pending' => 'Menunggu', 'resolved' => 'Diterapkan', 'dismissed' => 'Ditolak'],
+        ])
+        @include('admin.partials.report-search', ['route' => 'admin.faskes-feedbacks', 'placeholder' => 'Cari faskes, catatan, pengirim...'])
+    </div>
+
+    <div class="table-responsive">
+        <table class="table admin-report-table align-top">
+            <thead>
+                <tr>
+                    <th>Faskes</th>
+                    <th>Masukan</th>
+                    <th>Pengirim</th>
+                    <th>Status</th>
+                    <th class="text-end">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($feedbacks as $fb)
+                    @php
+                        $fbId = $fb['id_feedback_faskes'] ?? null;
+                        $fbStatus = $fb['status'] ?? 'pending';
+                        $category = $fb['kategori'] ?? 'lainnya';
+                        $senderName = $fb['nama_pengguna'] ?: ($fb['registered_user_name'] ?? null) ?: 'Anonim';
+                        $senderEmail = $fb['email_pengguna'] ?: ($fb['registered_user_email'] ?? null);
+                    @endphp
+                    <tr>
+                        <td style="min-width: 220px; max-width: 300px;">
+                            @if(!empty($fb['id_faskes']))
+                                <a href="{{ route('faskes.detail', $fb['id_faskes']) }}" target="_blank" rel="noopener" class="admin-report-title">{{ $fb['nama_faskes'] ?? 'Faskes' }}</a>
+                            @else
+                                <span class="admin-report-title">{{ $fb['nama_faskes'] ?? 'Faskes' }}</span>
+                            @endif
+                            <div class="admin-report-meta">{{ $fb['faskes_tipe'] ?? 'Faskes' }} &bull; {{ $fb['kota_kabupaten'] ?? '-' }}</div>
+                            @if(!empty($fb['faskes_alamat']))
+                                <div class="admin-report-meta">{{ $fb['faskes_alamat'] }}</div>
+                            @endif
+                        </td>
+                        <td style="min-width: 260px; max-width: 380px;">
+                            <span class="admin-report-reason">{{ $categoryLabels[$category] ?? ucwords(str_replace('_', ' ', $category)) }}</span>
+                            <div class="admin-report-quote">{{ $fb['catatan'] ?? '-' }}</div>
+                            @if(!empty($fb['saran_koreksi']))
+                                <div class="admin-report-notes mt-2"><span class="fw-semibold">Usulan data benar:</span> {{ $fb['saran_koreksi'] }}</div>
+                            @endif
+                            @if(!empty($fb['catatan_admin']))
+                                <div class="admin-report-meta mt-2"><i class="bi bi-chat-left-text me-1"></i>Catatan admin: {{ $fb['catatan_admin'] }}</div>
+                            @endif
+                        </td>
+                        <td style="min-width: 160px;">
+                            <div class="fw-semibold text-dark">{{ $senderName }}</div>
+                            @if($senderEmail)
+                                <div class="admin-report-meta">{{ $senderEmail }}</div>
+                            @endif
+                            @if(!empty($fb['created_at']))
+                                <div class="admin-report-meta">{{ \Carbon\Carbon::parse($fb['created_at'])->diffForHumans() }}</div>
+                            @endif
+                        </td>
+                        <td>@include('admin.partials.report-status', ['status' => $fbStatus, 'labels' => $feedbackStatusLabels])</td>
+                        <td>
+                            <div class="admin-report-actions">
+                                @if(!empty($fb['id_faskes']))
+                                    <a href="{{ route('admin.faskes.edit', $fb['id_faskes']) }}" class="btn btn-light border"><i class="bi bi-pencil me-1"></i>Edit Faskes</a>
                                 @endif
-                                @if(!empty($fb->admin_notes))
-                                    <div class="mt-1 small text-muted">
-                                        <i class="bi bi-chat-left-text me-1"></i> Catatan Admin: {{ $fb->admin_notes }}
-                                    </div>
+                                @if($fbId)
+                                    <button type="button" class="btn mg-btn-primary" data-bs-toggle="modal" data-bs-target="#modalFeedback{{ $fbId }}">
+                                        Tindak Lanjut
+                                    </button>
                                 @endif
-                            </td>
-                            <td>
-                                <div class="small fw-semibold text-dark">{{ $fb->user_name ?: ($fb->registered_user_name ?: 'Anonim') }}</div>
-                                @if(!empty($fb->user_email ?: $fb->registered_user_email))
-                                    <div class="text-muted" style="font-size: 0.72rem;">{{ $fb->user_email ?: $fb->registered_user_email }}</div>
-                                @endif
-                                <div class="text-muted" style="font-size: 0.68rem;">{{ \Carbon\Carbon::parse($fb->created_at)->diffForHumans() }}</div>
-                            </td>
-                            <td>
-                                @if($fb->status === 'applied')
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">Diterapkan</span>
-                                @elseif($fb->status === 'reviewed')
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1">Ditinjau</span>
-                                @elseif($fb->status === 'rejected')
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">Ditolak</span>
-                                @else
-                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1">Menunggu</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2-5 py-1 d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalFeedback{{ $fb->id }}" style="font-size: 0.75rem;">
-                                    <i class="bi bi-gear"></i> Tindak Lanjut
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Modal Tindak Lanjut Feedback -->
-                        <div class="modal fade" id="modalFeedback{{ $fb->id }}" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content rounded-4 border-0 shadow">
-                                    <form action="{{ route('admin.faskes-feedbacks.status', $fb->id) }}" method="POST">
-                                        @csrf
-                                        @method('PUT')
-                                        <div class="modal-header border-bottom px-4 py-3">
-                                            <h6 class="modal-title fw-bold text-dark mb-0">Tindak Lanjut Masukan #{{ $fb->id }}</h6>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body p-4">
-                                            <div class="mb-3">
-                                                <label class="form-label text-muted small mb-1">Fasilitas Kesehatan</label>
-                                                <div class="fw-bold text-dark">{{ $fb->nama_faskes }}</div>
-                                                <div class="text-muted small">{{ $fb->faskes_alamat }}</div>
-                                            </div>
-
-                                            <div class="mb-3 p-3 bg-light rounded-3 border">
-                                                <div class="small fw-bold text-dark mb-1">Masukan Pengguna:</div>
-                                                <div class="text-dark small">{{ $fb->notes }}</div>
-                                                @if(!empty($fb->suggested_correction))
-                                                    <div class="mt-2 pt-2 border-top small text-primary">
-                                                        <strong>Saran / Usulan:</strong> {{ $fb->suggested_correction }}
-                                                    </div>
-                                                @endif
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold text-dark small">Ubah Status Masukan</label>
-                                                <select name="status" class="form-select rounded-3">
-                                                    <option value="pending" {{ $fb->status === 'pending' ? 'selected' : '' }}>Menunggu Peninjauan</option>
-                                                    <option value="reviewed" {{ $fb->status === 'reviewed' ? 'selected' : '' }}>Sedang Ditinjau</option>
-                                                    <option value="applied" {{ $fb->status === 'applied' ? 'selected' : '' }}>Selesai / Data Sudah Disesuaikan</option>
-                                                    <option value="rejected" {{ $fb->status === 'rejected' ? 'selected' : '' }}>Ditolak / Data Sudah Sesuai</option>
-                                                </select>
-                                            </div>
-
-                                            <div class="mb-2">
-                                                <label class="form-label fw-semibold text-dark small">Catatan Admin (Opsional)</label>
-                                                <textarea name="admin_notes" class="form-control rounded-3" rows="2" placeholder="Tuliskan catatan tindak lanjut...">{{ $fb->admin_notes }}</textarea>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer border-top px-4 py-3">
-                                            <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
-                                            <button type="submit" class="btn btn-sm btn-medigo-primary rounded-pill px-4">Simpan Perubahan</button>
-                                        </div>
-                                    </form>
-                                </div>
                             </div>
-                        </div>
-                        @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox text-secondary fs-1 mb-2 d-block opacity-50"></i>
-                                <h6 class="fw-semibold text-dark mb-1">Belum Ada Masukan Data</h6>
-                                <p class="small text-muted mb-0">Belum ada pengguna yang mengirimkan masukan atau koreksi data faskes.</p>
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
+
+                            @if($fbId)
+                                <div class="modal fade text-start" id="modalFeedback{{ $fbId }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content rounded-4 border-0 shadow">
+                                            <form action="{{ route('admin.faskes-feedbacks.status', $fbId) }}" method="POST">
+                                                @csrf
+                                                @method('PUT')
+                                                <div class="modal-header border-bottom px-4 py-3">
+                                                    <h6 class="modal-title fw-bold text-dark mb-0">Tindak Lanjut Masukan</h6>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                                                </div>
+                                                <div class="modal-body p-4">
+                                                    <div class="mb-3">
+                                                        <div class="fw-bold text-dark">{{ $fb['nama_faskes'] ?? 'Faskes' }}</div>
+                                                        <div class="admin-report-meta">{{ $categoryLabels[$category] ?? $category }}</div>
+                                                    </div>
+                                                    <div class="admin-report-quote mb-3">{{ $fb['catatan'] ?? '-' }}</div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold small" for="fbStatus{{ $fbId }}">Status</label>
+                                                        <select name="status" id="fbStatus{{ $fbId }}" class="form-select rounded-3">
+                                                            <option value="pending" @selected($fbStatus === 'pending')>Menunggu ditinjau</option>
+                                                            <option value="resolved" @selected($fbStatus === 'resolved')>Diterapkan (data sudah disesuaikan)</option>
+                                                            <option value="dismissed" @selected($fbStatus === 'dismissed')>Ditolak (data sudah benar)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label fw-semibold small" for="fbNotes{{ $fbId }}">Catatan Admin <span class="text-muted fw-normal">(opsional)</span></label>
+                                                        <textarea name="admin_notes" id="fbNotes{{ $fbId }}" class="form-control rounded-3" rows="3" maxlength="1000" placeholder="Contoh: nomor telepon sudah diperbarui.">{{ $fb['catatan_admin'] ?? '' }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top px-4 py-3">
+                                                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                                                    <button type="submit" class="btn mg-btn-primary rounded-pill px-4">Simpan</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5">
+                            <div class="admin-report-empty">
+                                <i class="bi {{ $loadFailed ? 'bi-wifi-off' : 'bi-inbox' }}"></i>
+                                @if($loadFailed)
+                                    <div class="fw-semibold text-dark">Data masukan gagal dimuat</div>
+                                    <div class="small">Pastikan server backend berjalan, lalu muat ulang halaman.</div>
+                                @else
+                                    <div class="fw-semibold text-dark">Belum ada masukan data</div>
+                                    <div class="small">Belum ada masukan untuk filter ini.</div>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 </div>
 @endsection

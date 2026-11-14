@@ -498,6 +498,7 @@ class FaskesCommentController extends Controller
                 'laporan_komentar.*',
                 'reporter.nama_user as reporter_name',
                 'reporter.email_user as reporter_email',
+                'faskes.id_faskes',
                 'faskes.nama_faskes',
                 'faskes.kota_kabupaten',
                 'komentar.isi_komentar as comment_body',

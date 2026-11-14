@@ -3,194 +3,7 @@
 @section('title', 'Tambah Diskusi Baru - MediGO')
 
 @push('styles')
-<style>
-    /* Styling responsif Mobile & Desktop */
-    @media (max-width: 991.98px) {
-        .navbar { display: none !important; }
-        footer { display: none !important; }
-        body { background-color: #f8fafc !important; padding-bottom: 75px; }
-        
-        .discussion-title-input {
-            border: none !important;
-            border-bottom: 1.5px solid #e2e8f0 !important;
-            border-radius: 0 !important;
-            background: transparent !important;
-            padding: 0.6rem 0 !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            color: #1e293b !important;
-        }
-        .discussion-title-input::placeholder {
-            text-transform: uppercase;
-            font-size: 0.88rem;
-            letter-spacing: 0.5px;
-            color: #94a3b8;
-        }
-
-        .discussion-content-textarea {
-            border: none !important;
-            background: transparent !important;
-            padding: 0.75rem 0 !important;
-            font-size: 0.9rem !important;
-            line-height: 1.65 !important;
-            color: #334155 !important;
-            min-height: 180px;
-            resize: none;
-        }
-        .discussion-content-textarea::placeholder {
-            color: #94a3b8;
-        }
-    }
-
-    @media (min-width: 992px) {
-        .discussion-title-input {
-            border: none !important;
-            background-color: #f8fafc !important;
-            border-radius: 12px !important;
-            padding: 0.85rem 1.15rem !important;
-            font-size: 0.95rem !important;
-            color: #1e293b !important;
-        }
-
-        .discussion-content-textarea {
-            border: none !important;
-            background-color: #f8fafc !important;
-            border-radius: 12px !important;
-            padding: 1.15rem !important;
-            font-size: 0.95rem !important;
-            line-height: 1.65 !important;
-            color: #334155 !important;
-            min-height: 160px;
-        }
-    }
-
-    /* Kategori Card di Desktop */
-    .category-card {
-        border: 1.5px solid #e2e8f0;
-        background-color: #ffffff;
-        color: #334155;
-        border-radius: 14px;
-        padding: 1.1rem 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-weight: 600;
-        font-size: 0.92rem;
-    }
-
-    .category-card:hover {
-        border-color: #002b5e;
-        background-color: #f8fafc;
-        transform: translateY(-2px);
-    }
-
-    .category-card.active {
-        background-color: #002b5e !important;
-        border-color: #002b5e !important;
-        color: #ffffff !important;
-        box-shadow: 0 4px 14px rgba(0, 43, 94, 0.22);
-    }
-
-    .category-card.active i {
-        color: #ffffff !important;
-    }
-
-    /* Kategori Pills di Mobile */
-    .mobile-category-pill {
-        white-space: nowrap;
-        border-radius: 50rem;
-        padding: 0.45rem 1.25rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        border: 1.5px solid #002b5e;
-        background-color: #ffffff;
-        color: #002b5e;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .mobile-category-pill.active {
-        background-color: #002b5e !important;
-        color: #ffffff !important;
-        box-shadow: 0 2px 8px rgba(0, 43, 94, 0.2);
-    }
-
-    /* Upload Dropzone Box */
-    .upload-dropzone {
-        border: 2px dashed #cbd5e1;
-        border-radius: 14px;
-        padding: 2.2rem 1.5rem;
-        text-align: center;
-        background-color: #ffffff;
-        cursor: pointer;
-        transition: all 0.25s ease;
-    }
-
-    .upload-dropzone:hover, .upload-dropzone.dragover {
-        border-color: #002b5e;
-        background-color: #f1f5f9;
-    }
-
-    /* Mobile Upload Box */
-    .mobile-upload-box {
-        border: 2px dashed #cbd5e1;
-        border-radius: 12px;
-        padding: 1.5rem 1rem;
-        text-align: center;
-        background-color: #ffffff;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .mobile-upload-box:hover {
-        border-color: #002b5e;
-        background-color: #f8fafc;
-    }
-
-    /* Preview Item */
-    .image-preview-item {
-        position: relative;
-        width: 88px;
-        height: 88px;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1.5px solid #e2e8f0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
-
-    .image-preview-item img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .image-preview-remove {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        width: 22px;
-        height: 22px;
-        background-color: rgba(220, 38, 38, 0.9);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.72rem;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-    .image-preview-remove:hover {
-        background-color: #b91c1c;
-    }
-</style>
+    @vite(['resources/css/pages/forum-create.css', 'resources/js/pages/forum-create.js'])
 @endpush
 
 @section('content')
@@ -198,9 +11,11 @@
 <!-- ========================================== -->
 <!-- FORM TUNGGAL (UNIFIED) RESIK & TERPADU     -->
 <!-- ========================================== -->
-<form id="discussionForm" action="{{ route('discussions.store') }}" method="POST" enctype="multipart/form-data">
+<form id="discussionForm" action="{{ route('discussions.store') }}" method="POST" enctype="multipart/form-data" data-mention-search-url="{{ route('forum.mention-search') }}">
     @csrf
     <input type="hidden" name="category" id="form_category" value="{{ old('category', 'BPJS') }}">
+    <input type="hidden" name="faskes_id" id="form_faskes_id" value="{{ old('faskes_id') }}">
+    <input type="hidden" name="faskes_name" id="form_faskes_name" value="{{ old('faskes_name') }}">
     <input type="file" id="sharedImageInput" name="images[]" multiple accept="image/png, image/jpeg, image/jpg" class="d-none" onchange="handleFileSelect(event)">
 
     <!-- ========================================== -->
@@ -229,12 +44,6 @@
                     </ul>
                 </div>
             @endif
-            @if (session('error'))
-                <div class="alert alert-danger rounded-4 py-2 px-3 mb-3 small">
-                    {{ session('error') }}
-                </div>
-            @endif
-
             <!-- KATEGORI TOPIK MOBILE -->
             <div class="mb-3">
                 <label class="form-label text-secondary fw-bold text-uppercase mb-2" style="font-size: 0.78rem; letter-spacing: 0.5px;">
@@ -256,6 +65,14 @@
                 <div>
                     <textarea name="content" class="form-control shadow-none px-0 discussion-content-textarea" rows="8" placeholder="Ceritakan detail pertanyaan atau pengalaman Anda di sini. Hindari membagikan informasi medis pribadi yang sensitif..." required>{{ old('content') }}</textarea>
                 </div>
+            </div>
+
+            <!-- NAMA RUMAH SAKIT (MENTION FASKES) MOBILE -->
+            <div class="mb-3">
+                <label class="form-label text-secondary fw-bold text-uppercase mb-2" style="font-size: 0.78rem; letter-spacing: 0.5px;" for="mentionSearch-mobile">
+                    NAMA RUMAH SAKIT
+                </label>
+                <x-forum.mention-picker suffix="mobile" />
             </div>
 
             <!-- LAMPIRAN MOBILE -->
@@ -299,13 +116,6 @@
                             </ul>
                         </div>
                     @endif
-                    @if (session('error'))
-                        <div class="alert alert-danger rounded-4 py-3 px-4 mb-4 shadow-sm border-0 d-flex align-items-center gap-2">
-                            <i class="bi bi-exclamation-octagon-fill fs-5"></i>
-                            <span>{{ session('error') }}</span>
-                        </div>
-                    @endif
-
                     <!-- Card Form Desktop -->
                     <div class="card border rounded-4 shadow-sm bg-white p-4 p-xl-5">
                         
@@ -352,6 +162,14 @@
                                 JUDUL DISKUSI
                             </label>
                             <input type="text" id="desktopTitleMirror" class="form-control discussion-title-input shadow-none" placeholder="Tulis judul yang jelas dan singkat..." value="{{ old('title') }}" oninput="syncMirrorInputs(this, 'title')">
+                        </div>
+
+                        <!-- NAMA RUMAH SAKIT (MENTION FASKES) DESKTOP -->
+                        <div class="mb-4">
+                            <label class="form-label text-secondary fw-bold text-uppercase mb-2" style="font-size: 0.8rem; letter-spacing: 0.5px;" for="mentionSearch-desktop">
+                                NAMA RUMAH SAKIT
+                            </label>
+                            <x-forum.mention-picker suffix="desktop" />
                         </div>
 
                         <!-- ISI DISKUSI DESKTOP -->
@@ -401,204 +219,3 @@
 
 @endsection
 
-@push('scripts')
-<script>
-    let fileTransfer = new DataTransfer();
-
-    // 1. Sinkronisasi Kategori Topik
-    function selectCategory(cat) {
-        document.getElementById('form_category').value = cat;
-
-        // Update Desktop cards
-        document.querySelectorAll('.category-card').forEach(card => {
-            if (card.getAttribute('data-value') === cat) {
-                card.classList.add('active');
-            } else {
-                card.classList.remove('active');
-            }
-        });
-
-        // Update Mobile pills
-        document.querySelectorAll('.mobile-category-pill').forEach(pill => {
-            if (pill.getAttribute('data-value') === cat) {
-                pill.classList.add('active');
-            } else {
-                pill.classList.remove('active');
-            }
-        });
-    }
-
-    // 2. Sinkronisasi Antara Input Desktop & Form Asli
-    function syncMirrorInputs(el, targetName) {
-        const formInput = document.querySelector(`form#discussionForm [name="${targetName}"]`);
-        if (formInput) {
-            formInput.value = el.value;
-        }
-    }
-
-    // Inisialisasi saat load
-    document.addEventListener('DOMContentLoaded', function() {
-        const initialCategory = document.getElementById('form_category').value || 'BPJS';
-        selectCategory(initialCategory);
-
-        // Jika user mengetik di form mobile, sinkronkan ke desktop
-        const mainTitle = document.querySelector('form#discussionForm [name="title"]');
-        const desktopTitle = document.getElementById('desktopTitleMirror');
-        if (mainTitle && desktopTitle) {
-            mainTitle.addEventListener('input', function() {
-                desktopTitle.value = this.value;
-            });
-            // Initial sync
-            if (desktopTitle.value) mainTitle.value = desktopTitle.value;
-            else if (mainTitle.value) desktopTitle.value = mainTitle.value;
-        }
-
-        const mainContent = document.querySelector('form#discussionForm [name="content"]');
-        const desktopContent = document.getElementById('desktopContentMirror');
-        if (mainContent && desktopContent) {
-            mainContent.addEventListener('input', function() {
-                desktopContent.value = this.value;
-            });
-            if (desktopContent.value) mainContent.value = desktopContent.value;
-            else if (mainContent.value) desktopContent.value = mainContent.value;
-        }
-    });
-
-    // 3. Trigger File Chooser
-    function triggerFileInput() {
-        document.getElementById('sharedImageInput').click();
-    }
-
-    // 4. Tangani File
-    function handleFileSelect(event) {
-        const newFiles = Array.from(event.target.files);
-        addFiles(newFiles);
-    }
-
-    function addFiles(files) {
-        const maxFiles = 3;
-        const maxSize = 5 * 1024 * 1024; // 5MB
-
-        for (let file of files) {
-            if (fileTransfer.items.length >= maxFiles) {
-                if (window.showGlobalToast) {
-                    showGlobalToast('Maksimal 3 foto yang dapat dilampirkan.', 'warning');
-                } else {
-                    alert('Maksimal 3 foto yang dapat dilampirkan.');
-                }
-                break;
-            }
-
-            if (file.size > maxSize) {
-                if (window.showGlobalToast) {
-                    showGlobalToast(`Ukuran file "${file.name}" melebihi batas 5MB.`, 'warning');
-                } else {
-                    alert(`Ukuran file "${file.name}" melebihi batas 5MB.`);
-                }
-                continue;
-            }
-
-            if (!file.type.match('image.*')) {
-                if (window.showGlobalToast) {
-                    showGlobalToast(`File "${file.name}" bukan format gambar yang didukung.`, 'warning');
-                } else {
-                    alert(`File "${file.name}" bukan format gambar yang didukung.`);
-                }
-                continue;
-            }
-
-            fileTransfer.items.add(file);
-        }
-
-        document.getElementById('sharedImageInput').files = fileTransfer.files;
-        renderImagePreviews();
-    }
-
-    // 5. Hapus File dari Galeri
-    function removeFile(index) {
-        const dt = new DataTransfer();
-        const { files } = fileTransfer;
-
-        for (let i = 0; i < files.length; i++) {
-            if (i !== index) {
-                dt.items.add(files[i]);
-            }
-        }
-
-        fileTransfer = dt;
-        document.getElementById('sharedImageInput').files = fileTransfer.files;
-        renderImagePreviews();
-    }
-
-    // 6. Render Previews
-    function renderImagePreviews() {
-        const files = Array.from(fileTransfer.files);
-        const mobileContainer = document.getElementById('mobileImagePreviews');
-        const desktopContainer = document.getElementById('desktopImagePreviews');
-
-        if (files.length === 0) {
-            if (mobileContainer) {
-                mobileContainer.innerHTML = '';
-                mobileContainer.classList.add('d-none');
-            }
-            if (desktopContainer) {
-                desktopContainer.innerHTML = '';
-                desktopContainer.classList.add('d-none');
-            }
-            return;
-        }
-
-        if (mobileContainer) {
-            mobileContainer.innerHTML = '';
-            mobileContainer.classList.remove('d-none');
-        }
-        if (desktopContainer) {
-            desktopContainer.innerHTML = '';
-            desktopContainer.classList.remove('d-none');
-        }
-
-        files.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const previewHtml = `
-                    <div class="image-preview-item">
-                        <img src="${e.target.result}" alt="Preview">
-                        <button type="button" class="image-preview-remove" onclick="removeFile(${index})" title="Hapus foto">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    </div>
-                `;
-                if (mobileContainer) mobileContainer.insertAdjacentHTML('beforeend', previewHtml);
-                if (desktopContainer) desktopContainer.insertAdjacentHTML('beforeend', previewHtml);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // 7. Drag & Drop Desktop
-    const dropzone = document.getElementById('desktopDropzone');
-    if (dropzone) {
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.add('dragover');
-            }, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.remove('dragover');
-            }, false);
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            addFiles(Array.from(files));
-        }, false);
-    }
-</script>
-@endpush

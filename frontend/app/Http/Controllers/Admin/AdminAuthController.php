@@ -42,32 +42,32 @@ class AdminAuthController extends Controller
                 $user = $body['data'] ?? [];
                 $token = $body['access_token'] ?? null;
 
+                // Hanya akun ber-role admin yang boleh masuk panel admin
+                if (($user['role_user'] ?? $user['role'] ?? null) !== 'admin' || ! $token) {
+                    return back()->withInput($request->only('email'))->withErrors([
+                        'email' => 'Akun ini tidak memiliki akses admin.',
+                    ]);
+                }
+
+                $request->session()->regenerate();
+
                 session([
                     'admin_logged_in' => true,
-                    'admin_user' => $user,
+                    'admin_user' => array_merge($user, [
+                        'name' => $user['nama_user'] ?? ($user['name'] ?? 'Admin'),
+                        'email' => $user['email_user'] ?? ($user['email'] ?? $email),
+                    ]),
                     'admin_token' => $token,
                 ]);
 
                 return redirect()->route('admin.dashboard')->with('success', 'Selamat datang kembali di Dashboard Admin MediGO!');
             }
         } catch (\Exception $e) {
-            Log::warning('Backend admin login failed, checking local credentials: ' . $e->getMessage());
-        }
+            Log::warning('Backend admin login failed: ' . $e->getMessage());
 
-        // Default / demo admin login fallback
-        if ($email === 'admin@medigo.id' && $password === 'password') {
-            session([
-                'admin_logged_in' => true,
-                'admin_user' => [
-                    'id' => 1,
-                    'name' => 'Admin MediGO',
-                    'email' => 'admin@medigo.id',
-                    'role' => 'admin',
-                ],
-                'admin_token' => 'mock_admin_token_123',
+            return back()->withInput($request->only('email'))->withErrors([
+                'email' => 'Server backend tidak dapat dihubungi. Silakan coba lagi nanti.',
             ]);
-
-            return redirect()->route('admin.dashboard')->with('success', 'Selamat datang kembali di Dashboard Admin MediGO!');
         }
 
         return back()->withInput($request->only('email'))->withErrors([

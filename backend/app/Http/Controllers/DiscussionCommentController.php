@@ -67,11 +67,15 @@ class DiscussionCommentController extends Controller
     public function report(Request $request, $id)
     {
         $reason = $request->input('reason', $request->input('alasan_laporan'));
-        $request->merge(['reason' => $reason]);
+        $notes = $request->input('notes', $request->input('catatan_tambahan'));
+        $notes = is_string($notes) && trim($notes) !== '' ? trim($notes) : null;
+        $request->merge(['reason' => $reason, 'notes' => $notes]);
 
         $request->validate([
             'reason' => 'required|string|max:1000',
+            'notes' => 'nullable|string|max:500',
         ], [
+            'notes.max' => 'Catatan tambahan maksimal 500 karakter.',
             'reason.required' => 'Alasan laporan komentar wajib diisi.',
         ]);
 
@@ -118,6 +122,7 @@ class DiscussionCommentController extends Controller
             'id_tanggapan' => $id,
             'id_user' => $currentUserId,
             'alasan_laporan' => $reason,
+            'catatan_tambahan' => $notes,
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),

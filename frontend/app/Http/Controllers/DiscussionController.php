@@ -27,6 +27,17 @@ class DiscussionController extends Controller
             $queryParams['category'] = $category;
         }
 
+        // Filter diskusi yang menyebut (mention) 1 faskes tertentu & urutan
+        $faskesFilterId = $request->query('faskes_id');
+        if ($faskesFilterId && ctype_digit((string) $faskesFilterId)) {
+            $queryParams['faskes_id'] = (int) $faskesFilterId;
+        } else {
+            $faskesFilterId = null;
+        }
+        if ($request->query('sort') === 'terpopuler') {
+            $queryParams['sort'] = 'terpopuler';
+        }
+
         // Pastikan parameter ini ditangkap di Backend Controller jika user membuka tab Diskusi Saya
         if ($tab === 'my_discussions' && Auth::check()) {
             $queryParams['id_user'] = Auth::user()->id_user ?? Auth::id();
@@ -62,7 +73,13 @@ class DiscussionController extends Controller
         ];
 
         try {
-            $response = Http::timeout(4)->get("{$backendUrl}/api/discussions", $queryParams);
+            // Kirim token (jika login) supaya backend bisa mengisi liked_by_me
+            $listToken = Auth::check() ? $this->getBackendToken() : null;
+            $listHttp = Http::timeout(4);
+            if ($listToken) {
+                $listHttp = $listHttp->withToken($listToken);
+            }
+            $response = $listHttp->get("{$backendUrl}/api/discussions", $queryParams);
 
             if ($response->successful()) {
                 $body = $response->json();
@@ -128,7 +145,8 @@ class DiscussionController extends Controller
             'tab', 
             'pagination', 
             'sidebarCategories', 
-            'trendingDiscussions'
+            'trendingDiscussions',
+            'faskesFilterId'
         ));
     }
 
@@ -190,6 +208,7 @@ class DiscussionController extends Controller
             'title'    => 'required|string|max:255',
             'content'  => 'required|string',
             'category' => 'nullable|string',
+            'faskes_id' => 'nullable|integer|min:1',
             'images'   => 'nullable|array|max:3',
             'images.*' => 'image|mimes:jpeg,png,jpg|max:5120',
         ], [
@@ -222,11 +241,17 @@ class DiscussionController extends Controller
             }
 
             // Payload POST diskusi ke backend (pastikan validasi di Backend masih menerima 'title' & 'content')
-            $response = $http->post("{$backendUrl}/api/discussions", [
+            $payload = [
                 'title'    => $request->input('title'),
                 'content'  => $request->input('content'),
                 'category' => $request->input('category', 'Umum'),
-            ]);
+            ];
+            // Mention 1 faskes (opsional) dari pencarian faskes di form
+            if ($request->filled('faskes_id') && ctype_digit((string) $request->input('faskes_id'))) {
+                $payload['faskes_id'] = (int) $request->input('faskes_id');
+            }
+
+            $response = $http->post("{$backendUrl}/api/discussions", $payload);
 
             if ($response->successful()) {
                 $resData = $response->json();
@@ -252,29 +277,48 @@ class DiscussionController extends Controller
             return redirect()->route('login')->with('warning', 'Silakan masuk terlebih dahulu untuk melaporkan.');
         }
 
-        $request->validate(['reason' => 'required|string|max:500']);
+        if (!in_array($type, ['discussion', 'comment'], true) || !ctype_digit((string) $target_id)) {
+            return back()->with('error', 'Laporan tidak valid.');
+        }
+
+        $request->validate([
+            'reason' => 'required|string|max:500',
+            'notes' => 'nullable|string|max:500',
+        ], [
+            'reason.required' => 'Pilih atau tuliskan alasan pelaporan.',
+            'notes.max' => 'Catatan tambahan maksimal 500 karakter.',
+        ]);
 
         $token = $this->getBackendToken();
-        if ($token) {
-            try {
-                $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
-                $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
-
-                $endpoint = $type === 'comment' 
-                    ? "{$backendUrl}/api/comments/{$target_id}/report" 
-                    : "{$backendUrl}/api/discussions/{$target_id}/report";
-
-                $response = Http::timeout(5)->withToken($token)->post($endpoint, [
-                    'reason' => $request->input('reason')
-                ]);
-                
-                if ($response->successful()) {
-                    return back()->with('success', 'Laporan berhasil dikirim dan akan ditinjau.');
-                }
-            } catch (\Exception $e) {
-                Log::warning("Failed posting {$type} report: " . $e->getMessage());
-            }
+        if (!$token) {
+            return redirect()->route('login')->with('warning', 'Sesi login berakhir. Silakan masuk ulang.');
         }
+
+        try {
+            // 'comment' = balasan/komentar diskusi (tabel tanggapan_diskusi)
+            $endpoint = $type === 'comment'
+                ? $this->backendBaseUrl() . "/api/discussion-comments/{$target_id}/report"
+                : $this->backendBaseUrl() . "/api/discussions/{$target_id}/report";
+
+            $response = Http::timeout(6)->withToken($token)->acceptJson()->post($endpoint, [
+                'reason' => $request->input('reason'),
+                'notes' => $request->input('notes'),
+            ]);
+
+            if ($response->successful()) {
+                return back()->with('success', $response->json('message') ?: 'Laporan berhasil dikirim dan akan ditinjau.');
+            }
+
+            $message = $response->json('message');
+            if ($response->status() === 422 && is_array($response->json('errors'))) {
+                $message = collect($response->json('errors'))->flatten()->first() ?: $message;
+            }
+
+            return back()->with('error', $message ?: 'Gagal mengirim laporan. Silakan coba lagi nanti.');
+        } catch (\Exception $e) {
+            Log::warning("Failed posting {$type} report: " . $e->getMessage());
+        }
+
         return back()->with('error', 'Gagal mengirim laporan. Silakan coba lagi nanti.');
     }
 
@@ -576,5 +620,120 @@ public function reply(Request $request, $id_diskusi)
             return response()->json(['status' => 'error', 'message' => 'Gagal menghapus diskusi.'], 400);
         }
         return back()->with('error', 'Gagal menghapus diskusi atau Anda tidak memiliki akses.');
+    }
+
+    private function backendBaseUrl(): string
+    {
+        $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
+
+        return rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
+    }
+
+    /**
+     * Rekomendasi faskes terdekat untuk sidebar forum (proxy ke backend).
+     */
+    public function nearbyFaskes(Request $request)
+    {
+        $validated = $request->validate([
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
+        ]);
+
+        try {
+            $response = Http::timeout(6)->get($this->backendBaseUrl() . '/api/forum/faskes-terdekat', [
+                'lat' => $validated['lat'],
+                'lng' => $validated['lng'],
+                'limit' => 5,
+            ]);
+
+            return response()->json($response->json() ?? ['status' => 'error', 'data' => []], $response->status());
+        } catch (\Exception $e) {
+            Log::warning('Nearby faskes fetch failed: ' . $e->getMessage());
+
+            return response()->json(['status' => 'error', 'message' => 'Server tidak dapat dihubungi.', 'data' => []], 503);
+        }
+    }
+
+    /**
+     * Diskusi yang membahas faskes di sekitar user untuk sidebar forum (proxy ke backend).
+     * Tanpa lat/lng, backend mengembalikan diskusi faskes terpopuler.
+     */
+    public function nearbyDiscussions(Request $request)
+    {
+        $validated = $request->validate([
+            'lat' => 'nullable|required_with:lng|numeric|between:-90,90',
+            'lng' => 'nullable|required_with:lat|numeric|between:-180,180',
+        ]);
+
+        $params = ['limit' => 5];
+        if (isset($validated['lat'], $validated['lng'])) {
+            $params['lat'] = $validated['lat'];
+            $params['lng'] = $validated['lng'];
+        }
+
+        try {
+            $response = Http::timeout(6)->acceptJson()->get($this->backendBaseUrl() . '/api/forum/diskusi-terdekat', $params);
+
+            return response()->json($response->json() ?? ['status' => 'error', 'data' => []], $response->status());
+        } catch (\Exception $e) {
+            Log::warning('Nearby discussions fetch failed: ' . $e->getMessage());
+
+            return response()->json(['status' => 'error', 'message' => 'Server tidak dapat dihubungi.', 'data' => []], 503);
+        }
+    }
+
+    /**
+     * Cari faskes untuk di-mention pada judul diskusi (proxy ke backend).
+     */
+    public function mentionSearch(Request $request)
+    {
+        try {
+            $response = Http::timeout(6)->get($this->backendBaseUrl() . '/api/faskes/mention-search', [
+                'q' => (string) $request->query('q', ''),
+                'limit' => 8,
+            ]);
+
+            return response()->json($response->json() ?? ['status' => 'error', 'data' => []], $response->status());
+        } catch (\Exception $e) {
+            Log::warning('Mention search failed: ' . $e->getMessage());
+
+            return response()->json(['status' => 'error', 'message' => 'Server tidak dapat dihubungi.', 'data' => []], 503);
+        }
+    }
+
+    /**
+     * Like / unlike diskusi atau komentar diskusi (proxy ke backend).
+     * action=like -> POST, action=unlike -> DELETE.
+     */
+    public function like(Request $request, $type, $id)
+    {
+        if (!Auth::check()) {
+            return response()->json(['status' => 'error', 'message' => 'Silakan masuk terlebih dahulu untuk menyukai.'], 401);
+        }
+
+        if (!in_array($type, ['discussion', 'comment'], true) || !ctype_digit((string) $id)) {
+            return response()->json(['status' => 'error', 'message' => 'Permintaan tidak valid.'], 422);
+        }
+
+        $token = $this->getBackendToken();
+        if (!$token) {
+            return response()->json(['status' => 'error', 'message' => 'Sesi login tidak valid. Silakan masuk ulang.'], 401);
+        }
+
+        $path = $type === 'discussion' ? "/api/discussions/{$id}/like" : "/api/discussion-comments/{$id}/like";
+        $isUnlike = $request->input('action') === 'unlike';
+
+        try {
+            $http = Http::timeout(6)->withToken($token)->acceptJson();
+            $response = $isUnlike
+                ? $http->delete($this->backendBaseUrl() . $path)
+                : $http->post($this->backendBaseUrl() . $path);
+
+            return response()->json($response->json() ?? ['status' => 'error'], $response->status());
+        } catch (\Exception $e) {
+            Log::warning('Like request failed: ' . $e->getMessage());
+
+            return response()->json(['status' => 'error', 'message' => 'Server tidak dapat dihubungi.'], 503);
+        }
     }
 }

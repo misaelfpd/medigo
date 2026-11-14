@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Teks waktu relatif ("3 hari yang lalu") yang dikirim ke frontend memakai bahasa Indonesia
+        \Carbon\Carbon::setLocale('id');
     }
 }

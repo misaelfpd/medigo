@@ -1,14 +1,15 @@
 @props([
     'id' => 0,
     'foto' => null,
-    'hospital_name' => 'Metro General Hospital',
+    'thumbnail' => null,
+    'hospital_name' => 'Fasilitas Kesehatan',
     'type' => 'Rumah Sakit',
     'type_slug' => 'hospital',
-    'hospital_address' => 'Jl. Metro Pondok Indah, Bogor',
+    'hospital_address' => '',
     'hospital_rating' => null,
-    'hospital_class' => 'A',
+    'hospital_class' => null,
     'bpjs_support' => true,
-    'distance' => '3.4 km',
+    'distance' => null,
     'is_open' => true,
     'lat' => null,
     'lng' => null,
@@ -65,13 +66,9 @@
         }
     }
 
-    // Icon selection based on type_slug
-    $typeIcon = 'bi-hospital';
-    if ($type_slug === 'clinic') {
-        $typeIcon = 'bi-heart-pulse-fill';
-    } elseif ($type_slug === 'puskesmas') {
-        $typeIcon = 'bi-plus-circle-fill';
-    }
+    // Ikon & warna fallback sesuai jenis faskes (apotek, lab, optik, dokter, dll.)
+    $visualKey = \App\Support\FaskesVisual::key($resolvedType, $formattedHospitalName);
+    $typeIcon = \App\Support\FaskesVisual::TYPES[$visualKey][0];
 @endphp
 
 <div class="col-12 col-md-4 hospital-card-wrapper" 
@@ -87,8 +84,12 @@
     <div class="card hospital-card h-100">
         <div class="hospital-card-main">
             <!-- Type-based Logo with Colored Background -->
-            <div class="hospital-card-img-wrapper faskes-avatar-banner faskes-avatar-{{ $type_slug }}">
+            <div class="hospital-card-img-wrapper faskes-avatar-banner faskes-avatar-{{ $type_slug }} faskes-visual-{{ $visualKey }} {{ $thumbnail ? 'has-photo' : '' }}">
                 <i class="bi {{ $typeIcon }} faskes-avatar-icon text-white"></i>
+                @if($thumbnail)
+                    <img src="{{ $thumbnail }}" alt="Foto {{ $formattedHospitalName }}" class="hospital-card-photo" loading="lazy"
+                         onerror="this.parentElement.classList.remove('has-photo'); this.remove();">
+                @endif
                 @if($is_open)
                     <span class="badge-status-open d-md-none">
                         <span class="status-dot"></span> Buka
@@ -128,7 +129,7 @@
                     </span>
                     <span class="distance-info ms-auto" id="home-distance-{{ $id }}">
                         <i class="bi bi-sign-turn-right me-1" style="font-size: 0.8rem;"></i>
-                        <span class="distance-value">{{ str_contains($distance, 'km') ? $distance : $distance . ' km' }}</span>
+                        <span class="distance-value">{{ $distance ? (str_contains((string) $distance, 'km') ? $distance : $distance . ' km') : '-' }}</span>
                     </span>
                 </div>
             </div>
@@ -137,7 +138,7 @@
         <!-- Buttons Row -->
         <div class="hospital-card-actions mt-auto d-flex gap-2">
             <a href="{{ $navigasi_url }}" id="home-nav-{{ $id }}" class="btn btn-navigasi flex-grow-1 text-white d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none" target="_blank">
-                <i class="bi bi-sign-turn-right"></i> Navigasi
+                <i class="bi bi-sign-turn-right-fill"></i> Navigasi
             </a>
             <a href="{{ $finalDetailUrl }}" class="btn btn-detail flex-grow-1 d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none">
                 <i class="bi bi-info-circle"></i> Detail

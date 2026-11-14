@@ -74,37 +74,42 @@
                 </a>
             </div>
         @else
-            {{-- Pinned Review Box (Jika user sudah pernah mengulas) --}}
+            {{-- Kartu "Ulasan Anda" (tampil jika user sudah pernah mengulas) --}}
+            @php $authUser = Auth::user(); @endphp
             <div id="myCommentBox" class="{{ $myComment ? '' : 'd-none' }} mb-3">
-                <div class="card border border-primary-subtle bg-primary-subtle bg-opacity-10 rounded-4 p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge bg-medigo-primary text-white rounded-pill px-2 py-1" style="font-size: 0.7rem;">
-                            <i class="bi bi-check-circle-fill me-1"></i> Ulasan Anda
-                        </span>
-                        <div class="d-flex gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0" id="btnEditMyComment" style="font-size: 0.72rem;">
-                                <i class="bi bi-pencil-square"></i> Edit
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0" id="btnDeleteMyComment" style="font-size: 0.72rem;">
-                                <i class="bi bi-trash"></i> Hapus
-                            </button>
+                <div class="mg-my-review">
+                    <div class="mg-my-review__head">
+                        <x-avatar :name="$authUser->name ?? 'Pengguna'" :src="$authUser->avatar_url ?? null" :size="40" />
+                        <div class="mg-my-review__who">
+                            <div class="mg-my-review__name">{{ $authUser->name ?? 'Anda' }}</div>
+                            <div class="mg-my-review__meta">
+                                <span class="mg-my-review__tag"><i class="bi bi-patch-check-fill"></i> Ulasan Anda</span>
+                                <span id="myCommentTimeDisplay">{{ $myComment['created_at_human'] ?? 'Baru saja' }}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex text-warning gap-1 mb-1" id="myCommentStarsDisplay" style="font-size: 0.78rem;">
-                        @if($myComment)
-                            @for($i = 1; $i <= 5; $i++)
-                                <i class="bi bi-star{{ $i <= $myComment['rating'] ? '-fill' : '' }}"></i>
-                            @endfor
-                        @endif
+                    <div class="mg-my-review__rating">
+                        <div class="mg-my-review__stars" id="myCommentStarsDisplay">
+                            @if($myComment)
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="bi bi-star{{ $i <= $myComment['rating'] ? '-fill' : '' }}"></i>
+                                @endfor
+                            @endif
+                        </div>
+                        <span class="mg-my-review__score" id="myCommentRatingValue">{{ $myComment ? $myComment['rating'] . '.0' : '' }}</span>
                     </div>
 
-                    <p class="text-dark mb-1" id="myCommentBodyDisplay" style="font-size: 0.84rem; line-height: 1.5;">
-                        {{ $myComment['body'] ?? '' }}
-                    </p>
-                    <small class="text-muted" id="myCommentTimeDisplay" style="font-size: 0.7rem;">
-                        {{ $myComment['created_at_human'] ?? 'Baru saja' }}
-                    </small>
+                    <p class="mg-my-review__body" id="myCommentBodyDisplay">{{ $myComment['body'] ?? '' }}</p>
+
+                    <div class="mg-my-review__actions">
+                        <button type="button" class="mg-my-review__btn" id="btnEditMyComment">
+                            <i class="bi bi-pencil-square"></i> Ubah Ulasan
+                        </button>
+                        <button type="button" class="mg-my-review__btn mg-my-review__btn--danger" id="btnDeleteMyComment">
+                            <i class="bi bi-trash3"></i> Hapus
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -47,12 +47,13 @@ class BackendUser extends GenericUser
     /**
      * Foto profil disimpan di folder public frontend (uploads/avatars), path-nya disimpan di backend.
      */
-    private static function avatarUrl(?string $avatar): string
+    private static function avatarUrl(?string $avatar): ?string
     {
         if (! empty($avatar) && file_exists(public_path($avatar))) {
             return asset($avatar);
         }
 
-        return asset('images/user_avatar.jpg');
+        // Tanpa foto: tampilan memakai huruf depan nama (komponen <x-avatar>)
+        return null;
     }
 }

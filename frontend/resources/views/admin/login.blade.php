@@ -15,37 +15,19 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <!-- Vite Assets -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/medigo-ui.css', 'resources/js/app.js', 'resources/js/core/toast.js'])
 </head>
 
 <body class="admin-login-body d-flex align-items-center justify-content-center min-vh-100 p-3">
+    @include('partials.flash')
 
-    <div class="card border-0 rounded-4 shadow-lg admin-login-card p-4 p-md-5 w-100" style="max-width: 440px;">
+    <div class="card admin-login-card mg-admin-login-card p-4 p-md-5 w-100">
         <!-- Logo & Header -->
         <div class="text-center mb-4">
-            <div class="d-inline-flex align-items-center justify-content-center bg-medigo-subtle p-3 rounded-circle mb-3">
-                <i class="bi bi-hospital text-medigo-primary fs-2"></i>
-            </div>
-            <h4 class="fw-bold text-dark mb-1">Admin Medi<span style="color: #0b5ed7;">GO</span></h4>
+            <img src="{{ asset('images/medigo_logo.png') }}" alt="MediGO" class="mg-admin-login-logo mb-3">
+            <h1 class="h5 fw-bold text-dark mb-1">Panel Admin</h1>
             <p class="text-secondary small mb-0">Masuk untuk mengelola platform MediGO</p>
         </div>
-
-        <!-- Alert Error Message -->
-        @if($errors->any())
-            <div class="alert alert-danger alert-dismissible fade show rounded-3 p-3 small d-flex align-items-center gap-2 mb-4" role="alert">
-                <i class="bi bi-exclamation-circle-fill text-danger flex-shrink-0"></i>
-                <div>{{ $errors->first() }}</div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show rounded-3 p-3 small d-flex align-items-center gap-2 mb-4" role="alert">
-                <i class="bi bi-check-circle-fill text-success flex-shrink-0"></i>
-                <div>{{ session('success') }}</div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
 
         <!-- Login Form -->
         <form action="{{ route('admin.login.post') }}" method="POST">
@@ -56,7 +38,7 @@
                 <label for="adminEmail" class="form-label fw-semibold text-dark small">Email Administrator</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
-                    <input type="email" name="email" id="adminEmail" class="form-control border-start-0 ps-0 @error('email') is-invalid @enderror" placeholder="nama@email.com" value="{{ old('email') }}" required autofocus>
+                    <input type="email" name="email" id="adminEmail" class="form-control mg-input-icon-field border-start-0 @error('email') is-invalid @enderror" placeholder="nama@email.com" value="{{ old('email') }}" required autofocus>
                 </div>
             </div>
 
@@ -65,22 +47,14 @@
                 <label for="adminPassword" class="form-label fw-semibold text-dark small">Kata Sandi</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
-                    <input type="password" name="password" id="adminPassword" class="form-control border-start-0 ps-0 @error('password') is-invalid @enderror" placeholder="Masukkan kata sandi" value="" required>
+                    <input type="password" name="password" id="adminPassword" class="form-control mg-input-icon-field border-start-0 @error('password') is-invalid @enderror" placeholder="Masukkan kata sandi" value="" required>
                 </div>
             </div>
 
-            <!-- Remember Me -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="remember" id="rememberMe">
-                    <label class="form-check-label text-secondary small" for="rememberMe">
-                        Ingat saya
-                    </label>
-                </div>
-            </div>
+            <div class="mb-4"></div>
 
             <!-- Submit Button -->
-            <button type="submit" class="btn btn-medigo-primary w-100 py-2 rounded-pill fw-semibold shadow-xs">
+            <button type="submit" class="btn mg-btn-primary w-100 py-2 fw-semibold">
                 Masuk ke Dashboard
             </button>
         </form>

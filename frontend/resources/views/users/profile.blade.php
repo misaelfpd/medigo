@@ -17,13 +17,6 @@
         @else
 
             <!-- ALERT PESAN -->
-            @if (session('success'))
-                <div class="alert alert-success rounded-4 py-2-5 px-3 mb-4 d-flex align-items-center gap-2 shadow-2xs border-0" role="alert">
-                    <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                    <div class="fw-medium text-dark">{{ session('success') }}</div>
-                </div>
-            @endif
-
             <!-- 1. TAMPILAN DESKTOP (>= 992px) -->
             <div class="d-none d-lg-block">
                 <div class="row g-4">
@@ -66,6 +59,6 @@
 
 @push('scripts')
     <!-- MODULAR JS: Memanggil file javascript eksternal -->
-    <script src="{{ asset('js/profile-interaction.js') }}"></script>
+    @vite('resources/js/pages/profile.js')
 @endpush
 @endsection

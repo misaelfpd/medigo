@@ -1,3 +1,4 @@
+import { faskesVisual } from "./utils/faskes-visual.js";
 /**
  * MediGO - Beranda Module
  * Supports independent toggle filters (Distance < 5km, Types: RS/Klinik/Puskesmas, BPJS),
@@ -236,12 +237,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     item.kota_kabupaten || "",
                 );
 
-        let typeIcon = "bi-hospital";
-        if (typeSlug === "clinic") {
-            typeIcon = "bi-heart-pulse-fill";
-        } else if (typeSlug === "puskesmas") {
-            typeIcon = "bi-plus-circle-fill";
-        }
+        // Ikon & warna fallback sesuai jenis faskes
+        const visual = faskesVisual(item.jenis_faskes || item.type || "", name);
+        const typeIcon = visual.icon;
 
         // --- 3. PASTIKAN BPJS STATUS TERBACA (CAST KE BOOLEAN) ---
         const isBpjsSupport = (item.bpjs_support === true || item.bpjs_support === 1 || item._support_bpjs === true || item._support_bpjs === 1 || item.is_support_bpjs === true || item.is_support_bpjs === 1);
@@ -259,8 +257,12 @@ document.addEventListener("DOMContentLoaded", function () {
                  data-lng="${item.lng || item.longitude || ""}">
                 <div class="card hospital-card h-100">
                     <div class="hospital-card-main">
-                        <div class="hospital-card-img-wrapper faskes-avatar-banner faskes-avatar-${typeSlug}">
+                        <div class="hospital-card-img-wrapper faskes-avatar-banner faskes-avatar-${typeSlug} faskes-visual-${visual.key} ${item.thumbnail_url ? "has-photo" : ""}">
                             <i class="bi ${typeIcon} faskes-avatar-icon text-white"></i>
+                            ${item.thumbnail_url
+                ? `<img src="${item.thumbnail_url}" alt="Foto ${name}" class="hospital-card-photo" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">`
+                : ""
+            }
                             ${item.is_open
                 ? `
                                 <span class="badge-status-open d-md-none">
@@ -319,7 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     <div class="hospital-card-actions mt-auto d-flex gap-2">
                         <a href="${navUrl}" id="home-nav-${hospitalId}" class="btn btn-navigasi flex-grow-1 text-white d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none" target="_blank">
-                            <i class="bi bi-sign-turn-right"></i> Navigasi
+                            <i class="bi bi-sign-turn-right-fill"></i> Navigasi
                         </a>
                         <a href="${detailUrl}" class="btn btn-detail flex-grow-1 d-flex justify-content-center align-items-center gap-1 rounded-pill text-decoration-none">
                             <i class="bi bi-info-circle"></i> Detail
@@ -635,6 +637,12 @@ document.addEventListener("DOMContentLoaded", function () {
         } finally {
             updateDistancesAndFilter();
         }
+    }
+
+    // Tampilkan tombol "Muat lebih banyak" hanya jika masih ada data berikutnya
+    function updateLoadMoreButtonState() {
+        const container = document.getElementById("homeLoadMoreContainer");
+        if (container) container.classList.toggle("d-none", !hasMoreHomeItems);
     }
 
     // 5. Load More Faskes

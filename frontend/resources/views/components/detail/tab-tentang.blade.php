@@ -27,7 +27,7 @@
     </div>
 
     {{-- 2 Kolom Sejajar: Ringkasan Rating & Ulasan Terbaru --}}
-    <div class="row g-4">
+    <div class="row g-4 mg-card mg-rating-card mx-0">
         {{-- Kolom Kiri: Ringkasan Rating & Form Ulasan --}}
         <div class="col-md-6 col-12">
             <x-detail.rating-summary
@@ -38,7 +38,7 @@
         </div>
 
         {{-- Kolom Tengah: Daftar Ulasan Terbaru --}}
-        <div class="col-md-6 col-12">
+        <div class="col-md-6 col-12 mg-rating-card-right">
             <x-detail.reviews-list
                 :faskes="$faskes"
                 :reviews="$reviews"

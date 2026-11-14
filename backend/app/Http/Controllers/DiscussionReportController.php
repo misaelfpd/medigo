@@ -14,11 +14,15 @@ class DiscussionReportController extends Controller
     public function store(Request $request, $discussionId)
     {
         $reason = $request->input('reason', $request->input('alasan_laporan'));
-        $request->merge(['reason' => $reason]);
+        $notes = $request->input('notes', $request->input('catatan_tambahan'));
+        $notes = is_string($notes) && trim($notes) !== '' ? trim($notes) : null;
+        $request->merge(['reason' => $reason, 'notes' => $notes]);
 
         $request->validate([
             'reason' => 'required|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ], [
+            'notes.max' => 'Catatan tambahan maksimal 500 karakter.',
             'reason.required' => 'Alasan laporan diskusi wajib diisi.',
             'reason.max' => 'Alasan laporan maksimal 500 karakter.',
         ]);
@@ -77,6 +81,7 @@ class DiscussionReportController extends Controller
             'id_diskusi' => $discussionId,
             'id_user' => $userId,
             'alasan_laporan' => $reason,
+            'catatan_tambahan' => $notes,
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),

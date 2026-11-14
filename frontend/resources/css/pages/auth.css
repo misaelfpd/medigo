@@ -1,0 +1,14 @@
+/* Halaman masuk & daftar pengguna (auth/login, auth/register) */
+.auth-input-group .form-control:focus {
+    box-shadow: none;
+    border-color: #dee2e6;
+}
+
+.auth-input-group:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(var(--mg-primary-rgb, 0, 43, 94), 0.2);
+    border-radius: 0.25rem;
+}
+
+/* Scrollbar di dalam kartu jika layar terlalu pendek */
+.auth-card::-webkit-scrollbar { width: 6px; }
+.auth-card::-webkit-scrollbar-thumb { background-color: #dee2e6; border-radius: 10px; }

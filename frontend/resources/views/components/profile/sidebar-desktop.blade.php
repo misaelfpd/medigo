@@ -1,7 +1,7 @@
 <!-- Desktop User Profile Sidebar -->
 <div class="card border rounded-4 bg-white p-4 shadow-2xs mb-4 text-center">
     <div class="mb-3 mx-auto" style="width: 80px; height: 80px;">
-        <img src="{{ $user->avatar_url }}" alt="{{ $user->name ?? $user->nama_user }}" class="rounded-circle w-100 h-100 object-fit-cover shadow-xs border">
+        <x-avatar :name="$user->name ?? $user->nama_user" :src="$user->avatar_url" :size="80" class="shadow-xs" />
     </div>
     <h5 class="fw-bold text-dark mb-1">{{ $user->name ?? $user->nama_user }}</h5>
     <p class="text-muted small mb-0">{{ $user->email ?? $user->email_user }}</p>

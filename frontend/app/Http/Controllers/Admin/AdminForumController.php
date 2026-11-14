@@ -36,7 +36,7 @@ class AdminForumController extends Controller
         $stats = [
             'active_threads' => 0,
             'pending_reports' => 0,
-            'auto_actions' => 342,
+            'auto_actions' => 0,
         ];
 
         $pagination = [

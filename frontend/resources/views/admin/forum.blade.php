@@ -4,7 +4,7 @@
 @section('page_title', 'Moderasi Forum')
 
 @section('content')
-<div class="container-fluid px-4 py-3">
+<div class="container-fluid px-0">
 
     {{-- Breadcrumb & Top Bar Context --}}
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
@@ -78,9 +78,8 @@
                 <div class="fw-bold text-dark mb-1" style="font-size: 2rem; line-height: 1.1;">
                     {{ number_format($stats['active_threads']) }}
                 </div>
-                <div class="text-success small fw-semibold d-flex align-items-center gap-1">
-                    <i class="bi bi-arrow-up-short fs-5"></i>
-                    <span>+5.2% minggu ini</span>
+                <div class="text-muted small">
+                    Diskusi yang tampil di forum
                 </div>
             </div>
         </div>
@@ -107,16 +106,16 @@
         <div class="col-12 col-md-4">
             <div class="card border rounded-4 p-4 bg-white shadow-2xs h-100" style="border-color: #e2e8f0 !important;">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.05em;">TINDAKAN OTOMATIS</span>
+                    <span class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.05em;">LAPORAN SELESAI</span>
                     <div class="rounded-3 p-2 bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                        <i class="bi bi-robot fs-5"></i>
+                        <i class="bi bi-check2-circle fs-5"></i>
                     </div>
                 </div>
                 <div class="fw-bold text-dark mb-1" style="font-size: 2rem; line-height: 1.1;">
                     {{ number_format($stats['auto_actions']) }}
                 </div>
                 <div class="text-muted small">
-                    Spam disaring dalam 24 jam terakhir
+                    Laporan yang sudah ditindak atau diabaikan
                 </div>
             </div>
         </div>
@@ -427,20 +426,5 @@
 @endsection
 
 @push('styles')
-<style>
-    .btn-medigo-navy {
-        background-color: #0b2b52;
-        border-color: #0b2b52;
-    }
-    .btn-medigo-navy:hover {
-        background-color: #082140;
-        border-color: #082140;
-    }
-    .hover-bg-light:hover {
-        background-color: #f8fafc;
-    }
-    .hover-primary:hover {
-        color: #0b5ed7 !important;
-    }
-</style>
+    @vite('resources/css/pages/admin-forum.css')
 @endpush

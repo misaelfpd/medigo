@@ -3,14 +3,7 @@
 @section('title', 'Detail Diskusi - MediGO')
 
 @push('styles')
-<style>
-    .hover-primary:hover { color: #002b5e !important; }
-    .discussion-reply-form { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #dee2e6; padding: 1rem 0; z-index: 1000; }
-    @media (max-width: 991.98px) { .discussion-reply-form { bottom: 60px; } }
-    .cursor-pointer { cursor: pointer; }
-    .clickable-image { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .clickable-image:hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
-</style>
+    @vite(['resources/css/pages/forum-detail.css', 'resources/js/pages/forum-detail.js', 'resources/js/pages/forum-like.js'])
 @endpush
 
 @section('content')
@@ -27,17 +20,18 @@
     <div class="row">
         <div class="col-lg-8 mx-auto">
             
-            <!-- Panggil Komponen Alerts -->
-            @include('components.alerts')
+            <article class="mg-thread-card mb-4">
+                <!-- Panggil Header Diskusi -->
+                @include('components.forum.detail-header', ['discussion' => $discussion])
 
-            <!-- Panggil Header Diskusi -->
-            @include('components.forum.detail-header', ['discussion' => $discussion])
-
-            <!-- Panggil Konten Diskusi -->
-            @include('components.forum.detail-content', ['discussion' => $discussion])
+                <!-- Panggil Konten Diskusi -->
+                @include('components.forum.detail-content', ['discussion' => $discussion])
+            </article>
 
             <!-- Panggil Bagian Komentar & Balasan -->
-            @include('components.forum.comments-section', ['comments' => $comments])
+            <div id="comments">
+                @include('components.forum.comments-section', ['comments' => $comments])
+            </div>
 
             <div style="height: 60px;"></div>
         </div>
@@ -51,8 +45,3 @@
 @include('components.forum.modal')
 
 @endsection
-
-@push('scripts')
-    <!-- Panggil Komponen Scripts -->
-    @include('components.forum.scripts')
-@endpush

@@ -45,12 +45,9 @@
         }
     }
 
-    $typeIcon = 'bi-hospital';
-    if ($typeSlug === 'clinic') {
-        $typeIcon = 'bi-heart-pulse-fill';
-    } elseif ($typeSlug === 'puskesmas') {
-        $typeIcon = 'bi-plus-circle-fill';
-    }
+    // Ikon & warna fallback sesuai jenis faskes (apotek, lab, optik, dokter, dll.)
+    $visualKey = \App\Support\FaskesVisual::key($resolvedType, $faskesName);
+    $typeIcon = \App\Support\FaskesVisual::TYPES[$visualKey][0];
     
     // 2. GUNAKAN VARIABEL $faskesId YANG SUDAH AMAN
     $detailUrl = (!empty($faskes['detail_url']) && $faskes['detail_url'] !== '#') 
@@ -68,8 +65,12 @@
      data-lng="{{ $faskes['lng'] ?? '' }}">
     <div class="d-flex gap-3 align-items-start">
         <!-- Logo Avatar with Type Colored Background -->
-        <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-{{ $typeSlug }}">
+        <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-{{ $typeSlug }} faskes-visual-{{ $visualKey }} {{ !empty($faskes['thumbnail_url']) ? 'has-photo' : '' }}">
             <i class="bi {{ $typeIcon }} text-white fs-4"></i>
+            @if(!empty($faskes['thumbnail_url']))
+                <img src="{{ $faskes['thumbnail_url'] }}" alt="Foto {{ $faskesName }}" class="facility-thumb-photo" loading="lazy"
+                     onerror="this.parentElement.classList.remove('has-photo'); this.remove();">
+            @endif
         </div>
 
         <!-- Info Content -->
@@ -92,12 +93,12 @@
                     <span class="badge-custom badge-kelas">Kelas {{ $faskes['hospital_class'] }}</span>
                 @endif
                 <span class="badge-custom {{ !empty($faskes['bpjs_support']) ? 'badge-bpjs' : 'badge-non-bpjs' }}">
-                    {{ !empty($faskes['bpjs_support']) ? 'BPJS' : 'Non - BPJS' }}
+                    {{ !empty($faskes['bpjs_support']) ? 'BPJS' : 'Non BPJS' }}
                 </span>
                 
                 <!-- ID DI DISTANCE -->
                 <span class="facility-distance ms-auto text-dark fw-bold" id="dist-faskes-{{ $faskesId }}">
-                    <i class="bi bi-arrow-down-up me-1"></i>{{ !empty($faskes['distance']) ? $faskes['distance'] : '-' }}
+                    <i class="bi bi-signpost-split me-1"></i>{{ !empty($faskes['distance']) ? $faskes['distance'] : '-' }}
                 </span>
             </div>
 

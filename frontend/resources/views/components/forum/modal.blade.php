@@ -33,7 +33,15 @@
                             <option value="SARA">Konten Tidak Pantas / SARA</option>
                             <option value="Lainnya">Lainnya...</option>
                         </select>
-                        <textarea name="reason" id="reportReasonText" class="form-control rounded-3 mt-2 d-none" rows="3" required></textarea>
+                        <textarea name="reason" id="reportReasonText" class="form-control rounded-3 mt-2 d-none" rows="3" placeholder="Tuliskan alasan spesifik Anda..." required></textarea>
+                    </div>
+                    <div class="mb-1">
+                        <label for="dynamicReportNotes" class="form-label fw-semibold text-dark" style="font-size: 0.88rem;">
+                            Catatan Tambahan <span class="text-muted fw-normal">(opsional)</span>
+                        </label>
+                        <textarea name="notes" id="dynamicReportNotes" class="form-control rounded-3" rows="3" maxlength="500"
+                                  placeholder="Jelaskan detail pelanggaran agar admin lebih mudah meninjau..."></textarea>
+                        <div class="form-text text-end" style="font-size: 0.72rem;">Maks. 500 karakter</div>
                     </div>
                 </div>
                 <div class="modal-footer border-top pt-3">

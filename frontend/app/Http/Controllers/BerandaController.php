@@ -314,6 +314,9 @@ class BerandaController extends Controller
                             $id ?? 0
                         ),
 
+                        // Foto thumbnail asli dari admin (backend); kosong = tampilkan ikon
+                        'thumbnail_url' => $item['thumbnail_url'] ?? null,
+
                         'hospital_name' => $formattedName,
 
                         'type' => $resolvedType,

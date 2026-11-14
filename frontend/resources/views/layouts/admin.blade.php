@@ -18,7 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Vite Assets -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/medigo-ui.css', 'resources/js/app.js', 'resources/js/core/toast.js'])
     
     @stack('styles')
 </head>
@@ -34,52 +34,36 @@
             <div>
                 <!-- Brand Section -->
                 <div class="admin-brand-wrapper px-3 py-3 mb-4">
-                    <a href="{{ route('admin.dashboard') }}" class="d-flex align-items-center gap-2 text-decoration-none admin-brand">
-                        <i class="bi bi-hospital navbar-brand-icon" style="font-size: 1.8rem; color: #002b5e;"></i>
-                        <div>
-                            <div class="fw-bold text-dark" style="font-size: 1.25rem; line-height: 1.1;">Medi<span style="color: #0b5ed7;">GO</span></div>
-                            <span class="text-muted" style="font-size: 0.65rem; font-weight: 500;">Your Health, Faster.</span>
-                        </div>
+                    <a href="{{ route('admin.dashboard') }}" class="d-flex align-items-center text-decoration-none admin-brand" aria-label="MediGO Admin">
+                        <img src="{{ asset('images/medigo_logo.png') }}" alt="MediGO - Your Health, Faster." class="admin-brand-logo">
                     </a>
                 </div>
 
+                @php
+                    $pending = $adminPendingCounts ?? \App\Support\AdminPendingCounts::EMPTY;
+                    $adminMenu = [
+                        ['route' => 'admin.dashboard', 'active' => ['admin', 'admin/dashboard'], 'icon' => 'bi-grid-fill', 'label' => 'Dashboard'],
+                        ['route' => 'admin.faskes', 'active' => ['admin/faskes*'], 'icon' => 'bi-plus-square-fill', 'label' => 'Rumah Sakit'],
+                        ['route' => 'admin.forum', 'active' => ['admin/forum*'], 'icon' => 'bi-chat-left-text', 'label' => 'Forum'],
+                        ['route' => 'admin.discussion-reports', 'active' => ['admin/discussion-reports*'], 'icon' => 'bi-chat-square-quote-fill', 'label' => 'Laporan Diskusi', 'count' => $pending['discussion_reports']],
+                        ['route' => 'admin.discussion-comment-reports', 'active' => ['admin/discussion-comment-reports*'], 'icon' => 'bi-chat-dots-fill', 'label' => 'Laporan Komentar Diskusi', 'count' => $pending['discussion_comment_reports']],
+                        ['route' => 'admin.comment-reports', 'active' => ['admin/comment-reports*'], 'icon' => 'bi-flag-fill', 'label' => 'Laporan Ulasan Faskes', 'count' => $pending['faskes_comment_reports']],
+                        ['route' => 'admin.faskes-feedbacks', 'active' => ['admin/feedback-faskes*'], 'icon' => 'bi-patch-question-fill', 'label' => 'Masukan Data Faskes', 'count' => $pending['faskes_feedbacks']],
+                    ];
+                @endphp
+
                 <!-- Navigation Links -->
                 <nav class="admin-nav d-flex flex-column gap-1">
-                    <!-- Dashboard -->
-                    <a href="{{ route('admin.dashboard') }}" class="admin-nav-item {{ request()->is('admin/dashboard') || request()->is('admin') ? 'active' : '' }}">
-                        <i class="bi bi-grid-fill admin-nav-icon"></i>
-                        <span>Dashboard</span>
-                    </a>
-
-                    <!-- Rumah Sakit -->
-                    <a href="{{ route('admin.faskes') }}" class="admin-nav-item {{ request()->is('admin/faskes*') ? 'active' : '' }}">
-                        <i class="bi bi-plus-square-fill admin-nav-icon"></i>
-                        <span>Rumah Sakit</span>
-                    </a>
-
-                    <!-- Forum -->
-                    <a href="{{ route('admin.forum') }}" class="admin-nav-item {{ request()->is('admin/forum*') ? 'active' : '' }}">
-                        <i class="bi bi-chat-left-text admin-nav-icon"></i>
-                        <span>Forum</span>
-                    </a>
-
-                    <!-- Laporan Diskusi -->
-                    <a href="{{ route('admin.discussion-reports') }}" class="admin-nav-item {{ request()->is('admin/discussion-reports*') ? 'active' : '' }}">
-                        <i class="bi bi-chat-square-quote-fill admin-nav-icon"></i>
-                        <span>Laporan Diskusi</span>
-                    </a>
-
-                    <!-- Laporan Komentar -->
-                    <a href="{{ route('admin.comment-reports') }}" class="admin-nav-item {{ request()->is('admin/comment-reports*') ? 'active' : '' }}">
-                        <i class="bi bi-flag-fill admin-nav-icon"></i>
-                        <span>Laporan Komentar</span>
-                    </a>
-
-                    <!-- Masukan Data Faskes -->
-                    <a href="{{ route('admin.faskes-feedbacks') }}" class="admin-nav-item {{ request()->is('admin/feedback-faskes*') ? 'active' : '' }}">
-                        <i class="bi bi-patch-question-fill admin-nav-icon"></i>
-                        <span>Masukan Data Faskes</span>
-                    </a>
+                    @foreach($adminMenu as $menu)
+                        @php $count = (int) ($menu['count'] ?? 0); @endphp
+                        <a href="{{ route($menu['route']) }}" class="admin-nav-item {{ request()->is(...$menu['active']) ? 'active' : '' }}">
+                            <i class="bi {{ $menu['icon'] }} admin-nav-icon"></i>
+                            <span class="flex-grow-1">{{ $menu['label'] }}</span>
+                            @if($count > 0)
+                                <span class="admin-nav-badge" title="{{ $count }} menunggu ditinjau">{{ $count > 99 ? '99+' : $count }}</span>
+                            @endif
+                        </a>
+                    @endforeach
                 </nav>
             </div>
 
@@ -120,23 +104,41 @@
                         <input type="text" name="search" class="form-control admin-search-input ps-5 pe-3 py-2 rounded-3" placeholder="Cari rumah sakit, lokasi, dll..." value="{{ request('search') }}" id="adminGlobalSearch" autocomplete="off">
                     </form>
 
-                    <!-- Notification Bell -->
-                    <button type="button" class="btn btn-icon-round position-relative text-secondary p-2" title="Notifikasi">
-                        <i class="bi bi-bell fs-5"></i>
-                        <span class="position-absolute top-1 start-75 translate-middle p-1 bg-danger border border-light rounded-circle">
-                            <span class="visually-hidden">New alerts</span>
-                        </span>
-                    </button>
-
-                    <!-- Settings Gear -->
-                    <button type="button" class="btn btn-icon-round text-secondary p-2" title="Pengaturan">
-                        <i class="bi bi-gear fs-5"></i>
-                    </button>
+                    <!-- Notifikasi: laporan & masukan yang menunggu ditinjau -->
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-icon-round position-relative text-secondary p-2" title="Notifikasi" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            @if($pending['total'] > 0)
+                                <span class="admin-bell-badge">{{ $pending['total'] > 99 ? '99+' : $pending['total'] }}</span>
+                            @endif
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2 p-2 admin-notif-menu">
+                            <div class="px-3 py-2 fw-bold text-dark small border-bottom mb-1">Menunggu Ditinjau</div>
+                            @if($pending['total'] > 0)
+                                @foreach([
+                                    ['admin.discussion-reports', 'discussion_reports', 'Laporan diskusi', 'bi-chat-square-quote'],
+                                    ['admin.discussion-comment-reports', 'discussion_comment_reports', 'Laporan komentar diskusi', 'bi-chat-dots'],
+                                    ['admin.comment-reports', 'faskes_comment_reports', 'Laporan ulasan faskes', 'bi-flag'],
+                                    ['admin.faskes-feedbacks', 'faskes_feedbacks', 'Masukan data faskes', 'bi-patch-question'],
+                                ] as [$notifRoute, $notifKey, $notifLabel, $notifIcon])
+                                    @if($pending[$notifKey] > 0)
+                                        <a class="dropdown-item rounded-3 py-2 small d-flex align-items-center gap-2" href="{{ route($notifRoute) }}">
+                                            <i class="bi {{ $notifIcon }}"></i>
+                                            <span class="flex-grow-1">{{ $notifLabel }}</span>
+                                            <span class="admin-nav-badge">{{ $pending[$notifKey] }}</span>
+                                        </a>
+                                    @endif
+                                @endforeach
+                            @else
+                                <div class="px-3 py-3 text-muted small text-center">Tidak ada laporan baru.</div>
+                            @endif
+                        </div>
+                    </div>
 
                     <!-- Admin Profile Avatar Dropdown -->
                     <div class="dropdown">
                         <button class="btn p-0 border-0 d-flex align-items-center dropdown-toggle" type="button" id="adminUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="outline: none;">
-                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Admin Avatar" class="rounded-circle admin-avatar-img border">
+                            <x-avatar :name="session('admin_user.name', 'Admin')" :size="36" />
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2 p-2" aria-labelledby="adminUserDropdown" style="min-width: 220px;">
                             <li class="px-3 py-2 border-bottom mb-1">
@@ -165,24 +167,8 @@
                 </div>
             </header>
 
-            <!-- Flash Alerts -->
-            <div class="px-4 pt-3">
-                @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-2xs d-flex align-items-center gap-2 mb-0" role="alert">
-                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                        <span>{{ session('success') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-2xs d-flex align-items-center gap-2 mb-0" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
-                        <span>{{ session('error') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-            </div>
+            {{-- Pesan flash -> toast global --}}
+            @include('partials.flash')
 
             <!-- Page Content -->
             <main class="admin-page-content p-4 flex-grow-1">
@@ -215,18 +201,28 @@
         </div>
     </div>
 
+    <!-- Modal konfirmasi aksi admin (dipakai form dengan atribut data-confirm) -->
+    <div class="modal fade" id="adminConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-body text-center p-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-danger-subtle text-danger p-3 rounded-circle mb-3">
+                        <i class="bi bi-exclamation-triangle fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-2" data-confirm-title>Konfirmasi</h5>
+                    <p class="text-secondary small mb-4" data-confirm-message></p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold flex-grow-1" data-bs-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-semibold flex-grow-1" data-confirm-ok>Ya, Lanjutkan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Toggle mobile sidebar
-        const btnToggle = document.getElementById('btnToggleSidebar');
-        const sidebar = document.getElementById('adminSidebar');
-        if (btnToggle && sidebar) {
-            btnToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('show-mobile');
-            });
-        }
-    </script>
+    @vite('resources/js/admin/layout.js')
     @stack('scripts')
 </body>
 </html>

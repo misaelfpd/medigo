@@ -1,3 +1,4 @@
+import { faskesVisual } from "./utils/faskes-visual.js";
 /**
  * MediGO - Interactive Leaflet Map Module (Production Clean & Real-time Nearby GPS)
  * Clean modular architecture for hospital locator, GPS radius & two-way sync
@@ -269,6 +270,11 @@ document.addEventListener("DOMContentLoaded", function () {
             iconHtml = '<i class="bi bi-plus-circle-fill"></i>';
         }
 
+        // Ikon pin mengikuti jenis faskes (apotek, lab, optik, dokter, dll.)
+        const pinVisual = faskesVisual(item.jenis_faskes || item.type || "", item.name || "");
+        iconHtml = `<i class="bi ${pinVisual.icon}"></i>`;
+        pinClass += ` pin-visual-${pinVisual.key}`;
+
         const activeClass = isActive ? "is-active-pin" : "";
 
         return L.divIcon({
@@ -353,16 +359,13 @@ document.addEventListener("DOMContentLoaded", function () {
                       item.address || "",
                   );
 
-        let typeIcon = "bi-hospital";
-        if (typeSlug === "clinic") {
-            typeIcon = "bi-heart-pulse-fill";
-        } else if (typeSlug === "puskesmas") {
-            typeIcon = "bi-plus-circle-fill";
-        }
+        // Ikon & warna fallback sesuai jenis faskes
+        const visual = faskesVisual(item.jenis_faskes || item.type || "", displayName);
+        const typeIcon = visual.icon;
 
         return `
             <div class="leaflet-faskes-popup-card">
-                <div class="popup-card-header faskes-avatar-banner faskes-avatar-${typeSlug}">
+                <div class="popup-card-header faskes-avatar-banner faskes-avatar-${typeSlug} faskes-visual-${visual.key}">
                     <i class="bi ${typeIcon} faskes-avatar-icon text-white"></i>
                     <div class="popup-header-badges">
                         <span class="badge bg-white text-dark rounded-pill px-2 py-1 shadow-xs" style="font-size: 0.68rem;">
@@ -441,12 +444,9 @@ document.addEventListener("DOMContentLoaded", function () {
                       cleanAddress,
                   );
 
-        let typeIcon = "bi-hospital";
-        if (typeSlug === "clinic") {
-            typeIcon = "bi-heart-pulse-fill";
-        } else if (typeSlug === "puskesmas") {
-            typeIcon = "bi-plus-circle-fill";
-        }
+        // Ikon & warna fallback sesuai jenis faskes
+        const visual = faskesVisual(item.jenis_faskes || item.type || "", displayName);
+        const typeIcon = visual.icon;
 
         return `
             <div class="facility-item-card card ${isFirst ? "is-selected" : ""}" 
@@ -457,8 +457,9 @@ document.addEventListener("DOMContentLoaded", function () {
                  data-lat="${item.lat}"
                  data-lng="${item.lng}">
                 <div class="d-flex gap-3 align-items-start">
-                    <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug}">
+                    <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key} ${item.thumbnail_url ? "has-photo" : ""}">
                         <i class="bi ${typeIcon} text-white fs-4"></i>
+                        ${item.thumbnail_url ? `<img src="${item.thumbnail_url}" alt="Foto ${displayName}" class="facility-thumb-photo" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">` : ""}
                     </div>
                     <div class="facility-info-wrap flex-grow-1 min-w-0">
                         <h6 class="facility-name fw-bold mb-1 text-dark text-truncate" title="${displayName}">
@@ -471,7 +472,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ${resolvedType ? `<span class="badge-custom badge-type-pill" style="background-color: #f1f5f9; color: #475569; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px;">${resolvedType}</span>` : ""}
                             ${item.hospital_class ? `<span class="badge-custom badge-kelas">Kelas ${item.hospital_class}</span>` : ""}
                             <span class="badge-custom ${item.bpjs_support ? "badge-bpjs" : "badge-non-bpjs"}">
-                                ${item.bpjs_support ? "BPJS" : "Non - BPJS"}
+                                ${item.bpjs_support ? "BPJS" : "Non BPJS"}
                             </span>
                             <span class="facility-distance ms-auto text-dark fw-bold" id="dist-faskes-${item.id}">
                                 <i class="bi bi-arrow-down-up me-1"></i>${distanceStr}
@@ -533,12 +534,9 @@ document.addEventListener("DOMContentLoaded", function () {
                       cleanAddress,
                   );
 
-        let typeIcon = "bi-hospital";
-        if (typeSlug === "clinic") {
-            typeIcon = "bi-heart-pulse-fill";
-        } else if (typeSlug === "puskesmas") {
-            typeIcon = "bi-plus-circle-fill";
-        }
+        // Ikon & warna fallback sesuai jenis faskes
+        const visual = faskesVisual(item.jenis_faskes || item.type || "", displayName);
+        const typeIcon = visual.icon;
 
         return `
             <div class="mobile-facility-sheet-card ${isFirst ? "is-active" : ""}" 
@@ -549,7 +547,7 @@ document.addEventListener("DOMContentLoaded", function () {
                  data-lat="${item.lat}"
                  data-lng="${item.lng}">
                 <div class="d-flex gap-3 align-items-center mb-2">
-                    <div class="mobile-sheet-thumb-wrap position-relative flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug}">
+                    <div class="mobile-sheet-thumb-wrap position-relative flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key}">
                         <i class="bi ${typeIcon} text-white fs-4"></i>
                     </div>
                     <div class="mobile-sheet-info flex-grow-1 min-w-0">
@@ -918,6 +916,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             lat: lat,
                             lng: lng,
                             foto: photo,
+                            thumbnail_url: item.thumbnail_url || null,
                             navigasi_url:
                                 item.link_maps &&
                                 item.link_maps !== "-" &&

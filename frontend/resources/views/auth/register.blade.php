@@ -109,7 +109,7 @@
                     autocomplete="new-password" style="font-size: 0.8rem;">
                   <button type="button"
                     class="input-group-text bg-white border-start-0 text-muted btn-toggle-password"
-                    onclick="togglePassword('password', 'icon-pass')" tabindex="-1">
+                    data-toggle-password="password" aria-label="Tampilkan kata sandi" tabindex="-1">
                     <i class="bi bi-eye" id="icon-pass"></i>
                   </button>
                 </div>
@@ -131,8 +131,7 @@
                     style="font-size: 0.8rem;">
                   <button type="button"
                     class="input-group-text bg-white border-start-0 text-muted btn-toggle-password"
-                    onclick="togglePassword('password_confirmation', 'icon-pass-confirm')"
-                    tabindex="-1">
+                    data-toggle-password="password_confirmation" aria-label="Tampilkan kata sandi" tabindex="-1">
                     <i class="bi bi-eye" id="icon-pass-confirm"></i>
                   </button>
                 </div>
@@ -177,41 +176,6 @@
   </div>
 
   @push('scripts')
-    <style>
-      /* Styling agar seragam dengan login */
-      .auth-input-group .form-control:focus {
-        box-shadow: none;
-        border-color: #dee2e6;
-      }
-
-      .auth-input-group:focus-within {
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-        border-radius: 0.25rem;
-      }
-
-      /* Kustomisasi scrollbar dalam card jika layar terlalu pendek */
-      .auth-card::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .auth-card::-webkit-scrollbar-thumb {
-        background-color: #dee2e6;
-        border-radius: 10px;
-      }
-    </style>
-    <script>
-      // Fungsi reusable untuk toggle kedua input password
-      function togglePassword(inputId, iconId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById(iconId);
-
-        if (input && icon) {
-          const isPassword = input.getAttribute('type') === 'password';
-          input.setAttribute('type', isPassword ? 'text' : 'password');
-          icon.classList.toggle('bi-eye', !isPassword);
-          icon.classList.toggle('bi-eye-slash', isPassword);
-        }
-      }
-    </script>
+    @vite(['resources/css/pages/auth.css', 'resources/js/pages/auth.js'])
   @endpush
 @endsection

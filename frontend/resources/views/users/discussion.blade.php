@@ -2,6 +2,10 @@
 
 @section('title', 'Forum Diskusi Kesehatan - MediGO')
 
+@push('styles')
+    @vite(['resources/css/pages/forum-list.css', 'resources/js/pages/forum-list.js'])
+@endpush
+
 @section('content')
 @php
     // Ambil 3 topik terpopuler secara dinamis dari $discussions berdasarkan komentar terbanyak
@@ -84,6 +88,29 @@
                     </div>
                 </div>
 
+                <!-- Card Diskusi Faskes Dekat Anda: judul diskusi + nama faskes di sekitar user -->
+                <div class="card border rounded-4 shadow-sm mb-3 bg-white mg-nearby-card" id="forumNearbyCard"
+                     data-url="{{ route('forum.nearby-discussions') }}"
+                     data-discussion-url="{{ url('/discussions') }}"
+                     data-faskes-url="{{ url('/faskes') }}">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-2 px-2 text-dark d-flex align-items-center gap-2" style="font-size: 0.78rem; letter-spacing: 0.6px;">
+                            <i class="bi bi-geo-alt"></i>
+                            <span id="forumNearbyHeading">DISKUSI FASKES DEKAT ANDA</span>
+                        </h6>
+                        <div class="px-2" id="forumNearbyList">
+                            <div class="text-muted" style="font-size: 0.8rem;">
+                                <span class="spinner-border spinner-border-sm me-1"></span> Memuat diskusi...
+                            </div>
+                        </div>
+                        <div class="px-2 mt-2">
+                            <button type="button" class="btn btn-sm mg-btn-outline px-3 d-none" id="forumNearbyLocateBtn">
+                                <i class="bi bi-crosshair me-1"></i> Gunakan Lokasi Saya
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Card Sedang Tren (Dinamis dari $discussions) -->
                 <div class="card border rounded-4 shadow-sm bg-white">
                     <div class="card-body p-3">
@@ -124,6 +151,12 @@
         <!-- Area Konten Utama (Hanya Bagian Ini yang Scroll) -->
         <div class="col-lg-9">
             <div class="medigo-main-scroll pt-1 pb-3 pe-lg-2">
+                @if(!empty($faskesFilterId))
+                    <div class="alert alert-light border d-flex align-items-center justify-content-between gap-2 py-2 px-3 mb-3 rounded-3" style="font-size: 0.85rem;">
+                        <span><i class="bi bi-funnel me-1"></i> Menampilkan diskusi yang membahas faskes pilihan.</span>
+                        <a href="{{ route('discussions') }}" class="text-decoration-none fw-semibold">Hapus filter</a>
+                    </div>
+                @endif
                 <div class="row g-3">
                     @forelse($discussions as $discussion)
                         @php
@@ -167,100 +200,77 @@
                             }
                         @endphp
 
+                        @php
+                            $discMention = $discussion['mentioned_faskes'] ?? null;
+                            $discLikes = (int) ($discussion['likes_count'] ?? 0);
+                            $discLikedByMe = (bool) ($discussion['liked_by_me'] ?? false);
+                            $discMentionName = is_array($discMention) ? ($discMention['nama_faskes'] ?? null) : null;
+                            $discMentionId = is_array($discMention) ? ($discMention['id_faskes'] ?? null) : null;
+                        @endphp
+
                         <div class="col-12">
-                            <div class="card border rounded-4 shadow-sm hover-lift p-3 p-lg-4 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge rounded-pill bg-medigo-subtle px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
-                                            {{ $discCategory }}
-                                        </span>
-                                        @if(!empty($discImage) || !empty($discussion['images']))
-                                            <span class="badge rounded-pill bg-light text-secondary border px-2 py-1 fw-semibold" style="font-size: 0.72rem;">
-                                                <i class="bi bi-image me-1 text-medigo-primary"></i> Foto
-                                            </span>
+                            <article class="mg-discussion-card">
+                                @if(!empty($discThumbnail))
+                                    <a href="{{ route('discussions.show', $discId) }}" class="mg-discussion-cover">
+                                        <img src="{{ $discThumbnail }}"
+                                             alt="Foto diskusi {{ $discTitle }}"
+                                             loading="lazy"
+                                             onerror="this.closest('a').classList.add('d-none');">
+                                        @if($discPhotoCount > 1)
+                                            <span class="mg-discussion-cover-count">+{{ $discPhotoCount - 1 }} foto</span>
                                         @endif
-                                    </div>
+                                    </a>
+                                @endif
 
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="text-muted" style="font-size: 0.78rem;">
-                                            <i class="bi bi-clock me-1"></i>
-                                            {{ !empty($discussion['created_at']) ? \Carbon\Carbon::parse($discussion['created_at'])->diffForHumans() : 'Baru saja' }}
-                                        </span>
-
-                                        @if(Auth::check() && !$isMyDisc)
-                                            <div class="dropdown">
-                                                <button class="btn btn-link text-muted p-0 m-0 text-decoration-none" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-                                                    <li>
-                                                        <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#reportDiscussionModal" data-discussion-id="{{ $discId }}">
-                                                            <i class="bi bi-flag me-2"></i> Laporkan Diskusi
-                                                        </button>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <div class="d-flex gap-3 align-items-start">
-                                    <div class="flex-grow-1" style="min-width: 0;">
-                                        <h5 class="fw-bold text-dark mb-2" style="font-size: 1.05rem;">
-                                            <a href="{{ route('discussions.show', $discId) }}" class="text-dark text-decoration-none hover-primary-text">
-                                                {{ $discTitle }}
-                                            </a>
-                                        </h5>
-
-                                        <p class="text-secondary mb-3" style="font-size: 0.88rem; line-height: 1.6;">
-                                            {{ \Illuminate\Support\Str::limit($discBody, 160) }}
-                                        </p>
-                                    </div>
-
-                                    @if(!empty($discThumbnail))
-                                        <a href="{{ route('discussions.show', $discId) }}"
-                                           class="flex-shrink-0 position-relative d-block rounded-3 overflow-hidden border bg-light"
-                                           style="width: 96px; height: 96px;">
-                                            <img src="{{ $discThumbnail }}"
-                                                 alt="Foto diskusi {{ $discTitle }}"
-                                                 loading="lazy"
-                                                 class="w-100 h-100 object-fit-cover"
-                                                 onerror="this.closest('a').classList.add('d-none');">
-                                            @if($discPhotoCount > 1)
-                                                <span class="position-absolute bottom-0 end-0 m-1 badge rounded-pill bg-dark bg-opacity-75" style="font-size: 0.68rem;">
-                                                    +{{ $discPhotoCount - 1 }}
-                                                </span>
-                                            @endif
+                                <div class="mg-discussion-meta">
+                                    <span class="mg-chip mg-chip--category">{{ $discCategory }}</span>
+                                    @if($discMentionName)
+                                        <a href="{{ $discMentionId ? route('faskes.detail', $discMentionId) : '#' }}" class="mg-chip mg-chip--mention" title="Faskes yang dibahas">
+                                            <i class="bi bi-hospital"></i> {{ $discMentionName }}
                                         </a>
+                                    @endif
+                                    <span class="mg-discussion-author">
+                                        @if($authorAvatarUrl)
+                                            <img src="{{ $authorAvatarUrl }}" alt="{{ $discAuthor }}">
+                                        @else
+                                            <i class="bi bi-person"></i>
+                                        @endif
+                                        {{ $discAuthor }}
+                                    </span>
+                                    <span class="mg-discussion-time">
+                                        &bull; {{ !empty($discussion['created_at']) ? \Carbon\Carbon::parse($discussion['created_at'])->diffForHumans() : 'Baru saja' }}
+                                    </span>
+
+                                    @if(Auth::check() && !$isMyDisc)
+                                        <div class="dropdown ms-auto">
+                                            <button class="btn btn-link text-muted p-0 m-0 text-decoration-none" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Opsi diskusi">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                                <li>
+                                                    <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#reportDiscussionModal" data-discussion-id="{{ $discId }}">
+                                                        <i class="bi bi-flag me-2"></i> Laporkan Diskusi
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     @endif
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                    <div class="d-flex align-items-center gap-2">
-                                        @if($authorAvatarUrl)
-                                            <img src="{{ $authorAvatarUrl }}" 
-                                                 alt="{{ $discAuthor }}" 
-                                                 class="rounded-circle object-fit-cover border shadow-2xs" 
-                                                 style="width: 28px; height: 28px;">
-                                        @else
-                                            <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
-                                                 style="width: 28px; height: 28px; font-size: 0.75rem; background-color: #002b5e;">
-                                                {{ strtoupper(substr($discAuthor, 0, 1)) }}
-                                            </div>
-                                        @endif
-                                        <span class="fw-semibold text-dark" style="font-size: 0.82rem;">
-                                            {{ $discAuthor }}
-                                        </span>
-                                    </div>
+                                <h2 class="mg-discussion-title">
+                                    <a href="{{ route('discussions.show', $discId) }}">{{ $discTitle }}</a>
+                                </h2>
+                                <p class="mg-discussion-excerpt">{{ \Illuminate\Support\Str::limit($discBody, 200) }}</p>
 
-                                    <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.82rem;">
-                                        <span>
-                                            <i class="bi bi-chat-left-text me-1" style="color: #002b5e;"></i>
-                                            {{ $discCommentsCount }} Komentar
-                                        </span>
-                                    </div>
+                                <div class="mg-discussion-footer">
+                                    <a href="{{ route('discussions.show', $discId) }}#comments" class="mg-discussion-stat">
+                                        <i class="bi bi-chat-square"></i> {{ $discCommentsCount }} Balasan
+                                    </a>
+                                    <span class="mg-discussion-stat mg-discussion-likes ms-auto {{ $discLikedByMe ? 'is-liked' : '' }}" title="Jumlah suka">
+                                        <i class="bi bi-arrow-up"></i> {{ $discLikes }}
+                                    </span>
                                 </div>
-                            </div>
+                            </article>
                         </div>
                     @empty
                         <!-- Empty State -->
@@ -360,80 +370,6 @@
     </div>
 </div>
 
-<style>
-    /* Cegah ancestor memblokir position: sticky */
-    html, body, main, #app {
-        overflow-x: clip !important;
-    }
-
-    @media (min-width: 992px) {
-        /* Sidebar tetap diam di bawah navbar (tidak menimpa navbar & tidak ikut tergulung) */
-        .medigo-sidebar-sticky {
-            position: -webkit-sticky;
-            position: sticky;
-            top: 88px;
-            z-index: 10;
-        }
-
-        /* Hanya area main section yang bisa di-scroll secara independen */
-        .medigo-main-scroll {
-            max-height: calc(100vh - 110px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: thin;
-            scrollbar-color: #cbd5e1 transparent;
-        }
-
-        .medigo-main-scroll::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .medigo-main-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .medigo-main-scroll::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 999px;
-        }
-
-        .medigo-main-scroll::-webkit-scrollbar-thumb:hover {
-            background-color: #94a3b8;
-        }
-    }
-
-    .bg-medigo-subtle {
-        background-color: #e6f0fa !important;
-        color: #002b5e !important;
-    }
-
-    .hover-subtle:hover {
-        background-color: #f4f7fb;
-        color: #002b5e !important;
-    }
-
-    .hover-primary-text:hover {
-        color: #002b5e !important;
-    }
-
-    .page-link.hover-primary:hover {
-        background-color: #e6f0fa !important;
-        color: #002b5e !important;
-    }
-
-    .page-item.active .page-link {
-        z-index: 3;
-    }
-
-    .hover-lift {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .hover-lift:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .08) !important;
-    }
-</style>
 
 <!-- Modal Laporkan Diskusi -->
 <div class="modal fade" id="reportDiscussionModal" tabindex="-1" aria-labelledby="reportDiscussionModalLabel" aria-hidden="true">
@@ -461,6 +397,14 @@
                         </select>
                         <textarea name="reason" id="reportReasonText" class="form-control rounded-3 mt-2 d-none" rows="3" placeholder="Tuliskan alasan spesifik Anda..." required></textarea>
                     </div>
+                    <div class="mb-1">
+                        <label for="reportNotesText" class="form-label fw-semibold text-dark" style="font-size: 0.88rem;">
+                            Catatan Tambahan <span class="text-muted fw-normal">(opsional)</span>
+                        </label>
+                        <textarea name="notes" id="reportNotesText" class="form-control rounded-3" rows="3" maxlength="500"
+                                  placeholder="Jelaskan detail pelanggaran agar admin lebih mudah meninjau..."></textarea>
+                        <div class="form-text text-end" style="font-size: 0.72rem;">Maks. 500 karakter</div>
+                    </div>
                 </div>
                 <div class="modal-footer border-top pt-3">
                     <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
@@ -471,34 +415,4 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const reportModal = document.getElementById('reportDiscussionModal');
-        if (reportModal) {
-            reportModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const discussionId = button.getAttribute('data-discussion-id');
-                const form = document.getElementById('reportDiscussionForm');
-
-                form.action = `/discussions/${discussionId}/report`;
-            });
-
-            const presetSelect = document.getElementById('reportReasonPreset');
-            const reasonText = document.getElementById('reportReasonText');
-
-            reasonText.value = presetSelect.value;
-
-            presetSelect.addEventListener('change', function() {
-                if (this.value === 'Lainnya') {
-                    reasonText.classList.remove('d-none');
-                    reasonText.value = '';
-                    reasonText.required = true;
-                } else {
-                    reasonText.classList.add('d-none');
-                    reasonText.value = this.value;
-                }
-            });
-        }
-    });
-</script>
 @endsection

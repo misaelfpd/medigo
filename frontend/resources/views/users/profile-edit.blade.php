@@ -5,58 +5,7 @@
 @push('styles')
     <!-- Local Cropper.js CSS (Zero External Dependencies) -->
     <link rel="stylesheet" href="{{ asset('vendor/cropperjs/cropper.min.css') }}?v=1.6.2">
-    <style>
-        .cropper-view-box,
-        .cropper-face {
-            border-radius: 50% !important;
-        }
-        .cropper-view-box {
-            outline: 2px solid #0b2b52 !important;
-            outline-color: rgba(11, 43, 82, 0.9) !important;
-        }
-        .cropper-line,
-        .cropper-point {
-            background-color: #0b2b52 !important;
-        }
-        .cropper-preview-circle {
-            box-shadow: 0 4px 14px rgba(11, 43, 82, 0.1);
-            width: 130px;
-            height: 130px;
-            border-radius: 50% !important;
-            overflow: hidden !important;
-            margin-left: auto;
-            margin-right: auto;
-            background-color: #f8fafc;
-            border: 2px solid #cbd5e1;
-        }
-        .cropper-container-wrapper {
-            position: relative;
-            width: 100%;
-            height: 340px;
-            max-height: 50vh;
-            background-color: #0f172a;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .cropper-container-wrapper img#imageToCrop {
-            display: block;
-            max-width: 100%;
-            max-height: 100%;
-        }
-        .avatar-clickable-wrapper {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .avatar-clickable-wrapper:hover #avatarPreviewImage {
-            filter: brightness(0.88);
-        }
-        .avatar-clickable-wrapper:hover #btnTriggerAvatarUpload {
-            transform: scale(1.12);
-        }
-    </style>
+    @vite(['resources/css/pages/profile-edit.css', 'resources/js/pages/profile-edit.js'])
 @endpush
 
 @section('content')
@@ -97,12 +46,16 @@
                         
                         <!-- Avatar Section: Cukup Gambar Kamera & Foto untuk Mengganti (Sesuai Permintaan) -->
                         <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom" style="border-color: #f1f5f9 !important;">
-                            <div class="avatar-clickable-wrapper position-relative flex-shrink-0" id="avatarClickableContainer" style="width: 86px; height: 86px;" title="Klik ikon kamera untuk mengganti foto profil">
-                                <img src="{{ $user->avatar_url }}" 
-                                     alt="{{ $user->name }}" 
-                                     id="avatarPreviewImage" 
-                                     class="rounded-circle w-100 h-100 object-fit-cover border shadow-xs"
+                            <div class="avatar-clickable-wrapper position-relative flex-shrink-0" id="avatarClickableContainer" style="width: 86px; height: 86px;" title="Klik ikon kamera untuk mengganti foto profil"
+                                 data-original-avatar="{{ $user->avatar_url ?? '' }}">
+                                <img src="{{ $user->avatar_url ?? '' }}"
+                                     alt="{{ $user->name }}"
+                                     id="avatarPreviewImage"
+                                     class="rounded-circle w-100 h-100 object-fit-cover border shadow-xs {{ $user->avatar_url ? '' : 'd-none' }}"
                                      style="border-color: #cbd5e1 !important;">
+                                <span id="avatarPreviewInitial" class="avatar-preview-initial {{ $user->avatar_url ? 'd-none' : '' }}" aria-hidden="true">
+                                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(trim($user->name ?? '') ?: 'P', 0, 1)) }}
+                                </span>
                                 
                                 <button type="button" 
                                         id="btnTriggerAvatarUpload" 
@@ -215,7 +168,7 @@
                                        style="font-size: 0.9rem;">
                                 <button type="button" 
                                         class="input-group-text bg-white border-start-0 text-muted rounded-end-3" 
-                                        onclick="togglePassVisibility('current_password', 'icon_curr_pass')"
+                                        data-toggle-password="current_password" aria-label="Tampilkan kata sandi"
                                         tabindex="-1">
                                     <i class="bi bi-eye" id="icon_curr_pass"></i>
                                 </button>
@@ -238,7 +191,7 @@
                                        style="font-size: 0.9rem;">
                                 <button type="button" 
                                         class="input-group-text bg-white border-start-0 text-muted rounded-end-3" 
-                                        onclick="togglePassVisibility('new_password', 'icon_new_pass')"
+                                        data-toggle-password="new_password" aria-label="Tampilkan kata sandi"
                                         tabindex="-1">
                                     <i class="bi bi-eye" id="icon_new_pass"></i>
                                 </button>
@@ -342,234 +295,5 @@
 <!-- Local Cropper.js JavaScript (Zero External Dependencies) -->
 <script src="{{ asset('vendor/cropperjs/cropper.min.js') }}?v=1.6.2"></script>
 
-<script>
-    // Password visibility toggle
-    function togglePassVisibility(inputId, iconId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById(iconId);
-        if (!input || !icon) return;
-
-        const isPassword = input.getAttribute('type') === 'password';
-        input.setAttribute('type', isPassword ? 'text' : 'password');
-        icon.classList.toggle('bi-eye', !isPassword);
-        icon.classList.toggle('bi-eye-slash', isPassword);
-    }
-
-    // Avatar Upload & Cropper Logic
-    document.addEventListener('DOMContentLoaded', function () {
-        const avatarFileInput = document.getElementById('avatarFileInput');
-        const avatarCroppedInput = document.getElementById('avatarCroppedInput');
-        const avatarPreviewImage = document.getElementById('avatarPreviewImage');
-        const avatarClickableContainer = document.getElementById('avatarClickableContainer');
-        const btnTriggerAvatarUpload = document.getElementById('btnTriggerAvatarUpload');
-        const btnRemoveCropped = document.getElementById('btnRemoveCropped');
-        const imageToCrop = document.getElementById('imageToCrop');
-        const btnApplyCrop = document.getElementById('btnApplyCrop');
-        const cropAvatarModalEl = document.getElementById('cropAvatarModal');
-        
-        const originalAvatarUrl = '{{ $user->avatar_url }}';
-        let cropperInstance = null;
-        let cropModal = null;
-
-        if (typeof bootstrap !== 'undefined' && cropAvatarModalEl) {
-            cropModal = new bootstrap.Modal(cropAvatarModalEl);
-        }
-
-        // Trigger file dialog saat klik avatar atau tombol kamera
-        function triggerFileInput() {
-            avatarFileInput?.click();
-        }
-
-        avatarClickableContainer?.addEventListener('click', triggerFileInput);
-        btnTriggerAvatarUpload?.addEventListener('click', function(e) {
-            e.stopPropagation();
-            triggerFileInput();
-        });
-
-        // Inisialisasi Cropper instance
-        function initCropper() {
-            if (typeof Cropper === 'undefined') {
-                console.error('Cropper.js belum terdefinisi!');
-                return;
-            }
-
-            if (cropperInstance) {
-                cropperInstance.destroy();
-                cropperInstance = null;
-            }
-
-            cropperInstance = new Cropper(imageToCrop, {
-                aspectRatio: 1, // 1:1 Circle / Square
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 0.85,
-                restore: false,
-                guides: true,
-                center: true,
-                highlight: false,
-                cropBoxMovable: true,
-                cropBoxResizable: true,
-                toggleDragModeOnDblclick: false,
-                preview: '.cropper-preview-circle',
-            });
-        }
-
-        // File selection & validation
-        avatarFileInput?.addEventListener('change', function (e) {
-            const file = e.target.files && e.target.files[0];
-            if (!file) return;
-
-            // 1. Validasi Tipe File (jpg, png, jpeg)
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-            const fileExtension = file.name.split('.').pop().toLowerCase();
-            const allowedExtensions = ['jpg', 'jpeg', 'png'];
-
-            if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-                if (window.showGlobalToast) {
-                    window.showGlobalToast('Format file tidak didukung! Harap unggah foto berekstensi JPG, JPEG, atau PNG.', 'error');
-                } else {
-                    alert('Format file tidak didukung! Harap unggah foto berekstensi JPG, JPEG, atau PNG.');
-                }
-                avatarFileInput.value = '';
-                return;
-            }
-
-            // 2. Validasi Ukuran File (Maksimal 2MB = 2,097,152 bytes)
-            const maxSize = 2 * 1024 * 1024;
-            if (file.size > maxSize) {
-                if (window.showGlobalToast) {
-                    window.showGlobalToast('Ukuran foto terlalu besar! Maksimal ukuran file adalah 2MB.', 'error');
-                } else {
-                    alert('Ukuran foto terlalu besar! Maksimal ukuran file adalah 2MB.');
-                }
-                avatarFileInput.value = '';
-                return;
-            }
-
-            // 3. Load ke Cropper Modal
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                if (cropperInstance) {
-                    cropperInstance.destroy();
-                    cropperInstance = null;
-                }
-
-                imageToCrop.src = event.target.result;
-
-                if (cropModal) {
-                    cropModal.show();
-                } else if (typeof bootstrap !== 'undefined' && cropAvatarModalEl) {
-                    cropModal = new bootstrap.Modal(cropAvatarModalEl);
-                    cropModal.show();
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Inisialisasi Cropper saat modal sudah tampil sepenuhnya di layar
-        cropAvatarModalEl?.addEventListener('shown.bs.modal', function () {
-            initCropper();
-        });
-
-        // Cleanup Cropper saat modal ditutup
-        cropAvatarModalEl?.addEventListener('hidden.bs.modal', function () {
-            if (cropperInstance) {
-                cropperInstance.destroy();
-                cropperInstance = null;
-            }
-            avatarFileInput.value = '';
-        });
-
-        // Cropper Tool Controls: Zoom & Rotate
-        document.getElementById('btnZoomInCrop')?.addEventListener('click', function () {
-            if (cropperInstance) {
-                cropperInstance.zoom(0.1);
-            }
-        });
-
-        document.getElementById('btnZoomOutCrop')?.addEventListener('click', function () {
-            if (cropperInstance) {
-                cropperInstance.zoom(-0.1);
-            }
-        });
-
-        document.getElementById('btnRotateLeftCrop')?.addEventListener('click', function () {
-            if (cropperInstance) {
-                cropperInstance.rotate(-90);
-            }
-        });
-
-        document.getElementById('btnRotateRightCrop')?.addEventListener('click', function () {
-            if (cropperInstance) {
-                cropperInstance.rotate(90);
-            }
-        });
-
-        document.getElementById('btnResetCrop')?.addEventListener('click', function () {
-            if (cropperInstance) {
-                cropperInstance.reset();
-            }
-        });
-
-        // Terapkan Hasil Pemotongan Foto
-        btnApplyCrop?.addEventListener('click', function () {
-            let base64Cropped = null;
-
-            if (cropperInstance) {
-                try {
-                    const croppedCanvas = cropperInstance.getCroppedCanvas({
-                        width: 400,
-                        height: 400,
-                        imageSmoothingEnabled: true,
-                        imageSmoothingQuality: 'high',
-                    });
-                    if (croppedCanvas) {
-                        base64Cropped = croppedCanvas.toDataURL('image/jpeg', 0.92);
-                    }
-                } catch (err) {
-                    console.error('Gagal mengambil canvas cropper:', err);
-                }
-            }
-
-            // Fallback jika tidak didapatkan dari canvas
-            if (!base64Cropped && imageToCrop.src && imageToCrop.src.startsWith('data:image/')) {
-                base64Cropped = imageToCrop.src;
-            }
-
-            if (!base64Cropped) {
-                alert('Foto belum dapat diproses. Silakan pilih foto kembali.');
-                return;
-            }
-
-            // Pasang ke preview dan input form
-            avatarPreviewImage.src = base64Cropped;
-            avatarCroppedInput.value = base64Cropped;
-
-            // Tampilkan tombol Batal Ganti Foto
-            btnRemoveCropped?.classList.remove('d-none');
-
-            // Tutup modal
-            if (cropModal) {
-                cropModal.hide();
-            }
-
-            if (window.showGlobalToast) {
-                window.showGlobalToast('Foto berhasil disesuaikan! Klik "Simpan Perubahan" untuk menyimpan.', 'success');
-            }
-        });
-
-        // Batal Ganti Foto (Kembalikan ke foto semula sebelum diedit)
-        btnRemoveCropped?.addEventListener('click', function () {
-            avatarPreviewImage.src = originalAvatarUrl;
-            avatarCroppedInput.value = '';
-            avatarFileInput.value = '';
-            btnRemoveCropped.classList.add('d-none');
-
-            if (window.showGlobalToast) {
-                window.showGlobalToast('Perubahan foto dibatalkan.', 'info');
-            }
-        });
-    });
-</script>
 @endpush
 @endsection

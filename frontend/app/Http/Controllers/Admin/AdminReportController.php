@@ -16,7 +16,7 @@ class AdminReportController extends Controller
     }
 
     /**
-     * List all faskes data feedbacks
+     * Daftar masukan/koreksi data faskes dari pengguna (bisa difilter status & pencarian)
      */
     public function indexFeedbacks(Request $request)
     {
@@ -25,49 +25,32 @@ class AdminReportController extends Controller
             return redirect()->route('admin.login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $feedbacks = [];
-        try {
-            $backendUrl = $this->getBackendUrl();
-            $response = Http::timeout(6)->withToken($token)->get("{$backendUrl}/api/admin/faskes-feedbacks");
-            if ($response->successful()) {
-                $rawFeedbacks = $response->json()['data'] ?? [];
-                $feedbacks = collect($rawFeedbacks)->map(function ($fb) {
-                    $fb = (array) $fb;
-                    $id = $fb['id_feedback_faskes'] ?? ($fb['id'] ?? null);
-                    $category = $fb['kategori'] ?? ($fb['category'] ?? 'lainnya');
-                    $notes = $fb['catatan'] ?? ($fb['notes'] ?? '');
-                    $suggestion = $fb['saran_koreksi'] ?? ($fb['suggested_correction'] ?? null);
-                    $userName = $fb['nama_pengguna'] ?? ($fb['user_name'] ?? ($fb['registered_user_name'] ?? 'Pengguna Anonim'));
-                    $userEmail = $fb['email_pengguna'] ?? ($fb['user_email'] ?? ($fb['registered_user_email'] ?? null));
-                    $adminNotes = $fb['catatan_admin'] ?? ($fb['admin_notes'] ?? null);
+        $statusFilter = in_array($request->query('status'), ['pending', 'resolved', 'dismissed'], true) ? $request->query('status') : null;
+        $params = array_filter([
+            'status' => $statusFilter,
+            'search' => trim((string) $request->query('search', '')) ?: null,
+        ]);
 
-                    return (object) array_merge($fb, [
-                        'id' => $id,
-                        'id_feedback_faskes' => $id,
-                        'category' => $category,
-                        'kategori' => $category,
-                        'notes' => $notes,
-                        'catatan' => $notes,
-                        'suggested_correction' => $suggestion,
-                        'saran_koreksi' => $suggestion,
-                        'user_name' => $userName,
-                        'nama_pengguna' => $userName,
-                        'user_email' => $userEmail,
-                        'email_pengguna' => $userEmail,
-                        'admin_notes' => $adminNotes,
-                        'catatan_admin' => $adminNotes,
-                    ]);
-                })->all();
+        $feedbacks = [];
+        $loadFailed = false;
+        try {
+            $response = Http::timeout(6)->withToken($token)->acceptJson()
+                ->get($this->getBackendUrl() . '/api/admin/faskes-feedbacks', $params);
+            if ($response->successful()) {
+                $feedbacks = collect($response->json('data', []))->map(fn ($fb) => (array) $fb)->all();
+            } else {
+                $loadFailed = true;
             }
         } catch (\Exception $e) {
+            $loadFailed = true;
             Log::error('Failed fetching faskes feedbacks: ' . $e->getMessage());
         }
 
-        return view('admin.faskes_feedbacks', compact('feedbacks'));
+        return view('admin.faskes_feedbacks', compact('feedbacks', 'loadFailed', 'statusFilter'));
     }
 
     /**
-     * Update feedback status (reviewed, applied, rejected)
+     * Ubah status masukan: pending (menunggu), resolved (data sudah disesuaikan), dismissed (ditolak)
      */
     public function updateFeedbackStatus(Request $request, $id)
     {
@@ -76,37 +59,34 @@ class AdminReportController extends Controller
             return redirect()->route('admin.login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $request->validate([
-            'status' => 'required|in:pending,reviewed,applied,rejected,resolved,dismissed',
+        $validated = $request->validate([
+            'status' => 'required|in:pending,resolved,dismissed',
             'admin_notes' => 'nullable|string|max:1000',
-            'catatan_admin' => 'nullable|string|max:1000',
+        ], [
+            'status.in' => 'Status masukan tidak valid.',
         ]);
 
-        // Map status to backend enum values: pending, resolved, dismissed
-        $statusInput = $request->input('status');
-        $mappedStatus = in_array($statusInput, ['resolved', 'applied', 'reviewed']) ? 'resolved' : ($statusInput === 'rejected' ? 'dismissed' : 'pending');
-        $adminNotes = $request->input('catatan_admin', $request->input('admin_notes'));
-
         try {
-            $backendUrl = $this->getBackendUrl();
-            $response = Http::timeout(6)->withToken($token)->put("{$backendUrl}/api/admin/faskes-feedbacks/{$id}/status", [
-                'status' => $mappedStatus,
-                'catatan_admin' => $adminNotes,
-                'admin_notes' => $adminNotes,
-            ]);
+            $response = Http::timeout(6)->withToken($token)->acceptJson()
+                ->put($this->getBackendUrl() . "/api/admin/faskes-feedbacks/{$id}/status", [
+                    'status' => $validated['status'],
+                    'catatan_admin' => $validated['admin_notes'] ?? '',
+                ]);
 
             if ($response->successful()) {
-                return redirect()->route('admin.faskes-feedbacks')->with('success', 'Status masukan data berhasil diperbarui.');
+                return back()->with('success', $response->json('message') ?: 'Status masukan data berhasil diperbarui.');
             }
+
+            return back()->with('error', $response->json('message') ?: 'Gagal memperbarui status masukan.');
         } catch (\Exception $e) {
             Log::error('Failed updating feedback status: ' . $e->getMessage());
         }
 
-        return redirect()->route('admin.faskes-feedbacks')->with('error', 'Gagal memperbarui status masukan.');
+        return back()->with('error', 'Gagal memperbarui status masukan.');
     }
 
     /**
-     * List all reported faskes comments
+     * Daftar laporan ulasan faskes (bisa difilter status & pencarian)
      */
     public function indexCommentReports(Request $request)
     {
@@ -115,80 +95,65 @@ class AdminReportController extends Controller
             return redirect()->route('admin.login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $reports = [];
-        try {
-            $backendUrl = $this->getBackendUrl();
-            $response = Http::timeout(6)->withToken($token)->get("{$backendUrl}/api/admin/faskes-comment-reports");
-            if ($response->successful()) {
-                $rawReports = $response->json()['data'] ?? [];
-                $reports = collect($rawReports)->map(function ($rep) {
-                    $rep = (array) $rep;
-                    $id = $rep['id_laporan_komentar'] ?? ($rep['id'] ?? null);
-                    $reason = $rep['alasan_laporan'] ?? ($rep['reason'] ?? '');
-                    $notes = $rep['catatan_tambahan'] ?? ($rep['notes'] ?? null);
+        $statusFilter = in_array($request->query('status'), ['pending', 'resolved', 'dismissed'], true) ? $request->query('status') : null;
+        $params = array_filter([
+            'status' => $statusFilter,
+            'search' => trim((string) $request->query('search', '')) ?: null,
+        ]);
 
-                    return (object) array_merge($rep, [
-                        'id' => $id,
-                        'id_laporan_komentar' => $id,
-                        'reason' => $reason,
-                        'alasan_laporan' => $reason,
-                        'notes' => $notes,
-                        'catatan_tambahan' => $notes,
-                    ]);
-                })->all();
+        $reports = [];
+        $loadFailed = false;
+        try {
+            $response = Http::timeout(6)->withToken($token)->acceptJson()
+                ->get($this->getBackendUrl() . '/api/admin/faskes-comment-reports', $params);
+            if ($response->successful()) {
+                $reports = collect($response->json('data', []))->map(fn ($r) => (array) $r)->all();
+            } else {
+                $loadFailed = true;
             }
         } catch (\Exception $e) {
+            $loadFailed = true;
             Log::error('Failed fetching comment reports: ' . $e->getMessage());
         }
 
-        return view('admin.comment_reports', compact('reports'));
+        return view('admin.comment_reports', compact('reports', 'loadFailed', 'statusFilter'));
+    }
+
+    private function commentReportAction(string $path, string $fallbackError)
+    {
+        if (!session('admin_token')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan login terlebih dahulu.');
+        }
+
+        try {
+            $response = Http::timeout(6)->withToken(session('admin_token'))->acceptJson()
+                ->post($this->getBackendUrl() . $path);
+
+            if ($response->successful()) {
+                return back()->with('success', $response->json('message') ?: 'Laporan berhasil diperbarui.');
+            }
+
+            return back()->with('error', $response->json('message') ?: $fallbackError);
+        } catch (\Exception $e) {
+            Log::error("Comment report action {$path} failed: " . $e->getMessage());
+        }
+
+        return redirect()->route('admin.comment-reports')->with('error', $fallbackError);
     }
 
     /**
-     * Takedown / delete a reported comment
+     * Takedown (hapus) ulasan faskes yang dilaporkan
      */
     public function takedownComment(Request $request, $id)
     {
-        $token = session('admin_token');
-        if (!$token) {
-            return redirect()->route('admin.login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
-        try {
-            $backendUrl = $this->getBackendUrl();
-            $response = Http::timeout(6)->withToken($token)->post("{$backendUrl}/api/admin/faskes-comment-reports/{$id}/takedown");
-
-            if ($response->successful()) {
-                return redirect()->route('admin.comment-reports')->with('success', 'Komentar yang melanggar berhasil dihapus (takedown).');
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed takedown comment report: ' . $e->getMessage());
-        }
-
-        return redirect()->route('admin.comment-reports')->with('error', 'Gagal men-takedown komentar.');
+        return $this->commentReportAction("/api/admin/faskes-comment-reports/{$id}/takedown", 'Gagal men-takedown ulasan.');
     }
 
     /**
-     * Dismiss a comment report
+     * Abaikan laporan ulasan faskes
      */
     public function dismissCommentReport(Request $request, $id)
     {
-        $token = session('admin_token');
-        if (!$token) {
-            return redirect()->route('admin.login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
-        try {
-            $backendUrl = $this->getBackendUrl();
-            $response = Http::timeout(6)->withToken($token)->post("{$backendUrl}/api/admin/faskes-comment-reports/{$id}/dismiss");
-
-            if ($response->successful()) {
-                return redirect()->route('admin.comment-reports')->with('success', 'Laporan berhasil ditandai selesai/diabaikan.');
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed dismissing comment report: ' . $e->getMessage());
-        }
-
-        return redirect()->route('admin.comment-reports')->with('error', 'Gagal memperbarui status laporan.');
+        return $this->commentReportAction("/api/admin/faskes-comment-reports/{$id}/dismiss", 'Gagal memperbarui status laporan.');
     }
 }

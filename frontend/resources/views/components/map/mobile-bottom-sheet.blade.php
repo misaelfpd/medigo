@@ -49,12 +49,9 @@
                     $faskesName = 'Puskesmas ' . $faskesName;
                 }
 
-                $typeIcon = 'bi-hospital';
-                if ($typeSlug === 'clinic') {
-                    $typeIcon = 'bi-heart-pulse-fill';
-                } elseif ($typeSlug === 'puskesmas') {
-                    $typeIcon = 'bi-plus-circle-fill';
-                }
+                // Ikon & warna fallback sesuai jenis faskes (apotek, lab, optik, dokter, dll.)
+                $visualKey = \App\Support\FaskesVisual::key(($faskes['type'] ?? ''), $faskesName);
+                $typeIcon = \App\Support\FaskesVisual::TYPES[$visualKey][0];
                 $detailUrl = (!empty($faskes['detail_url']) && $faskes['detail_url'] !== '#') ? $faskes['detail_url'] : url('/faskes/' . $faskes['id']);
             @endphp
             <div class="mobile-facility-sheet-card {{ $loop->first ? 'is-active' : '' }}" 
@@ -66,7 +63,7 @@
                  data-lng="{{ $faskes['lng'] }}">
                 <div class="d-flex gap-3 align-items-center mb-2">
                     <!-- Type Colored Logo Box -->
-                    <div class="mobile-sheet-thumb-wrap position-relative flex-shrink-0 faskes-avatar-map faskes-avatar-{{ $typeSlug }}">
+                    <div class="mobile-sheet-thumb-wrap position-relative flex-shrink-0 faskes-avatar-map faskes-avatar-{{ $typeSlug }} faskes-visual-{{ $visualKey }}">
                         <i class="bi {{ $typeIcon }} text-white fs-4"></i>
                     </div>
 

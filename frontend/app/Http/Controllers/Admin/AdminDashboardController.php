@@ -19,44 +19,60 @@ class AdminDashboardController extends Controller
         $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
         $token = session('admin_token');
 
+        $currentYear = (int) now()->year;
+        $year = (int) $request->query('year', $currentYear);
+        if ($year < $currentYear - 1 || $year > $currentYear) {
+            $year = $currentYear;
+        }
+
         $stats = [
             'total_users'            => 0,
             'user_growth_pct'        => 0,
+            'new_users_30d'          => 0,
             'total_faskes'           => 0,
             'faskes_growth_pct'      => 0,
+            'new_faskes_30d'         => 0,
             'total_discussions'      => 0,
             'discussions_growth_pct' => 0,
+            'new_discussions_30d'    => 0,
             'activities'             => [],
         ];
 
         $chartData = [
+            'year'   => $year,
             'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
-            'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'values' => array_fill(0, 12, null),
         ];
+        $statsLoaded = false;
 
         try {
-            $http = Http::timeout(5);
+            $http = Http::timeout(5)->acceptJson();
             if ($token) {
                 $http = $http->withToken($token);
             }
-            $response = $http->get("{$backendUrl}/api/admin/stats");
+            $response = $http->get("{$backendUrl}/api/admin/stats", ['year' => $year]);
             if ($response->successful()) {
-                $body = $response->json();
-                $data = $body['data'] ?? [];
+                $data = $response->json('data', []);
+                $statsLoaded = true;
 
-                if (isset($data['total_users']))            $stats['total_users']            = (int) $data['total_users'];
-                if (isset($data['user_growth_pct']))        $stats['user_growth_pct']        = (float) $data['user_growth_pct'];
-                if (isset($data['total_faskes']))           $stats['total_faskes']           = (int) $data['total_faskes'];
-                if (isset($data['faskes_growth_pct']))      $stats['faskes_growth_pct']      = (float) $data['faskes_growth_pct'];
-                if (isset($data['total_discussions']))      $stats['total_discussions']      = (int) $data['total_discussions'];
-                if (isset($data['discussions_growth_pct'])) $stats['discussions_growth_pct'] = (float) $data['discussions_growth_pct'];
-                if (!empty($data['activities']))            $stats['activities']             = $data['activities'];
-                if (!empty($data['chart_monthly']))         $chartData['values']             = $data['chart_monthly'];
+                foreach (['total_users', 'total_faskes', 'total_discussions', 'new_users_30d', 'new_faskes_30d', 'new_discussions_30d'] as $key) {
+                    if (isset($data[$key])) $stats[$key] = (int) $data[$key];
+                }
+                foreach (['user_growth_pct', 'faskes_growth_pct', 'discussions_growth_pct'] as $key) {
+                    if (isset($data[$key])) $stats[$key] = (float) $data[$key];
+                }
+                if (!empty($data['activities'])) $stats['activities'] = $data['activities'];
+                if (isset($data['chart_monthly']) && is_array($data['chart_monthly'])) {
+                    $chartData['values'] = array_map(
+                        fn ($v) => $v === null ? null : (int) $v,
+                        array_slice(array_pad($data['chart_monthly'], 12, null), 0, 12)
+                    );
+                }
             }
         } catch (\Exception $e) {
             Log::warning('Failed to fetch dashboard stats from backend: ' . $e->getMessage());
         }
 
-        return view('admin.dashboard', compact('stats', 'chartData'));
+        return view('admin.dashboard', compact('stats', 'chartData', 'statsLoaded', 'currentYear'));
     }
 }

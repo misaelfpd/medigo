@@ -60,6 +60,10 @@ Route::post('/discussions/{id_diskusi}/comments', [DiscussionController::class, 
 Route::delete('/discussion-comments/{id_tanggapan}', [DiscussionController::class, 'destroyComment'])->name('discussion-comments.destroy');
 Route::delete('/discussions/{id_diskusi}', [DiscussionController::class, 'destroyDiscussion'])->name('discussions.destroy');
 Route::post('/forum/report/{type}/{id}', [DiscussionController::class, 'report'])->name('forum.report');
+Route::post('/forum/like/{type}/{id}', [DiscussionController::class, 'like'])->name('forum.like');
+Route::get('/forum/faskes-terdekat', [DiscussionController::class, 'nearbyFaskes'])->name('forum.nearby');
+Route::get('/forum/diskusi-terdekat', [DiscussionController::class, 'nearbyDiscussions'])->name('forum.nearby-discussions');
+Route::get('/forum/mention-search', [DiscussionController::class, 'mentionSearch'])->name('forum.mention-search');
 
 // Admin Auth Routes
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
@@ -73,10 +77,15 @@ Route::prefix('admin')->group(function () {
     
     Route::get('/faskes', [AdminFaskesController::class, 'index'])->name('admin.faskes');
     Route::get('/faskes/create', [AdminFaskesController::class, 'create'])->name('admin.faskes.create');
+    Route::get('/faskes/{id}/edit', [AdminFaskesController::class, 'edit'])->whereNumber('id')->name('admin.faskes.edit');
     Route::get('/faskes/{id}/json', [AdminFaskesController::class, 'getFaskesJson'])->name('admin.faskes.json');
     Route::post('/faskes', [AdminFaskesController::class, 'store'])->name('admin.faskes.store');
     Route::put('/faskes/{id}', [AdminFaskesController::class, 'update'])->name('admin.faskes.update');
     Route::delete('/faskes/{id}', [AdminFaskesController::class, 'destroy'])->name('admin.faskes.destroy');
+    Route::get('/faskes/{id}/foto', [AdminFaskesController::class, 'photos'])->name('admin.faskes.photos');
+    Route::post('/faskes/{id}/foto', [AdminFaskesController::class, 'uploadPhoto'])->name('admin.faskes.photos.upload');
+    Route::delete('/faskes/{id}/foto/{fotoId}', [AdminFaskesController::class, 'deletePhoto'])->name('admin.faskes.photos.destroy');
+    Route::post('/faskes/{id}/foto/{fotoId}/jadikan', [AdminFaskesController::class, 'setPhotoAs'])->name('admin.faskes.photos.set');
     Route::post('/fasilitas', [AdminFaskesController::class, 'storeFasilitas'])->name('admin.fasilitas.store');
     Route::post('/spesialisasi', [AdminFaskesController::class, 'storeSpesialisasi'])->name('admin.spesialisasi.store');
     
@@ -92,6 +101,13 @@ Route::prefix('admin')->group(function () {
 
     Route::get('/discussion-reports', [AdminDiscussionReportController::class, 'index'])->name('admin.discussion-reports');
     Route::post('/discussions/{id}/takedown', [AdminDiscussionReportController::class, 'takedown'])->name('admin.discussions.takedown');
+    Route::post('/discussion-reports/{id}/takedown', [AdminDiscussionReportController::class, 'takedownReport'])->whereNumber('id')->name('admin.discussion-reports.takedown');
+    Route::post('/discussion-reports/{id}/dismiss', [AdminDiscussionReportController::class, 'dismissReport'])->whereNumber('id')->name('admin.discussion-reports.dismiss');
+
+    // Laporan komentar diskusi (balasan di forum)
+    Route::get('/discussion-comment-reports', [AdminDiscussionReportController::class, 'indexComments'])->name('admin.discussion-comment-reports');
+    Route::post('/discussion-comment-reports/{id}/takedown', [AdminDiscussionReportController::class, 'takedownComment'])->whereNumber('id')->name('admin.discussion-comment-reports.takedown');
+    Route::post('/discussion-comment-reports/{id}/dismiss', [AdminDiscussionReportController::class, 'dismissComment'])->whereNumber('id')->name('admin.discussion-comment-reports.dismiss');
     // Rute menghapus komentar diskusi
     Route::delete('/discussion-comments/{id}', [App\Http\Controllers\DiscussionController::class, 'destroyComment']);
 

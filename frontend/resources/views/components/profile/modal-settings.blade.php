@@ -1,4 +1,4 @@
-<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+<div class="modal fade" id="settingsModal" data-auto-open="{{ $errors->any() ? '1' : '0' }}" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
             <div class="modal-header border-bottom px-4 py-3 bg-light">
@@ -56,14 +56,3 @@
     </div>
 </div>
 
-@if($errors->any())
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var settingsModalEl = document.getElementById('settingsModal');
-            if (settingsModalEl && typeof bootstrap !== 'undefined') {
-                var modal = new bootstrap.Modal(settingsModalEl);
-                modal.show();
-            }
-        });
-    </script>
-@endif

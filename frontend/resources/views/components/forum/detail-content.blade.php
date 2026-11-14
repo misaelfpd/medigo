@@ -19,21 +19,60 @@
     $body = $discussion['isi_diskusi'] ?? ($discussion['body'] ?? ($discussion['content'] ?? ''));
 @endphp
 
-<h4 class="fw-bold mb-3">{{ $title }}</h4>
-<div class="text-secondary mb-4" style="line-height: 1.7; font-size: 0.98rem;">{!! nl2br(e($body)) !!}</div>
+@php
+    $category = $discussion['kategori'] ?? ($discussion['category'] ?? 'Umum');
+    $mention = $discussion['mentioned_faskes'] ?? null;
+    $mentionName = is_array($mention) ? ($mention['nama_faskes'] ?? null) : null;
+    $mentionId = is_array($mention) ? ($mention['id_faskes'] ?? null) : null;
+@endphp
+
+<h1 class="mg-thread-title">{{ $title }}</h1>
+<div class="mg-discussion-meta mb-3">
+    <span class="mg-chip mg-chip--category">{{ $category }}</span>
+    @if($mentionName)
+        <a href="{{ $mentionId ? route('faskes.detail', $mentionId) : '#' }}" class="mg-chip mg-chip--mention" title="Faskes yang dibahas">
+            <i class="bi bi-hospital"></i> {{ $mentionName }}
+        </a>
+    @endif
+    <span class="mg-discussion-time">&bull; {{ \Carbon\Carbon::parse($discussion['created_at'] ?? now())->diffForHumans() }}</span>
+</div>
+<div class="mg-thread-body mb-4">{!! nl2br(e($body)) !!}</div>
 
 @if(!empty($discImages))
-    <div class="mb-4">
-        <label class="small fw-semibold text-muted text-uppercase mb-2 d-block" style="letter-spacing: 0.5px;">Lampiran Foto:</label>
-        <div class="d-flex flex-wrap gap-2">
-            @foreach($discImages as $img)
-                @php
-                    $fullImgUrl = str_starts_with($img, 'http') ? str_replace('http://localhost', $beUrl, $img) : $beUrl . '/storage/' . ltrim($img, '/');
-                @endphp
-                <div class="rounded-3 overflow-hidden border shadow-2xs cursor-pointer clickable-image" style="max-width: 220px; max-height: 200px;" onclick="openImageViewer('{{ $fullImgUrl }}')">
-                    <img src="{{ $fullImgUrl }}" alt="Lampiran Diskusi" class="img-fluid object-fit-cover w-100 h-100" style="max-height: 200px; cursor: pointer;">
-                </div>
-            @endforeach
-        </div>
+    <div class="mb-4 mg-thread-images">
+        @foreach($discImages as $img)
+            @php
+                $fullImgUrl = str_starts_with($img, 'http') ? str_replace('http://localhost', $beUrl, $img) : $beUrl . '/storage/' . ltrim($img, '/');
+            @endphp
+            <div class="clickable-image {{ $loop->first ? 'mg-thread-image-main' : 'mg-thread-image-thumb' }}" onclick="openImageViewer(@js($fullImgUrl))">
+                <img src="{{ $fullImgUrl }}" alt="Lampiran Diskusi" loading="lazy">
+            </div>
+        @endforeach
     </div>
 @endif
+
+@php
+    $likesCount = (int) ($discussion['likes_count'] ?? 0);
+    $likedByMe = (bool) ($discussion['liked_by_me'] ?? false);
+    $discOwnerEmail = $discussion['author_email'] ?? ($discussion['email_user'] ?? null);
+    $isOwnDiscussion = Auth::check() && $discOwnerEmail && strtolower(Auth::user()->email ?? '') === strtolower($discOwnerEmail);
+    $commentsCount = isset($discussion['comments_count'])
+        ? (int) $discussion['comments_count']
+        : collect($comments ?? [])->sum(fn ($c) => 1 + count($c['replies'] ?? []));
+@endphp
+<div class="mg-thread-actions">
+    <button type="button"
+            class="mg-like-btn {{ $likedByMe ? 'is-liked' : '' }}"
+            data-like-type="discussion"
+            data-like-id="{{ $discussion['id_diskusi'] ?? ($discussion['id'] ?? '') }}"
+            data-liked="{{ $likedByMe ? '1' : '0' }}"
+            data-own="{{ $isOwnDiscussion ? '1' : '0' }}"
+            data-login="{{ Auth::check() ? '1' : '0' }}"
+            aria-pressed="{{ $likedByMe ? 'true' : 'false' }}">
+        <i class="bi {{ $likedByMe ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up' }}"></i>
+        <span><span data-like-count>{{ $likesCount }}</span> Suka</span>
+    </button>
+    <a href="#comments" class="mg-discussion-stat">
+        <i class="bi bi-chat-square"></i> <span>{{ $commentsCount }} Balasan</span>
+    </a>
+</div>

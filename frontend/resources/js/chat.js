@@ -1,3 +1,14 @@
+import { faskesVisual } from "./utils/faskes-visual.js";
+
+// Konfigurasi dari atribut data-* di #chatApp (users/chat.blade.php)
+const chatAppEl = document.getElementById("chatApp");
+window.MedigoConfig = {
+    chatUrl: chatAppEl?.dataset.chatUrl || "/chat",
+    loginUrl: chatAppEl?.dataset.loginUrl || "/login",
+    csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute("content"),
+    currentUserName: chatAppEl?.dataset.userName || "",
+    currentUserAvatar: chatAppEl?.dataset.userAvatar || null,
+};
 document.addEventListener('DOMContentLoaded', function() {
     const chatBox = document.getElementById('chatBox');
     const userInput = document.getElementById('userInput');
@@ -172,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sender === 'user') {
             const avatarHtml = window.MedigoConfig?.currentUserAvatar 
                 ? `<div class="avatar-user overflow-hidden p-0 border" style="width: 36px; height: 36px; border-radius: 50%;"><img src="${window.MedigoConfig.currentUserAvatar}" class="w-100 h-100 object-fit-cover rounded-circle"></div>`
-                : `<div class="avatar-user"><i class="bi bi-person-fill"></i></div>`;
+                : `<span class="mg-avatar avatar-user p-0" style="width: 36px; height: 36px; font-size: 15px;"><span class="mg-avatar-initial">${(window.MedigoConfig?.currentUserName || "P").trim().charAt(0).toUpperCase()}</span></span>`;
             rowDiv.innerHTML = `
                 ${avatarHtml}
                 <div class="bubble-wrap">
@@ -216,9 +227,9 @@ document.addEventListener('DOMContentLoaded', function() {
             resolvedType = 'Rumah Sakit'; typeSlug = 'hospital';
         }
 
-        let typeIcon = 'bi-hospital';
-        if (typeSlug === 'clinic') typeIcon = 'bi-heart-pulse-fill';
-        if (typeSlug === 'puskesmas') typeIcon = 'bi-plus-circle-fill';
+        // Ikon & warna fallback sesuai jenis faskes
+        const visual = faskesVisual(faskes.jenis_faskes || faskes.type || "", faskesName);
+        const typeIcon = visual.icon;
 
         // GENERASI URL MAPS SEARCH DINAMIS (LAT & LNG)
         let mapUrl = faskes.link_maps && faskes.link_maps !== '#' ? faskes.link_maps : '';
@@ -252,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         card.innerHTML = `
             <div class="d-flex gap-3 align-items-start">
-                <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug}">
+                <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key}">
                     <i class="bi ${typeIcon} text-white fs-4"></i>
                 </div>
                 <div class="facility-info-wrap flex-grow-1 min-w-0">

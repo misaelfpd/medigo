@@ -7,15 +7,16 @@
         $faskesDisplayName = 'Puskesmas ' . $faskesDisplayName;
     }
 
-    $typeIcon = 'bi-hospital';
-    if ($typeSlug === 'clinic') {
-        $typeIcon = 'bi-heart-pulse-fill';
-    } elseif ($typeSlug === 'puskesmas') {
-        $typeIcon = 'bi-plus-circle-fill';
-    }
+    // Ikon & warna fallback sesuai jenis faskes (apotek, lab, optik, dokter, dll.)
+    $visualKey = \App\Support\FaskesVisual::key(($faskes['tipe'] ?? ''), $faskesDisplayName);
+    $typeIcon = \App\Support\FaskesVisual::TYPES[$visualKey][0];
 @endphp
 
-<div class="detail-mobile-hero faskes-detail-hero-mobile faskes-avatar-{{ $typeSlug }} d-block d-lg-none position-relative p-4 text-center">
+@php
+    $mobileBannerUrl = ($faskes['banner_url'] ?? null) ?: ($faskes['thumbnail_url'] ?? null);
+@endphp
+<div class="detail-mobile-hero faskes-detail-hero-mobile faskes-avatar-{{ $typeSlug }} faskes-visual-{{ $visualKey }} d-block d-lg-none position-relative p-4 text-center {{ $mobileBannerUrl ? 'mg-mobile-hero--photo' : '' }}"
+     @if($mobileBannerUrl) style="background-image: linear-gradient(180deg, rgba(0,52,97,.35), rgba(0,52,97,.85)), url('{{ $mobileBannerUrl }}');" @endif>
     <div class="faskes-hero-logo-circle mb-3 mx-auto">
         <i class="bi {{ $typeIcon }} text-white"></i>
     </div>

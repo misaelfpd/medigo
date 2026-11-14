@@ -15,30 +15,14 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <!-- Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
-        body {
-            font-family: "Inter", sans-serif;
-            height: 100vh;
-            overflow: hidden; 
-            margin: 0;
-        }
-        
-        main {
-            height: 100%;
-        }
-
-        .auth-wrapper {
-            height: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-    </style>
+    @vite(['resources/css/app.css', 'resources/css/medigo-ui.css', 'resources/css/pages/auth-layout.css', 'resources/js/app.js', 'resources/js/core/toast.js'])
     
     @stack('styles')
 </head>
 <body>
     
+    @include('partials.flash')
+
     <main class="auth-wrapper">
         @yield('content')
     </main>

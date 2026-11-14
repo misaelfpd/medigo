@@ -49,15 +49,6 @@
               </div>
             @endif
 
-            @if (session('success'))
-              <div
-                class="alert alert-success rounded-3 py-1 px-2 mb-3 d-flex align-items-center gap-2"
-                role="alert" style="font-size: 0.75rem;">
-                <i class="bi bi-check-circle-fill flex-shrink-0"></i>
-                <div>{{ session('success') }}</div>
-              </div>
-            @endif
-
             <!-- Login Form -->
             <form action="{{ route('login.post') }}" method="POST" id="userLoginForm">
               @csrf
@@ -99,7 +90,7 @@
                     autocomplete="current-password" style="font-size: 0.8rem;">
                   <button type="button"
                     class="input-group-text bg-white border-start-0 text-muted btn-toggle-password"
-                    id="btnTogglePassword" tabindex="-1">
+                    id="btnTogglePassword" data-toggle-password="password" aria-label="Tampilkan kata sandi" tabindex="-1">
                     <i class="bi bi-eye" id="togglePasswordIcon"></i>
                   </button>
                 </div>
@@ -111,12 +102,12 @@
                   <input class="form-check-input" type="checkbox" name="remember" value="1" id="remember"
                     {{ old('remember') ? 'checked' : '' }}>
                   <label class="form-check-label text-muted" for="remember" style="font-size: 0.75rem;">
-                    Ingat saya (3 hari)
+                    Ingat saya 
                   </label>
                 </div>
                 <a href="#" class="text-dark text-decoration-none fw-bold"
                   style="font-size: 0.75rem;"
-                  onclick="alert('Silakan hubungi administrator.'); return false;">
+                  data-info-toast="Untuk mengatur ulang kata sandi, silakan hubungi administrator MediGO.">
                   Lupa Kata Sandi?
                 </a>
               </div>
@@ -159,32 +150,6 @@
   </div>
 
   @push('scripts')
-    <style>
-      .auth-input-group .form-control:focus {
-        box-shadow: none;
-        border-color: #dee2e6;
-      }
-
-      .auth-input-group:focus-within {
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-        border-radius: 0.25rem;
-      }
-    </style>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const toggleBtn = document.getElementById('btnTogglePassword');
-        const passwordInput = document.getElementById('password');
-        const toggleIcon = document.getElementById('togglePasswordIcon');
-
-        if (toggleBtn && passwordInput && toggleIcon) {
-          toggleBtn.addEventListener('click', function() {
-            const isPassword = passwordInput.getAttribute('type') === 'password';
-            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-            toggleIcon.classList.toggle('bi-eye', !isPassword);
-            toggleIcon.classList.toggle('bi-eye-slash', isPassword);
-          });
-        }
-      });
-    </script>
+    @vite(['resources/css/pages/auth.css', 'resources/js/pages/auth.js'])
   @endpush
 @endsection

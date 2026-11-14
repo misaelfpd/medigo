@@ -1,3 +1,22 @@
+
+// Notifikasi seragam memakai toast global (resources/js/core/toast.js)
+function notify(message, type = "info") {
+    if (typeof window.showGlobalToast === "function") {
+        window.showGlobalToast(message, type);
+    } else {
+        window.alert(message);
+    }
+}
+function notifyError(message) {
+    notify(message, "error");
+}
+// Beri waktu toast terbaca sebelum pindah ke halaman login
+function redirectToLogin() {
+    setTimeout(() => {
+        window.location.href = "/login?redirect=" + encodeURIComponent(window.location.href);
+    }, 1200);
+}
+
 /**
  * MediGO - Faskes Detail Page Interactive Controller
  * Full CRUD for user comments, pagination load-more, and dynamic rating sync
@@ -433,7 +452,7 @@ function initReviewActions() {
         const comment = commentInput?.value.trim() || "";
 
         if (rating === 0) {
-            alert(
+            notifyError(
                 "Silakan pilih jumlah bintang rating terlebih dahulu (1 - 5 bintang).",
             );
             return;
@@ -455,10 +474,8 @@ function initReviewActions() {
 
             // Handle session expiry or unauthenticated
             if (resp.status === 401 || resp.status === 419) {
-                alert("Sesi Anda telah berakhir. Silakan login kembali.");
-                window.location.href =
-                    "/login?redirect=" +
-                    encodeURIComponent(window.location.href);
+                notifyError("Sesi Anda telah berakhir. Silakan login kembali.");
+                redirectToLogin();
                 return;
             }
 
@@ -493,6 +510,8 @@ function initReviewActions() {
 
                 if (starsDisplay)
                     starsDisplay.innerHTML = generateStarsHtml(rating);
+                const ratingValue = document.getElementById("myCommentRatingValue");
+                if (ratingValue) ratingValue.textContent = `${Number(rating).toFixed(1)}`;
                 if (bodyDisplay) bodyDisplay.textContent = comment;
                 if (timeDisplay) timeDisplay.textContent = "Baru saja";
 
@@ -560,11 +579,11 @@ function initReviewActions() {
                 );
                 showSuccessToast("Ulasan dan rating berhasil dikirim!");
             } else {
-                alert(result.message || "Gagal mengirim ulasan.");
+                notifyError(result.message || "Gagal mengirim ulasan.");
             }
         } catch (e) {
             console.error("Submit review error:", e);
-            alert("Terjadi kesalahan saat mengirim ulasan.");
+            notifyError("Terjadi kesalahan saat mengirim ulasan.");
         } finally {
             btnSubmit.disabled = false;
             spinner?.classList.add("d-none");
@@ -653,6 +672,8 @@ function initReviewActions() {
                 );
                 if (starsDisplay)
                     starsDisplay.innerHTML = generateStarsHtml(rating);
+                const ratingValue = document.getElementById("myCommentRatingValue");
+                if (ratingValue) ratingValue.textContent = `${Number(rating).toFixed(1)}`;
                 if (bodyDisplay) bodyDisplay.textContent = comment;
 
                 // Update list cards
@@ -694,11 +715,11 @@ function initReviewActions() {
 
                 showSuccessToast("Ulasan Anda berhasil diperbarui!");
             } else {
-                alert(result.message || "Gagal mengubah ulasan.");
+                notifyError(result.message || "Gagal mengubah ulasan.");
             }
         } catch (e) {
             console.error("Update review error:", e);
-            alert("Terjadi kesalahan saat memperbarui ulasan.");
+            notifyError("Terjadi kesalahan saat memperbarui ulasan.");
         } finally {
             btnSaveEdit.disabled = false;
             editSpinner?.classList.add("d-none");
@@ -765,11 +786,11 @@ function initReviewActions() {
                 );
                 showSuccessToast("Ulasan berhasil dihapus.");
             } else {
-                alert(result.message || "Gagal menghapus ulasan.");
+                notifyError(result.message || "Gagal menghapus ulasan.");
             }
         } catch (e) {
             console.error("Delete review error:", e);
-            alert("Terjadi kesalahan saat menghapus ulasan.");
+            notifyError("Terjadi kesalahan saat menghapus ulasan.");
         }
     });
 }
@@ -981,21 +1002,7 @@ function initMobileAboutToggle() {
  * Helper: Toast Notification
  */
 function showSuccessToast(message) {
-    const toast = document.createElement("div");
-    toast.className = "detail-toast-alert";
-    toast.innerHTML = `
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-check-circle-fill text-success fs-5"></i>
-            <span class="fw-semibold text-dark" style="font-size: 0.85rem;">${escapeHtml(message)}</span>
-        </div>
-    `;
-    document.body.appendChild(toast);
-
-    setTimeout(() => toast.classList.add("show"), 50);
-    setTimeout(() => {
-        toast.classList.remove("show");
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    notify(message, "success");
 }
 
 /**
@@ -1013,9 +1020,8 @@ function initFeedbackAndReporting() {
         if (!trigger) return;
 
         if (!isLoggedIn) {
-            alert("Silakan masuk terlebih dahulu untuk melaporkan ulasan.");
-            window.location.href =
-                "/login?redirect=" + encodeURIComponent(window.location.href);
+            notifyError("Silakan masuk terlebih dahulu untuk melaporkan ulasan.");
+            redirectToLogin();
             return;
         }
 
@@ -1072,10 +1078,8 @@ function initFeedbackAndReporting() {
             );
 
             if (resp.status === 401) {
-                alert("Silakan masuk terlebih dahulu untuk melaporkan ulasan.");
-                window.location.href =
-                    "/login?redirect=" +
-                    encodeURIComponent(window.location.href);
+                notifyError("Silakan masuk terlebih dahulu untuk melaporkan ulasan.");
+                redirectToLogin();
                 return;
             }
 
@@ -1090,11 +1094,11 @@ function initFeedbackAndReporting() {
                     resData.message || "Laporan berhasil dikirim ke admin.",
                 );
             } else {
-                alert(resData.message || "Gagal mengirim laporan ulasan.");
+                notifyError(resData.message || "Gagal mengirim laporan ulasan.");
             }
         } catch (e) {
             console.error("Report comment error:", e);
-            alert("Terjadi kesalahan saat mengirim laporan ulasan.");
+            notifyError("Terjadi kesalahan saat mengirim laporan ulasan.");
         } finally {
             btnSubmitReport.disabled = false;
             reportSpinner?.classList.add("d-none");
@@ -1133,7 +1137,7 @@ function initFeedbackAndReporting() {
             "";
 
         if (!notes) {
-            alert(
+            notifyError(
                 "Silakan isi detail masukan atau koreksi Anda terlebih dahulu.",
             );
             document.getElementById("feedbackNotesInput")?.focus();
@@ -1178,14 +1182,14 @@ function initFeedbackAndReporting() {
                         "Masukan data faskes berhasil dikirim. Terima kasih!",
                 );
             } else {
-                showSuccessToast(
-                    resData.message || "Masukan berhasil diterima.",
+                notifyError(
+                    resData.message || "Masukan data gagal dikirim. Silakan coba lagi.",
                 );
             }
         } catch (e) {
             console.error("Submit feedback error:", e);
             forceCloseModal("modalFeedbackFaskes");
-            alert("Terjadi kesalahan saat mengirim masukan data.");
+            notifyError("Terjadi kesalahan saat mengirim masukan data.");
         } finally {
             btnSubmitFeedback.disabled = false;
             feedbackSpinner?.classList.add("d-none");

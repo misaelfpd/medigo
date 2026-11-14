@@ -1,3 +1,4 @@
+import { faskesVisual } from "./utils/faskes-visual.js";
 /**
  * MediGO - Search & Advanced Multi-Filter Module
  * Handles Keyword Search, GPS Distance, Filter by Kota, Kelas, BPJS, Multi-Select Fasilitas & Multi-Select Spesialisasi.
@@ -248,9 +249,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const typeSlug = faskes.type_slug || 'hospital';
         const typeDisplay = faskes.jenis_faskes || 'Rumah Sakit';
         
-        let typeIcon = 'bi-hospital';
-        if (typeSlug === 'clinic') typeIcon = 'bi-heart-pulse-fill';
-        if (typeSlug === 'puskesmas') typeIcon = 'bi-plus-circle-fill';
+        // Ikon & warna fallback sesuai jenis faskes
+        const visual = faskesVisual(faskes.jenis_faskes || faskes.type || "", name);
+        const typeIcon = visual.icon;
 
         const bpjsStatus = faskes.is_support_bpjs ? 'BPJS' : 'Non - BPJS';
         const bpjsClass = faskes.is_support_bpjs ? 'badge-bpjs' : 'badge-non-bpjs';
@@ -263,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return `
             <div class="facility-item-card card h-100 shadow-xs border p-3" id="card-faskes-${id}">
                 <div class="d-flex gap-3 align-items-start mb-2">
-                    <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                    <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key} rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
                         <i class="bi ${typeIcon} text-white fs-4"></i>
                     </div>
                     <div class="facility-info-wrap flex-grow-1 min-w-0">

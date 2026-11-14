@@ -201,6 +201,7 @@ class MapController extends Controller
                         'rating' => $rating,
                         'total_reviews' => $reviewsCount,
                         'hospital_class' => $item['kelas'] ?? $item['hospital_class'] ?? null,
+                        'thumbnail_url' => $item['thumbnail_url'] ?? null,
                         'bpjs_support' => (bool) ($item['_support_bpjs'] ?? $item['is_support_bpjs'] ?? $item['bpjs_support'] ?? false),
                         'distance' => isset($item['distance_km']) ? number_format($item['distance_km'], 1) . ' km' : null,
                         'phone' => !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : null),

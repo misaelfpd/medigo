@@ -7,8 +7,20 @@
             role="tab"
             aria-controls="pane-tentang"
             aria-selected="true">
-        <i class="bi bi-building"></i>
+        <i class="bi bi-building-fill"></i>
         <span>Tentang</span>
+    </button>
+
+    <button type="button"
+            class="detail-tab-btn"
+            id="tab-galeri-btn"
+            data-bs-toggle="tab"
+            data-bs-target="#pane-galeri"
+            role="tab"
+            aria-controls="pane-galeri"
+            aria-selected="false">
+        <i class="bi bi-camera-fill"></i>
+        <span>Galeri</span>
     </button>
 
     <button type="button"
@@ -19,7 +31,7 @@
             role="tab"
             aria-controls="pane-fasilitas"
             aria-selected="false">
-        <i class="bi bi-heart-pulse"></i>
+        <i class="bi bi-person-wheelchair"></i>
         <span>Fasilitas</span>
     </button>
 
@@ -31,7 +43,7 @@
             role="tab"
             aria-controls="pane-spesialisasi"
             aria-selected="false">
-        <i class="bi bi-person-badge"></i>
+        <i class="bi bi-person-vcard-fill"></i>
         <span>Spesialisasi</span>
     </button>
 </div>

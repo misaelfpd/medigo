@@ -1,0 +1,17 @@
+/* Layout halaman masuk/daftar pengguna (dipindah dari layouts/auth.blade.php) */
+body {
+    font-family: "Inter", sans-serif;
+    height: 100vh;
+    overflow: hidden; 
+    margin: 0;
+}
+
+main {
+    height: 100%;
+}
+
+.auth-wrapper {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}

@@ -57,12 +57,17 @@ class AdminFaskesController extends Controller
         if (!empty($lokasi)) {
             $params['lokasi'] = $lokasi;
         }
+        // Chip filter sesuai desain: Kelas A, Kelas B, Menerima BPJS, Non BPJS
         if ($filter === 'kelas_a') {
-            $params['jenis'] = 'hospital';
+            $params['kelas'] = 'A';
+        } elseif ($filter === 'kelas_b') {
+            $params['kelas'] = 'B';
         } elseif ($filter === 'bpjs') {
-            $params['bpjs'] = 1;
+            $params['_support_bpjs'] = 1;
         } elseif ($filter === 'non_bpjs') {
-            $params['bpjs'] = 0;
+            $params['_support_bpjs'] = 0;
+        } else {
+            $filter = 'all';
         }
 
         try {
@@ -226,7 +231,42 @@ class AdminFaskesController extends Controller
     }
 
     /**
-     * Tampilkan halaman khusus Tambah Rumah Sakit Baru (Tab Informasi, Fasilitas, Spesialisasi).
+     * Data master untuk form faskes: daftar fasilitas, spesialisasi, dan provinsi.
+     */
+    private function formMasterData(): array
+    {
+        $backendUrl = $this->getBackendUrl();
+
+        $allFasilitas = [];
+        $allSpesialisasi = [];
+        try {
+            $fasRes = Http::timeout(4)->acceptJson()->get("{$backendUrl}/api/fasilitas");
+            if ($fasRes->successful()) {
+                $allFasilitas = $fasRes->json('data') ?? [];
+            }
+            $specRes = Http::timeout(4)->acceptJson()->get("{$backendUrl}/api/spesialisasi");
+            if ($specRes->successful()) {
+                $allSpesialisasi = $specRes->json('data') ?? [];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch facilities or specialties for faskes form: ' . $e->getMessage());
+        }
+
+        $provincesList = [
+            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Banten',
+            'DI Yogyakarta', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+            'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Riau', 'Kepulauan Riau',
+            'Jambi', 'Bengkulu', 'Lampung', 'Kepulauan Bangka Belitung', 'Aceh',
+            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+            'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tenggara',
+            'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Tengah', 'Papua Selatan', 'Papua Pegunungan',
+        ];
+
+        return compact('allFasilitas', 'allSpesialisasi', 'provincesList');
+    }
+
+    /**
+     * Halaman Tambah Faskes Baru (Tab Informasi, Fasilitas, Spesialisasi, Foto).
      */
     public function create()
     {
@@ -234,78 +274,47 @@ class AdminFaskesController extends Controller
             return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
         }
 
-        $backendUrl = $this->getBackendUrl();
+        return view('admin.faskes_create', $this->formMasterData() + [
+            'faskes' => null,
+            'selectedFasilitas' => [],
+            'selectedSpesialisasi' => [],
+        ]);
+    }
 
-        $allFasilitas = [];
-        $allSpesialisasi = [];
+    /**
+     * Halaman Ubah Data Faskes (memakai form yang sama dengan Tambah Faskes).
+     */
+    public function edit($id)
+    {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
         try {
-            $fasRes = Http::timeout(4)->get("{$backendUrl}/api/fasilitas");
-            if ($fasRes->successful()) {
-                $allFasilitas = $fasRes->json()['data'] ?? [];
-            }
-            $specRes = Http::timeout(4)->get("{$backendUrl}/api/spesialisasi");
-            if ($specRes->successful()) {
-                $allSpesialisasi = $specRes->json()['data'] ?? [];
+            $response = $this->adminHttp()->get($this->getBackendUrl() . "/api/faskes/{$id}");
+            if (!$response->successful()) {
+                return redirect()->route('admin.faskes')->with('error', 'Fasilitas kesehatan tidak ditemukan.');
             }
         } catch (\Exception $e) {
-            Log::warning('Failed to fetch facilities or specialties for create faskes: ' . $e->getMessage());
+            Log::warning("Failed to fetch faskes {$id} for edit: " . $e->getMessage());
+
+            return redirect()->route('admin.faskes')->with('error', 'Server backend tidak dapat dihubungi.');
         }
 
-        // Fallback default facilities if empty
-        if (empty($allFasilitas)) {
-            $defaultFasilitas = [
-                'Ambulan', 'IGD 24 Jam', 'Rawat Inap', 'Rawat Jalan', 'ICU (Intensive Care Unit)',
-                'NICU / PICU', 'Laboratorium', 'Radiologi / Rontgen', 'Farmasi / Apotek 24 Jam',
-                'Bank Darah', 'Ruang Operasi (Bedah)', 'Hemodialisa (Cuci Darah)',
-                'Fisioterapi & Rehabilitasi Medis', 'CT Scan & MRI', 'USG 4D',
-                'Medical Check Up (MCU)', 'Kamar Isolasi', 'Ruang Bersalin',
-                'Layanan Vaksinasi', 'Layanan Telemedisin'
-            ];
-            foreach ($defaultFasilitas as $idx => $fName) {
-                $allFasilitas[] = ['id_fasilitas' => 'def_' . ($idx + 1), 'nama_fasilitas' => $fName];
-            }
+        $data = $response->json('data') ?? [];
+        $faskes = $data['faskes'] ?? $data;
+        if (empty($faskes['id_faskes'])) {
+            return redirect()->route('admin.faskes')->with('error', 'Fasilitas kesehatan tidak ditemukan.');
         }
 
-        // Fallback default specialties if empty
-        if (empty($allSpesialisasi)) {
-            $defaultSpesialisasi = [
-                'Spesialis Jantung & Pembuluh Darah (Kardiologi)',
-                'Spesialis Penyakit Dalam (Internis)',
-                'Spesialis Anak (Pediatri)',
-                'Spesialis Bedah Saraf',
-                'Spesialis Kebidanan & Kandungan (Obgyn)',
-                'Spesialis Mata (Oftalmologi)',
-                'Spesialis Ortopedi & Traumatologi',
-                'Spesialis Kulit & Kelamin (Dermatologi)',
-                'Spesialis THT-KL (Telinga Hidung Tenggorokan)',
-                'Spesialis Paru (Pulmonologi)',
-                'Spesialis Saraf (Neurologi)',
-                'Spesialis Radiologi',
-                'Spesialis Anestesi',
-                'Spesialis Onkologi (Kanker)',
-                'Spesialis Kedokteran Jiwa (Psikiatri)',
-                'Spesialis Urologi',
-                'Spesialis Gigi & Mulut',
-                'Spesialis Bedah Plastik & Rekonstruksi',
-                'Spesialis Gizi Klinik',
-                'Spesialis Kedokteran Fisik & Rehabilitasi'
-            ];
-            foreach ($defaultSpesialisasi as $idx => $sName) {
-                $allSpesialisasi[] = ['id_spesialisasi' => 'def_' . ($idx + 1), 'nama_spesialisasi' => $sName];
-            }
-        }
+        $selectedFasilitas = collect($data['fasilitas'] ?? $faskes['fasilitas'] ?? [])
+            ->map(fn ($item) => is_array($item) ? ($item['nama_fasilitas'] ?? null) : $item)
+            ->filter()->values()->all();
+        $selectedSpesialisasi = collect($data['spesialisasi'] ?? $faskes['spesialisasi'] ?? [])
+            ->map(fn ($item) => is_array($item) ? ($item['nama_spesialisasi'] ?? null) : $item)
+            ->filter()->values()->all();
 
-        $provincesList = [
-            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Banten', 
-            'DI Yogyakarta', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
-            'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Riau', 'Kepulauan Riau',
-            'Jambi', 'Bengkulu', 'Lampung', 'Kepulauan Bangka Belitung', 'Aceh',
-            'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
-            'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tenggara',
-            'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Tengah', 'Papua Selatan', 'Papua Pegunungan'
-        ];
-
-        return view('admin.faskes_create', compact('allFasilitas', 'allSpesialisasi', 'provincesList'));
+        return view('admin.faskes_create', $this->formMasterData() + compact('faskes', 'selectedFasilitas', 'selectedSpesialisasi'));
     }
 
     public function store(Request $request)
@@ -318,13 +327,24 @@ class AdminFaskesController extends Controller
             'nama_faskes'    => 'required|string|max:255',
             'tipe'           => 'nullable|string|max:100',
             'jenis_faskes'   => 'nullable|string|max:100',
-            'kelas'          => 'nullable|string|max:50',
+            'kelas'          => 'nullable|in:A,B,C,D',
             'kota_kabupaten' => 'required|string|max:100',
+            'provinsi'       => 'required|string|max:100',
             'alamat'         => 'required|string',
-            'is_support_bpjs'=> 'nullable',
+            'is_support_bpjs'=> 'nullable|in:0,1',
             'link_maps'      => 'nullable|string',
             'kontak'         => 'nullable|string|max:50',
             'telepon'        => 'nullable|string|max:50',
+            // Foto (opsional) - dikonversi ke WebP oleh backend
+            'banner'         => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'thumbnail'      => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'galeri'         => 'nullable|array|max:20',
+            'galeri.*'       => 'image|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'banner.max' => 'Ukuran foto banner maksimal 5MB.',
+            'thumbnail.max' => 'Ukuran foto thumbnail maksimal 5MB.',
+            'galeri.*.max' => 'Ukuran setiap foto galeri maksimal 5MB.',
+            'galeri.max' => 'Maksimal 20 foto galeri.',
         ]);
 
         $backendUrl = $this->getBackendUrl();
@@ -360,13 +380,13 @@ class AdminFaskesController extends Controller
             if ($token = session('admin_token')) {
                 $http = $http->withToken($token);
             }
-            $http->post("{$backendUrl}/api/faskes", [
+            $response = $http->acceptJson()->post("{$backendUrl}/api/faskes", [
                 'nama_faskes'    => $request->nama_faskes,
                 'jenis_faskes'   => $tipeVal,
                 'tipe'           => $tipeVal,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
-                'provinsi'       => $request->provinsi ?? 'DKI Jakarta',
+                'provinsi'       => $request->provinsi,
                 'alamat_faskes'  => $request->alamat ?? $request->alamat_faskes,
                 'alamat'         => $request->alamat ?? $request->alamat_faskes,
                 '_support_bpjs'  => $isBpjs,
@@ -379,8 +399,23 @@ class AdminFaskesController extends Controller
                 'fasilitas'      => $fasilitas,
                 'spesialisasi'   => $spesialisasi,
             ]);
+            if (! $response->successful()) {
+                return back()->withInput($request->except(['banner', 'thumbnail', 'galeri']))
+                    ->with('error', $this->backendErrorMessage($response, 'Gagal menyimpan faskes ke server.'));
+            }
+
+            $newId = $response->json('data.id') ?? $response->json('data.id_faskes');
+            $photoErrors = $newId ? $this->uploadPhotos((int) $newId, $request) : [];
         } catch (\Exception $e) {
             Log::warning('Failed to store faskes to backend: ' . $e->getMessage());
+
+            return back()->withInput($request->except(['banner', 'thumbnail', 'galeri']))
+                ->with('error', 'Server backend tidak dapat dihubungi. Data belum tersimpan.');
+        }
+
+        if (! empty($photoErrors)) {
+            return redirect()->route('admin.faskes.photos', $newId)
+                ->with('error', 'Faskes tersimpan, tetapi sebagian foto gagal diunggah: ' . implode(' ', $photoErrors));
         }
 
         return redirect()->route('admin.faskes')->with('success', 'Fasilitas kesehatan baru berhasil ditambahkan ke direktori!');
@@ -395,13 +430,21 @@ class AdminFaskesController extends Controller
         $request->validate([
             'nama_faskes'    => 'required|string|max:255',
             'tipe'           => 'required|string|max:100',
-            'kelas'          => 'nullable|string|max:50',
+            'kelas'          => 'nullable|in:A,B,C,D',
             'kota_kabupaten' => 'required|string|max:100',
+            'provinsi'       => 'required|string|max:100',
             'alamat'         => 'required|string',
-            'is_support_bpjs'=> 'nullable|string',
-            'link_maps'      => 'nullable|string',
+            'is_support_bpjs'=> 'nullable|in:0,1',
+            'link_maps'      => 'nullable|url',
             'kontak'         => 'nullable|string|max:50',
+            'telepon'        => 'nullable|string|max:50',
+            'latitude'       => 'nullable|numeric|between:-90,90',
+            'longitude'      => 'nullable|numeric|between:-180,180',
+        ], [
+            'kelas.in' => 'Kelas rumah sakit harus A, B, C, atau D.',
+            'link_maps.url' => 'Link Google Maps tidak valid.',
         ]);
+        $kontakVal = $request->input('telepon', $request->input('kontak'));
 
         $backendUrl = $this->getBackendUrl();
 
@@ -431,13 +474,13 @@ class AdminFaskesController extends Controller
             if ($token = session('admin_token')) {
                 $http = $http->withToken($token);
             }
-            $http->put("{$backendUrl}/api/faskes/{$id}", [
+            $response = $http->acceptJson()->put("{$backendUrl}/api/faskes/{$id}", [
                 'nama_faskes'    => $request->nama_faskes,
                 'jenis_faskes'   => $request->tipe ?? $request->jenis_faskes,
                 'tipe'           => $request->tipe ?? $request->jenis_faskes,
                 'kelas'          => $kelasVal,
                 'kota_kabupaten' => $request->kota_kabupaten,
-                'provinsi'       => $request->provinsi ?? 'DKI Jakarta',
+                'provinsi'       => $request->provinsi,
                 'alamat_faskes'  => $request->alamat ?? $request->alamat_faskes,
                 'alamat'         => $request->alamat ?? $request->alamat_faskes,
                 '_support_bpjs'  => $isBpjs,
@@ -445,13 +488,19 @@ class AdminFaskesController extends Controller
                 'link_maps'      => $request->link_maps,
                 'latitude'       => $request->latitude,
                 'longitude'      => $request->longitude,
-                'kontak'         => $request->kontak,
-                'telepon'        => $request->kontak,
+                'kontak'         => $kontakVal,
+                'telepon'        => $kontakVal,
                 'fasilitas'      => $fasilitas,
                 'spesialisasi'   => $spesialisasi,
             ]);
+            if (! $response->successful()) {
+                return back()->withInput()
+                    ->with('error', $this->backendErrorMessage($response, 'Gagal memperbarui data faskes.'));
+            }
         } catch (\Exception $e) {
             Log::warning('Failed to update faskes in backend: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Server backend tidak dapat dihubungi. Perubahan belum tersimpan.');
         }
 
         return redirect()->route('admin.faskes')->with('success', 'Data fasilitas kesehatan berhasil diperbarui!');
@@ -470,9 +519,15 @@ class AdminFaskesController extends Controller
             if ($token = session('admin_token')) {
                 $http = $http->withToken($token);
             }
-            $http->delete("{$backendUrl}/api/faskes/{$id}");
+            $response = $http->acceptJson()->delete("{$backendUrl}/api/faskes/{$id}");
+            if (! $response->successful()) {
+                return redirect()->route('admin.faskes')
+                    ->with('error', $this->backendErrorMessage($response, 'Gagal menghapus faskes.'));
+            }
         } catch (\Exception $e) {
             Log::warning('Failed to delete faskes in backend: ' . $e->getMessage());
+
+            return redirect()->route('admin.faskes')->with('error', 'Server backend tidak dapat dihubungi. Faskes belum terhapus.');
         }
 
         return redirect()->route('admin.faskes')->with('success', 'Rumah Sakit berhasil dihapus dari direktori.');
@@ -559,6 +614,176 @@ class AdminFaskesController extends Controller
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan sistem saat menghubungi server backend: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    private function adminHttp()
+    {
+        $http = Http::timeout(30)->acceptJson();
+        if ($token = session('admin_token')) {
+            $http = $http->withToken($token);
+        }
+
+        return $http;
+    }
+
+    /**
+     * Ambil pesan error yang ramah dari respons backend (termasuk error validasi).
+     */
+    private function backendErrorMessage($response, string $fallback): string
+    {
+        if ($response->status() === 401 || $response->status() === 403) {
+            return 'Sesi admin tidak valid atau tidak punya akses. Silakan masuk ulang.';
+        }
+
+        $errors = $response->json('errors');
+        if (is_array($errors) && ! empty($errors)) {
+            return collect($errors)->flatten()->filter()->take(3)->implode(' ');
+        }
+
+        return $response->json('message') ?: $fallback;
+    }
+
+    /**
+     * Unggah foto banner / thumbnail / galeri ke backend (backend mengonversi ke WebP).
+     *
+     * @return array<int, string> daftar pesan gagal
+     */
+    private function uploadPhotos(int $faskesId, Request $request): array
+    {
+        $backendUrl = $this->getBackendUrl();
+        $errors = [];
+
+        foreach (['banner', 'thumbnail'] as $tipe) {
+            $file = $request->file($tipe);
+            if (! $file || ! $file->isValid()) {
+                continue;
+            }
+            $res = $this->adminHttp()
+                ->attach('foto', file_get_contents($file->getPathname()), $file->getClientOriginalName())
+                ->post("{$backendUrl}/api/faskes/{$faskesId}/foto", ['tipe' => $tipe]);
+            if (! $res->successful()) {
+                $errors[] = ucfirst($tipe) . ': ' . $this->backendErrorMessage($res, 'gagal diunggah.');
+            }
+        }
+
+        $galeri = array_filter((array) $request->file('galeri', []), fn ($f) => $f && $f->isValid());
+        if (! empty($galeri)) {
+            $http = $this->adminHttp();
+            foreach ($galeri as $file) {
+                $http = $http->attach('foto[]', file_get_contents($file->getPathname()), $file->getClientOriginalName());
+            }
+            $res = $http->post("{$backendUrl}/api/faskes/{$faskesId}/foto", ['tipe' => 'galeri']);
+            if (! $res->successful()) {
+                $errors[] = 'Galeri: ' . $this->backendErrorMessage($res, 'gagal diunggah.');
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Halaman kelola foto 1 faskes: thumbnail, banner, galeri.
+     */
+    public function photos($id)
+    {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
+        $backendUrl = $this->getBackendUrl();
+        $faskes = null;
+        $photos = ['thumbnail' => null, 'banner' => null, 'galeri' => []];
+
+        try {
+            $res = Http::timeout(8)->get("{$backendUrl}/api/faskes/{$id}");
+            if ($res->successful()) {
+                $faskes = $res->json('data.faskes');
+                $photos = array_merge($photos, (array) ($res->json('data.foto') ?? []));
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch faskes photos: ' . $e->getMessage());
+        }
+
+        if (! $faskes) {
+            return redirect()->route('admin.faskes')->with('error', 'Faskes tidak ditemukan atau server tidak dapat dihubungi.');
+        }
+
+        return view('admin.faskes_photos', compact('faskes', 'photos'));
+    }
+
+    public function uploadPhoto(Request $request, $id)
+    {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
+        $request->validate([
+            'banner'    => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'thumbnail' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'galeri'    => 'nullable|array|max:20',
+            'galeri.*'  => 'image|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'banner.max' => 'Ukuran foto banner maksimal 5MB.',
+            'thumbnail.max' => 'Ukuran foto thumbnail maksimal 5MB.',
+            'galeri.*.max' => 'Ukuran setiap foto galeri maksimal 5MB.',
+        ]);
+
+        if (! $request->hasFile('banner') && ! $request->hasFile('thumbnail') && ! $request->hasFile('galeri')) {
+            return back()->with('error', 'Pilih minimal 1 foto untuk diunggah.');
+        }
+
+        try {
+            $errors = $this->uploadPhotos((int) $id, $request);
+        } catch (\Exception $e) {
+            Log::warning('Failed to upload faskes photo: ' . $e->getMessage());
+
+            return back()->with('error', 'Server backend tidak dapat dihubungi.');
+        }
+
+        return empty($errors)
+            ? back()->with('success', 'Foto berhasil diunggah.')
+            : back()->with('error', implode(' ', $errors));
+    }
+
+    public function deletePhoto($id, $fotoId)
+    {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
+        try {
+            $res = $this->adminHttp()->delete($this->getBackendUrl() . "/api/faskes/{$id}/foto/{$fotoId}");
+
+            return $res->successful()
+                ? back()->with('success', 'Foto berhasil dihapus.')
+                : back()->with('error', $this->backendErrorMessage($res, 'Gagal menghapus foto.'));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Server backend tidak dapat dihubungi.');
+        }
+    }
+
+    /**
+     * Jadikan foto galeri sebagai thumbnail atau banner.
+     */
+    public function setPhotoAs(Request $request, $id, $fotoId)
+    {
+        if (!session('admin_logged_in')) {
+            return redirect()->route('admin.login')->with('error', 'Silakan masuk terlebih dahulu untuk mengakses direktori admin.');
+        }
+
+        $request->validate(['tipe' => 'required|in:thumbnail,banner']);
+
+        try {
+            $res = $this->adminHttp()->post($this->getBackendUrl() . "/api/faskes/{$id}/foto/{$fotoId}/jadikan", [
+                'tipe' => $request->input('tipe'),
+            ]);
+
+            return $res->successful()
+                ? back()->with('success', 'Foto dijadikan ' . $request->input('tipe') . '.')
+                : back()->with('error', $this->backendErrorMessage($res, 'Gagal mengubah foto.'));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Server backend tidak dapat dihubungi.');
         }
     }
 }

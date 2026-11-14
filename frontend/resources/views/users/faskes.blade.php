@@ -246,6 +246,7 @@
                     <x-card.hospital-card
                         :id="$hospital['id']"
                         :foto="$hospital['foto']"
+                        :thumbnail="$hospital['thumbnail_url'] ?? null"
                         :hospital_name="$hospital['hospital_name']"
                         :type="$hospital['type'] ?? 'Rumah Sakit'"
                         :type_slug="$hospital['type_slug'] ?? 'hospital'"

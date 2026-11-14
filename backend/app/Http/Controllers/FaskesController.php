@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FaskesController extends Controller
 {
@@ -145,6 +146,11 @@ class FaskesController extends Controller
         if ($request->has('_support_bpjs') && $request->_support_bpjs !== null && $request->_support_bpjs !== '') {
             $bpjsVal = filter_var($request->_support_bpjs, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
             $query->where('faskes._support_bpjs', $bpjsVal);
+        }
+
+        // Filter Kelas RS (A / B / C / D) - dipakai chip filter di direktori admin
+        if ($request->filled('kelas') && in_array(strtoupper((string) $request->input('kelas')), ['A', 'B', 'C', 'D'], true)) {
+            $query->where('faskes.kelas', strtoupper((string) $request->input('kelas')));
         }
 
         // Filter Jenis / Tipe Faskes
@@ -774,11 +780,61 @@ class FaskesController extends Controller
     }
 
     // 6. Ambil Statistik Dashboard Admin
-    public function getAdminStats()
+    public function getAdminStats(Request $request)
     {
         $totalUsers = DB::table('user')->count();
         $totalFaskes = DB::table('faskes')->count();
-        $totalDiscussions = DB::table('diskusi')->count();
+        // Postingan forum aktif = diskusi yang belum dihapus/takedown
+        $totalDiscussions = DB::table('diskusi')->where('status_diskusi', 'active')->count();
+
+        // Pertumbuhan 30 hari terakhir: data baru 30 hari terakhir dibanding total sebelum periode itu
+        $since = now()->subDays(30);
+        $growth = function (string $table, ?callable $scope = null) use ($since) {
+            $base = DB::table($table);
+            if ($scope) {
+                $scope($base);
+            }
+            $new = (clone $base)->where('created_at', '>=', $since)->count();
+            $before = (clone $base)->where(function ($q) use ($since) {
+                $q->where('created_at', '<', $since)->orWhereNull('created_at');
+            })->count();
+
+            return [
+                'new' => $new,
+                'pct' => $before > 0 ? round($new / $before * 100, 1) : ($new > 0 ? 100.0 : 0.0),
+            ];
+        };
+        $userGrowth = $growth('user');
+        $faskesGrowth = $growth('faskes');
+        $discussionGrowth = $growth('diskusi', fn ($q) => $q->where('status_diskusi', 'active'));
+
+        // Grafik pertumbuhan pengguna: total pengguna kumulatif di akhir tiap bulan pada tahun terpilih
+        $year = (int) $request->input('year', now()->year);
+        if ($year < 2000 || $year > (int) now()->year) {
+            $year = (int) now()->year;
+        }
+        $usersBeforeYear = DB::table('user')
+            ->where(function ($q) use ($year) {
+                $q->where('created_at', '<', Carbon::create($year, 1, 1)->startOfDay())->orWhereNull('created_at');
+            })
+            ->count();
+        $monthlyNew = array_fill(0, 12, 0);
+        DB::table('user')
+            ->whereBetween('created_at', [Carbon::create($year, 1, 1)->startOfDay(), Carbon::create($year, 12, 31)->endOfDay()])
+            ->pluck('created_at')
+            ->each(function ($createdAt) use (&$monthlyNew) {
+                $monthlyNew[Carbon::parse($createdAt)->month - 1]++;
+            });
+        $chartMonthly = [];
+        $running = $usersBeforeYear;
+        $lastMonth = $year === (int) now()->year ? (int) now()->month : 12;
+        foreach ($monthlyNew as $i => $count) {
+            $running += $count;
+            // Bulan yang belum terjadi tidak diisi agar garis grafik tidak menyesatkan
+            $chartMonthly[] = $i < $lastMonth ? $running : null;
+        }
+
+        $pendingReports = $this->pendingReportCounts();
 
         // Ambil 5 aktivitas terbaru dari tabel log_aktivitas
         $recentLogs = DB::table('log_aktivitas')
@@ -810,7 +866,7 @@ class FaskesController extends Controller
                 'icon' => $icon,
                 'title' => $log->deskripsi,
                 'user' => $log->nama_user ?? 'Sistem',
-                'time' => $log->created_at ? Carbon::parse($log->created_at)->diffForHumans() : '-',
+                'time' => $log->created_at ? Carbon::parse($log->created_at)->locale('id')->diffForHumans() : '-',
             ];
         });
 
@@ -818,11 +874,48 @@ class FaskesController extends Controller
             'status' => 'success',
             'data' => [
                 'total_users' => $totalUsers,
+                'user_growth_pct' => $userGrowth['pct'],
+                'new_users_30d' => $userGrowth['new'],
                 'total_faskes' => $totalFaskes,
+                'faskes_growth_pct' => $faskesGrowth['pct'],
+                'new_faskes_30d' => $faskesGrowth['new'],
                 'total_discussions' => $totalDiscussions,
+                'discussions_growth_pct' => $discussionGrowth['pct'],
+                'new_discussions_30d' => $discussionGrowth['new'],
+                'chart_year' => $year,
+                'chart_monthly' => $chartMonthly,
+                'pending_reports' => $pendingReports,
                 'activities' => $activities,
             ],
         ]);
+    }
+
+    /**
+     * Jumlah laporan/masukan yang masih menunggu tindakan admin (badge sidebar admin).
+     */
+    public function getPendingCounts(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => $this->pendingReportCounts(),
+        ]);
+    }
+
+    private function pendingReportCounts(): array
+    {
+        $count = fn (string $table) => Schema::hasTable($table)
+            ? DB::table($table)->where('status', 'pending')->count()
+            : 0;
+
+        $counts = [
+            'discussion_reports' => $count('laporan_diskusi'),
+            'discussion_comment_reports' => $count('laporan_tanggapan'),
+            'faskes_comment_reports' => $count('laporan_komentar'),
+            'faskes_feedbacks' => $count('feedback_faskes'),
+        ];
+        $counts['total'] = array_sum($counts);
+
+        return $counts;
     }
 
     /**

@@ -1,7 +1,7 @@
 <!-- Bagian atas (Avatar + Stat) -->
 <div class="card border rounded-4 bg-white p-3 shadow-2xs mb-3">
     <div class="d-flex align-items-center gap-3">
-        <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="profile-avatar-mobile flex-shrink-0 object-fit-cover rounded-circle" style="width: 50px; height: 50px;">
+        <x-avatar :name="$user->name" :src="$user->avatar_url" :size="50" class="profile-avatar-mobile flex-shrink-0" />
         <div class="min-w-0 flex-grow-1">
             <h5 class="fw-bold text-dark mb-0 text-truncate" style="font-size: 1.05rem;">{{ $user->name }}</h5>
             <p class="text-muted mb-0 text-truncate" style="font-size: 0.82rem;">{{ $user->email }}</p>

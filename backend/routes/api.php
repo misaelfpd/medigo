@@ -48,6 +48,7 @@ Route::post('/faskes/{faskes_id}/report', [FaskesFeedbackController::class, 'sto
 Route::get('/discussions', [DiscussionController::class, 'index']); // Lihat semua diskusi
 Route::get('/discussions/{id}', [DiscussionController::class, 'show']); // Lihat 1 diskusi spesifik
 Route::get('/forum/faskes-terdekat', [ForumController::class, 'nearbyFaskes']); // Rekomendasi faskes terdekat (urut like)
+Route::get('/forum/diskusi-terdekat', [ForumController::class, 'nearbyDiscussions']); // Diskusi yang membahas faskes di sekitar user
 
 // GEMINI AI
 Route::get('/chat-ai/history', [GeminiController::class, 'history']);
@@ -101,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware(AdminMiddleware::class)->group(function () {
         Route::get('/admin/logs', [ActivityLogController::class, 'index']);
         Route::get('/admin/stats', [FaskesController::class, 'getAdminStats']);
+        Route::get('/admin/pending-counts', [FaskesController::class, 'getPendingCounts']); // Badge jumlah laporan baru di sidebar admin
 
         // Admin CRUD Faskes
         Route::post('/faskes', [FaskesController::class, 'store']);

@@ -132,6 +132,98 @@ class ForumController extends Controller
         ]);
     }
 
+    /**
+     * Diskusi yang membahas faskes di sekitar user (sidebar forum "Diskusi Faskes Dekat Anda").
+     * Urutan: jumlah like terbanyak, lalu faskes terdekat. Radius diperluas otomatis bila kosong.
+     */
+    public function nearbyDiscussions(Request $request): JsonResponse
+    {
+        $request->merge([
+            'lat' => $request->input('lat', $request->input('latitude')),
+            'lng' => $request->input('lng', $request->input('longitude')),
+        ]);
+
+        $request->validate([
+            'lat' => 'nullable|required_with:lng|numeric|between:-90,90',
+            'lng' => 'nullable|required_with:lat|numeric|between:-180,180',
+            'radius' => 'nullable|numeric|min:0.5|max:50',
+            'limit' => 'nullable|integer|min:1|max:20',
+        ], [
+            'lat.required_with' => 'Lokasi pengguna (lat) wajib dikirim bersama lng.',
+            'lng.required_with' => 'Lokasi pengguna (lng) wajib dikirim bersama lat.',
+        ]);
+
+        $hasLocation = $request->filled('lat') && $request->filled('lng');
+        $lat = $hasLocation ? (float) $request->input('lat') : null;
+        $lng = $hasLocation ? (float) $request->input('lng') : null;
+        $radius = (float) $request->input('radius', 10);
+        $limit = (int) $request->input('limit', 5);
+
+        // Tanpa lokasi (izin lokasi ditolak / browser tidak mendukung): tampilkan diskusi faskes terpopuler.
+        $results = $this->nearbyDiscussionQuery($lat, $lng, $limit, $hasLocation ? $radius : null)->get();
+        $radiusExpanded = false;
+        if ($hasLocation && $results->isEmpty()) {
+            $results = $this->nearbyDiscussionQuery($lat, $lng, $limit, null)->get();
+            $radiusExpanded = $results->isNotEmpty();
+        }
+
+        $items = $results->map(fn ($d) => [
+            'id_diskusi' => (int) $d->id_diskusi,
+            'judul_diskusi' => $d->judul_diskusi,
+            'comments_count' => (int) $d->comments_count,
+            'likes_count' => (int) $d->likes_count,
+            'faskes' => [
+                'id_faskes' => (int) $d->id_faskes,
+                'nama_faskes' => $d->nama_faskes,
+                'jenis_faskes' => $d->jenis_faskes,
+                'distance_km' => $d->distance_km !== null ? round((float) $d->distance_km, 1) : null,
+            ],
+        ])->values();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $items->isEmpty()
+                ? 'Belum ada diskusi yang membahas faskes di sekitar Anda.'
+                : 'Berhasil mengambil diskusi faskes terdekat',
+            'berbasis_lokasi' => $hasLocation,
+            'radius_km' => $hasLocation ? $radius : null,
+            'radius_diperluas' => $radiusExpanded,
+            'data' => $items,
+        ]);
+    }
+
+    private function nearbyDiscussionQuery(?float $lat, ?float $lng, int $limit, ?float $radius)
+    {
+        $distance = $lat !== null && $lng !== null ? self::haversineSql($lat, $lng) : 'NULL';
+
+        $query = DB::table('diskusi')
+            ->join('faskes', 'faskes.id_faskes', '=', 'diskusi.id_faskes_mention')
+            ->where('diskusi.status_diskusi', 'active')
+            ->whereNotNull('faskes.latitude')
+            ->whereNotNull('faskes.longitude')
+            ->select('diskusi.id_diskusi', 'diskusi.judul_diskusi', 'faskes.id_faskes', 'faskes.nama_faskes', 'faskes.jenis_faskes')
+            ->selectRaw("{$distance} AS distance_km")
+            ->selectRaw('(SELECT COUNT(*) FROM like_diskusi WHERE like_diskusi.id_diskusi = diskusi.id_diskusi) AS likes_count')
+            ->selectRaw('(SELECT COUNT(*) FROM tanggapan_diskusi WHERE tanggapan_diskusi.id_diskusi = diskusi.id_diskusi) AS comments_count');
+
+        if ($radius !== null && $lat !== null) {
+            $latDelta = $radius / 111.0;
+            $lngDelta = $radius / max(0.01, 111.0 * cos(deg2rad($lat)));
+            $query->whereBetween('faskes.latitude', [$lat - $latDelta, $lat + $latDelta])
+                ->whereBetween('faskes.longitude', [$lng - $lngDelta, $lng + $lngDelta])
+                ->whereRaw("{$distance} <= ?", [$radius]);
+        }
+
+        $query->orderByDesc('likes_count');
+        if ($lat !== null) {
+            $query->orderBy('distance_km');
+        } else {
+            $query->orderByDesc('comments_count')->orderByDesc('diskusi.id_diskusi');
+        }
+
+        return $query->limit($limit);
+    }
+
     private function nearbyQuery(float $lat, float $lng, int $limit, ?float $radius)
     {
         $distance = self::haversineSql($lat, $lng);

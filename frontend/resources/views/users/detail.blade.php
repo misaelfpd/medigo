@@ -33,7 +33,7 @@
         {{-- Desktop Hero Showcase Banner --}}
         <x-detail.desktop-hero :faskes="$faskes" />
 
-        {{-- Navigation Tabs (Tentang, Fasilitas, Spesialisasi) --}}
+        {{-- Navigation Tabs (Tentang, Galeri, Fasilitas, Spesialisasi) --}}
         <x-detail.tabs-nav />
 
         {{-- Main Content Area (Left 8 Cols Tab Content + Right 4 Cols Contact Sidebar) --}}
@@ -50,6 +50,9 @@
                         :reviews="$reviews"
                         :has-more-comments="$hasMoreComments"
                     />
+
+                    {{-- Tab Galeri: foto galeri dari admin (WebP) --}}
+                    <x-detail.tab-galeri :faskes="$faskes" />
 
                     {{-- Tab 2: Fasilitas Medis (Scrollable, tanpa deskripsi & tanpa logo) --}}
                     <x-detail.tab-fasilitas :faskes="$faskes" />

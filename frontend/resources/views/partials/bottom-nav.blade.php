@@ -14,13 +14,7 @@
     </a>
     <a href="/profile" class="bottom-nav-link {{ request()->is('profile*') ? 'active' : '' }}">
         @if(Auth::check())
-            @if(!empty(Auth::user()->avatar) && file_exists(public_path(Auth::user()->avatar)))
-                <img src="{{ asset(Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}" class="rounded-circle object-fit-cover shadow-2xs mb-1" style="width: 24px; height: 24px;">
-            @else
-                <div class="avatar-circle-sm bg-medigo-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold mb-1" style="width: 24px; height: 24px; font-size: 0.75rem;">
-                    {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                </div>
-            @endif
+            <x-avatar :name="Auth::user()->name" :src="Auth::user()->avatar_url ?? null" :size="24" class="mb-1" />
             <span class="bottom-nav-text">Profil</span>
         @else
             <i class="bi {{ request()->is('profile*') ? 'bi-person-fill' : 'bi-person' }} bottom-nav-icon"></i>

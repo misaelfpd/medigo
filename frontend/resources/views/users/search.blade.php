@@ -2,9 +2,6 @@
 
 @section('title', 'Pencarian Fasilitas Kesehatan - MediGO')
 
-@push('styles')
-    @vite('resources/css/app.css')
-@endpush
 
 @section('content')
 <div class="search-app-container">
@@ -275,18 +272,6 @@
                            autocomplete="off">
                 </div>
 
-                {{-- Rekomendasi Populer --}}
-                <div class="mb-3">
-                    <div class="text-muted fw-bold mb-2" style="font-size: 0.78rem; text-transform: uppercase;">Paling Sering Dicari:</div>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach(['IGD', 'Laboratorium', 'Radiologi', 'ICU', 'Ambulans', 'Farmasi', 'Rawat Inap', 'USG', 'CT Scan'] as $popFas)
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill btn-quick-select-fasilitas" data-name="{{ $popFas }}" style="font-size: 0.8rem;">
-                                + {{ $popFas }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
                 {{-- List Items Grid (Auto-filtered by Search Input) --}}
                 <div class="text-muted fw-bold mb-2" style="font-size: 0.78rem; text-transform: uppercase;">
                     Semua Fasilitas Penunjang (<span id="countFasilitasListed">{{ count($options['fasilitas'] ?? []) }}</span>):
@@ -337,18 +322,6 @@
                            class="form-control border-start-0 shadow-none ps-2" 
                            placeholder="Ketik untuk mencari dokter spesialis (contoh: Anak, Jantung, Mata, Bedah, Gigi)..."
                            autocomplete="off">
-                </div>
-
-                {{-- Rekomendasi Populer --}}
-                <div class="mb-3">
-                    <div class="text-muted fw-bold mb-2" style="font-size: 0.78rem; text-transform: uppercase;">Paling Sering Dicari:</div>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach(['Anak', 'Penyakit Dalam', 'Bedah', 'Kandungan', 'Jantung', 'Mata', 'Saraf', 'Gigi', 'THT', 'Paru'] as $popSpes)
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill btn-quick-select-spesialisasi" data-name="{{ $popSpes }}" style="font-size: 0.8rem;">
-                                + {{ $popSpes }}
-                            </button>
-                        @endforeach
-                    </div>
                 </div>
 
                 {{-- List Items Grid (Auto-filtered by Search Input) --}}

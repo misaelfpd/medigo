@@ -34,8 +34,7 @@
             </div>
         @endif
         <div>
-            <div class="fw-bold">{{ $authorName }}</div>
-            <div class="text-muted small">{{ \Carbon\Carbon::parse($discussion['created_at'] ?? now())->diffForHumans() }}</div>
+            <div class="fw-semibold fs-5 text-dark">{{ $authorName }}</div>
         </div>
     </div>
     

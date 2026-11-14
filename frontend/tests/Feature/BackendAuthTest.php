@@ -48,7 +48,7 @@ test('login is checked by backend and user data comes from backend', function ()
     ]);
 
     $this->post('/login', ['email' => 'galih@example.com', 'password' => 'rahasia123'])
-        ->assertRedirect(route('profile'));
+        ->assertRedirect(route('faskes.index'));
 
     expect(Auth::check())->toBeTrue()
         ->and(Auth::user()->name)->toBe('Galih')
@@ -92,7 +92,7 @@ test('register creates account in backend only', function () {
     $this->post('/register', [
         'name' => 'Galih', 'email' => 'galih@example.com',
         'password' => 'rahasia123', 'password_confirmation' => 'rahasia123',
-    ])->assertRedirect(route('profile'));
+    ])->assertRedirect(route('faskes.index'));
 
     expect(Auth::id())->toBe(9)->and(session('user_backend_token'))->toBe('tok-9');
 });

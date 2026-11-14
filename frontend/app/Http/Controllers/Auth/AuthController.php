@@ -27,13 +27,12 @@ class AuthController extends Controller
             return redirect()->route('profile');
         }
 
-        // Store intended URL in session so redirect()->intended() works after login
-        if ($request->has('redirect')) {
-            $redirectUrl = $request->input('redirect');
-            // Only store if it's a local URL (security: prevent open redirect)
-            if (str_starts_with($redirectUrl, config('app.url')) || str_starts_with($redirectUrl, '/')) {
-                session()->put('url.intended', $redirectUrl);
-            }
+        // Simpan halaman terakhir agar setelah login user kembali ke sana
+        $redirectUrl = $request->input('redirect');
+        if ($this->isSafeReturnUrl($redirectUrl)) {
+            session()->put('url.intended', $redirectUrl);
+        } elseif (! session()->has('url.intended') && $this->isSafeReturnUrl(url()->previous())) {
+            session()->put('url.intended', url()->previous());
         }
 
         return view('auth.login');
@@ -205,13 +204,42 @@ class AuthController extends Controller
 
     private function redirectAfterAuth(Request $request, string $message)
     {
-        // If a redirect was specified in the form, use it; otherwise use intended or profile
+        // Kembali ke halaman terakhir sebelum login; jika tidak ada, ke beranda
         $redirectTo = $request->input('redirect');
-        if ($redirectTo && str_starts_with($redirectTo, config('app.url'))) {
+        if ($this->isSafeReturnUrl($redirectTo)) {
+            session()->forget('url.intended');
+
             return redirect($redirectTo)->with('success', $message);
         }
 
-        return redirect()->intended(route('profile'))->with('success', $message);
+        return redirect()->intended(route('faskes.index'))->with('success', $message);
+    }
+
+    /**
+     * Hanya URL di situs ini (bukan halaman login/daftar/logout) yang boleh jadi tujuan kembali.
+     */
+    private function isSafeReturnUrl(?string $url): bool
+    {
+        if (empty($url) || str_starts_with($url, '//')) {
+            return false;
+        }
+
+        $path = str_starts_with($url, '/') ? $url : null;
+        if ($path === null) {
+            $host = parse_url($url, PHP_URL_HOST);
+            if (! $host || strcasecmp($host, request()->getHost()) !== 0) {
+                return false;
+            }
+            $path = parse_url($url, PHP_URL_PATH) ?: '/';
+        }
+
+        foreach (['/login', '/register', '/logout', '/admin'] as $blocked) {
+            if (str_starts_with($path, $blocked)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function backendUrl(): string

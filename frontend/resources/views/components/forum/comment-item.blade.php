@@ -75,12 +75,27 @@
                 $imgUrl = str_starts_with($commentImage, 'http') ? str_replace('http://localhost', $beUrl, $commentImage) : $beUrl . '/storage/' . ltrim($commentImage, '/');
             @endphp
             <div class="ps-5 mt-2">
-                <img src="{{ $imgUrl }}" alt="Lampiran" class="img-fluid rounded border shadow-sm cursor-pointer clickable-image" style="max-height: 200px; object-fit: cover;" onclick="openImageViewer('{{ $imgUrl }}')">
+                <img src="{{ $imgUrl }}" alt="Lampiran" class="img-fluid rounded border shadow-sm cursor-pointer clickable-image" style="max-height: 200px; object-fit: cover;" onclick="openImageViewer(@js($imgUrl))">
             </div>
         @endif
         
-        <div class="ps-5 mt-2">
-            <button class="btn btn-link fw-semibold text-medigo-primary p-0 text-decoration-none" onclick="setReplyTarget('{{ $commentId }}', '{{ $commenterName }}')">Balas</button>
+        @php
+            $commentLikes = (int) ($comment['likes_count'] ?? 0);
+            $commentLiked = (bool) ($comment['liked_by_me'] ?? false);
+        @endphp
+        <div class="ps-5 mt-2 d-flex align-items-center gap-3">
+            <button type="button"
+                    class="mg-like-btn mg-like-btn--sm {{ $commentLiked ? 'is-liked' : '' }}"
+                    data-like-type="comment"
+                    data-like-id="{{ $commentId }}"
+                    data-liked="{{ $commentLiked ? '1' : '0' }}"
+                    data-own="{{ $isOwner ? '1' : '0' }}"
+                    data-login="{{ Auth::check() ? '1' : '0' }}"
+                    aria-pressed="{{ $commentLiked ? 'true' : 'false' }}">
+                <i class="bi {{ $commentLiked ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up' }}"></i>
+                <span data-like-count>{{ $commentLikes }}</span>
+            </button>
+            <button class="btn btn-link fw-semibold text-medigo-primary p-0 text-decoration-none" onclick="setReplyTarget(@js((string) $commentId), @js($commenterName))">Balas</button>
         </div>
 
         <!-- NESTED REPLIES LOOP -->

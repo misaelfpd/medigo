@@ -1,0 +1,6 @@
+/* Halaman moderasi forum admin (admin/forum.blade.php) */
+.btn-medigo-navy { background-color: var(--mg-primary, #002b5e); border-color: var(--mg-primary, #002b5e); }
+.btn-medigo-navy:hover { background-color: var(--mg-primary-hover, #001f44); border-color: var(--mg-primary-hover, #001f44); }
+.hover-bg-light:hover { background-color: #f8fafc; }
+.hover-primary:hover { color: var(--mg-primary, #002b5e) !important; }
+.moderation-item-row { padding: 20px 24px !important; }

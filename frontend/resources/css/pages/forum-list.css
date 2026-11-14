@@ -1,0 +1,77 @@
+/* Halaman daftar forum diskusi (users/discussion.blade.php) */
+/* Cegah ancestor memblokir position: sticky */
+html, body, main, #app {
+    overflow-x: clip !important;
+}
+
+@media (min-width: 992px) {
+    /* Sidebar tetap diam di bawah navbar (tidak menimpa navbar & tidak ikut tergulung) */
+    .medigo-sidebar-sticky {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 88px;
+        z-index: 10;
+    }
+
+    /* Hanya area main section yang bisa di-scroll secara independen */
+    /* Area scroll dibuat sticky dan memanjang sampai dekat bawah layar */
+    .medigo-main-scroll {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 88px;
+        max-height: calc(100vh - 96px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .medigo-main-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .medigo-main-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .medigo-main-scroll::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 999px;
+    }
+
+    .medigo-main-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: #94a3b8;
+    }
+}
+
+.bg-medigo-subtle {
+    background-color: #e6f0fa !important;
+    color: #002b5e !important;
+}
+
+.hover-subtle:hover {
+    background-color: #f4f7fb;
+    color: #002b5e !important;
+}
+
+.hover-primary-text:hover {
+    color: #002b5e !important;
+}
+
+.page-link.hover-primary:hover {
+    background-color: #e6f0fa !important;
+    color: #002b5e !important;
+}
+
+.page-item.active .page-link {
+    z-index: 3;
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .08) !important;
+}

@@ -1,0 +1,7 @@
+/* Halaman detail diskusi (users/discussion_detail.blade.php) */
+.hover-primary:hover { color: var(--mg-primary, #002b5e) !important; }
+.discussion-reply-form { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #dee2e6; padding: 1rem 0; z-index: 1000; }
+@media (max-width: 991.98px) { .discussion-reply-form { bottom: 60px; } }
+.cursor-pointer { cursor: pointer; }
+.clickable-image { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.clickable-image:hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
