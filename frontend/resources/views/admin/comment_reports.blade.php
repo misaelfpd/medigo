@@ -27,7 +27,7 @@
         @include('admin.partials.report-tabs', ['route' => 'admin.comment-reports'])
         @include('admin.partials.report-search', ['route' => 'admin.comment-reports', 'placeholder' => 'Cari faskes, ulasan, pelapor...'])
     </div>
-
+<!-- kata ael disini taro watermark -->
     <div class="table-responsive">
         <table class="table admin-report-table align-top">
             <thead>

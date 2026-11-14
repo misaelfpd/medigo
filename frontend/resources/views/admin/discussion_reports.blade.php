@@ -12,7 +12,7 @@
         </div>
         <span class="admin-status admin-status--pending">{{ count($reports) }} laporan</span>
     </div>
-
+<!-- Semoga menang ya allah -->
     <div class="admin-report-toolbar">
         @include('admin.partials.report-tabs', ['route' => 'admin.discussion-reports'])
         @include('admin.partials.report-search', ['route' => 'admin.discussion-reports', 'placeholder' => 'Cari judul, alasan, pelapor...'])
