@@ -3,7 +3,7 @@
     <div class="container d-flex justify-content-between gap-5 align-items-center">
         <!-- Logo Section -->
         <a class="navbar-brand d-flex align-items-center m-0" href="/faskes">
-            <img style="max-height: 40px; width: auto;" src="{{ asset('storage/medigo_logo.png') }}" alt="MediGO" onerror="this.onerror=null; this.src='{{ asset('images/medigo_icon.png') }}';">
+            <img style="max-height: 40px; width: auto;" src="{{ asset('images/medigo_logo.png') }}" alt="MediGO" onerror="this.onerror=null; this.src='{{ asset('storage/medigo_logo.png') }}';">
         </a>
 
         <!-- Desktop Navigation Links -->

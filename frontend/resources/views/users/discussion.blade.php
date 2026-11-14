@@ -26,7 +26,7 @@
     ];
 @endphp
 
-<div class="container py-4">
+<div class="container py-3 py-lg-4">
     <div class="row g-4 align-items-start">
 
         <!-- Sidebar Kiri (Desktop Only: Diam di Tempat / Tidak Ikut Scroll) -->
@@ -88,31 +88,8 @@
                     </div>
                 </div>
 
-                <!-- Card Diskusi Faskes Dekat Anda: judul diskusi + nama faskes di sekitar user -->
-                <div class="card border rounded-4 shadow-sm mb-3 bg-white mg-nearby-card" id="forumNearbyCard"
-                     data-url="{{ route('forum.nearby-discussions') }}"
-                     data-discussion-url="{{ url('/discussions') }}"
-                     data-faskes-url="{{ url('/faskes') }}">
-                    <div class="card-body p-3">
-                        <h6 class="fw-bold mb-2 px-2 text-dark d-flex align-items-center gap-2" style="font-size: 0.78rem; letter-spacing: 0.6px;">
-                            <i class="bi bi-geo-alt"></i>
-                            <span id="forumNearbyHeading">DISKUSI FASKES DEKAT ANDA</span>
-                        </h6>
-                        <div class="px-2" id="forumNearbyList">
-                            <div class="text-muted" style="font-size: 0.8rem;">
-                                <span class="spinner-border spinner-border-sm me-1"></span> Memuat diskusi...
-                            </div>
-                        </div>
-                        <div class="px-2 mt-2">
-                            <button type="button" class="btn btn-sm mg-btn-outline px-3 d-none" id="forumNearbyLocateBtn">
-                                <i class="bi bi-crosshair me-1"></i> Gunakan Lokasi Saya
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Card Sedang Tren (Dinamis dari $discussions) -->
-                <div class="card border rounded-4 shadow-sm bg-white">
+                <div class="card border rounded-4 shadow-sm mb-3 bg-white">
                     <div class="card-body p-3">
                         <h6 class="fw-bold mb-2 px-2 text-danger d-flex align-items-center gap-2" style="font-size: 0.78rem; letter-spacing: 0.6px;">
                             <i class="bi bi-graph-up-arrow"></i>
@@ -145,51 +122,55 @@
                     </div>
                 </div>
 
+                <!-- Card Diskusi Faskes Dekat Anda: judul diskusi + nama faskes di sekitar user -->
+                <div class="card border rounded-4 shadow-sm mb-3 bg-white mg-nearby-card" id="forumNearbyCard"
+                     data-url="{{ route('forum.nearby-discussions') }}"
+                     data-discussion-url="{{ url('/discussions') }}"
+                     data-faskes-url="{{ url('/faskes') }}">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-2 px-2 text-dark d-flex align-items-center gap-2" style="font-size: 0.78rem; letter-spacing: 0.6px;">
+                            <i class="bi bi-geo-alt"></i>
+                            <span id="forumNearbyHeading">DISKUSI FASKES DEKAT ANDA</span>
+                        </h6>
+                        <div class="px-2" id="forumNearbyList">
+                            <div class="text-muted" style="font-size: 0.8rem;">
+                                <span class="spinner-border spinner-border-sm me-1"></span> Memuat diskusi...
+                            </div>
+                        </div>
+                        <div class="px-2 mt-2">
+                            <button type="button" class="btn btn-sm mg-btn-outline px-3 d-none" id="forumNearbyLocateBtn">
+                                <i class="bi bi-crosshair me-1"></i> Gunakan Lokasi Saya
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
         <!-- Area Konten Utama (Hanya Bagian Ini yang Scroll) -->
         <div class="col-lg-9">
             <div class="medigo-main-scroll pt-1 pb-3 pe-lg-2">
-                <!-- Mobile Filter & Quick Action Bar (d-lg-none) -->
-                <div class="d-lg-none mb-3">
-                    <div class="card border rounded-4 shadow-sm bg-white p-3 mb-2">
-                        <!-- Dropdown Kategori & Tombol Diskusi Baru -->
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <div class="flex-grow-1">
-                                <select id="mobileForumCategorySelect" class="form-select rounded-pill px-3 py-2 shadow-none border" style="font-size: 0.88rem; background-color: #f8fafc;">
-                                    <option value="{{ route('discussions') }}">Semua Kategori</option>
-                                    @if(Auth::check())
-                                        <option value="{{ route('discussions', ['tab' => 'my_discussions']) }}" {{ ($tab ?? '') === 'my_discussions' ? 'selected' : '' }}>Diskusi Saya</option>
-                                    @endif
-                                    @foreach($forumCategories as $cat)
-                                        <option value="{{ route('discussions', ['category' => $cat['value']]) }}" {{ ($category ?? '') === $cat['value'] ? 'selected' : '' }}>
-                                            {{ $cat['label'] }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
+                <!-- Floating Mobile Filter Component (d-lg-none) -->
+                <div class="d-lg-none mg-forum-mobile-filter-wrapper sticky-top mb-3">
+                    <div class="mg-forum-mobile-filter-card card border rounded-4 shadow-sm p-2 px-3">
+                        <!-- Dropdown Kategori -->
+                        <div class="mb-2">
+                            <select id="mobileForumCategorySelect" class="form-select form-select-sm rounded-pill px-3 py-1-5 border" style="font-size: 0.88rem; background-color: #f8fafc;">
+                                <option value="{{ route('discussions', array_filter(['sort' => $sort, 'filter' => $filter])) }}">Semua Kategori</option>
                                 @if(Auth::check())
-                                    <a href="{{ route('discussions.create') }}"
-                                       class="btn btn-medigo-primary rounded-pill px-3 py-2 fw-semibold text-white d-flex align-items-center gap-1 shadow-sm text-nowrap"
-                                       style="background-color: #002b5e; font-size: 0.85rem;">
-                                        <i class="bi bi-plus-lg"></i>
-                                        <span>Diskusi</span>
-                                    </a>
-                                @else
-                                    <a href="{{ route('login') }}"
-                                       class="btn btn-medigo-primary rounded-pill px-3 py-2 fw-semibold text-white d-flex align-items-center gap-1 shadow-sm text-nowrap"
-                                       style="background-color: #002b5e; font-size: 0.85rem;">
-                                        <i class="bi bi-box-arrow-in-right"></i>
-                                        <span>Masuk</span>
-                                    </a>
+                                    <option value="{{ route('discussions', array_filter(['tab' => 'my_discussions', 'sort' => $sort, 'filter' => $filter])) }}" {{ ($tab ?? '') === 'my_discussions' ? 'selected' : '' }}>Diskusi Saya</option>
                                 @endif
-                            </div>
+                                @foreach($forumCategories as $cat)
+                                    <option value="{{ route('discussions', array_filter(['category' => $cat['value'], 'sort' => $sort, 'filter' => $filter])) }}" {{ ($category ?? '') === $cat['value'] ? 'selected' : '' }}>
+                                        {{ $cat['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <!-- Filter Chips: Semua, Sedang Tren, Faskes Terdekat -->
-                        <div class="d-flex gap-2 overflow-x-auto pt-1 mg-filter-chips-scroll" style="scrollbar-width: none;">
+                        <div class="d-flex gap-2 overflow-x-auto pb-1 mg-filter-chips-scroll" style="scrollbar-width: none;">
                             <a href="{{ route('discussions', array_filter(['category' => $category, 'tab' => $tab])) }}"
                                class="btn btn-sm rounded-pill px-3 py-1 text-nowrap {{ empty($sort) && empty($filter) ? 'btn-medigo-primary text-white shadow-sm' : 'btn-outline-secondary border' }}"
                                style="{{ empty($sort) && empty($filter) ? 'background-color: #002b5e; border-color: #002b5e;' : '' }}">
@@ -207,6 +188,16 @@
                             </a>
                         </div>
                     </div>
+                </div>
+
+                <!-- Tombol Mengambang Tambah Diskusi di Pojok Kanan Bawah Mobile (+) -->
+                <div class="d-lg-none">
+                    <a href="{{ Auth::check() ? route('discussions.create') : route('login') }}"
+                       class="mg-forum-fab shadow-lg"
+                       title="Tambah Diskusi Baru"
+                       aria-label="Tambah Diskusi">
+                        <i class="bi bi-plus-lg"></i>
+                    </a>
                 </div>
 
                 @if(!empty($faskesFilterId))

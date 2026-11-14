@@ -60,6 +60,14 @@
                                 <!-- Search Component -->
                                 <x-map.search-bar />
 
+                                @if(!empty($errorMessage))
+                                    <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2 py-2 px-3 small rounded-3 my-2 shadow-sm" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0 fs-6"></i>
+                                        <div class="flex-grow-1" style="font-size: 0.8rem;">{{ $errorMessage }}</div>
+                                        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                @endif
+
                                 <!-- Facility Cards Loading Spinner (Desktop Sidebar - Visible by Default) -->
                                 <div class="text-center py-5 bg-light rounded-3 my-2" id="mapCardsLoadingState">
                                     <div class="spinner-border text-medigo-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
@@ -116,7 +124,7 @@
                     </div>
 
                     <!-- Mobile Bottom Sheet / Scrollable Cards Carousel (Matching Screenshot) -->
-                    <x-map.mobile-bottom-sheet :faskes-list="$faskesList" />
+                    <x-map.mobile-bottom-sheet :faskes-list="$faskesList" :error-message="$errorMessage" />
                 </div>
             </div>
         </div>
@@ -131,6 +139,7 @@
     <!-- Pass Backend Faskes Data to Frontend JS Module -->
     <script>
         window.faskesInitialData = @json($faskesList);
+        window.mapErrorMessage = @json($errorMessage ?? null);
     </script>
 
     <!-- Modular Map JavaScript -->

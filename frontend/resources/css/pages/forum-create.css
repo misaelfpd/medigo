@@ -35,6 +35,27 @@
     .discussion-content-textarea::placeholder {
         color: #94a3b8;
     }
+
+    /* Polish input mention faskes di mobile */
+    .mg-mention-picker .mg-mention-input {
+        background-color: #ffffff !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        padding: 12px 38px 12px 42px !important;
+        font-size: 0.9rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    }
+    .mg-mention-picker .mg-mention-results {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        background: #ffffff;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        max-height: 240px;
+    }
 }
 
 @media (min-width: 992px) {

@@ -231,6 +231,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const visual = faskesVisual(faskes.jenis_faskes || faskes.type || "", faskesName);
         const typeIcon = visual.icon;
 
+        // Ambil URL thumbnail faskes (dengan fallback normalisasi URL backend)
+        let thumbnailUrl = faskes.thumbnail_url || faskes.foto || null;
+        if (thumbnailUrl && typeof thumbnailUrl === 'string') {
+            const beBase = window.MEDIGO_BE_URL || "http://127.0.0.1:8005";
+            if (thumbnailUrl.startsWith('/storage') || thumbnailUrl.startsWith('storage/')) {
+                thumbnailUrl = beBase.replace(/\/+$/, '') + '/' + thumbnailUrl.replace(/^\/+/, '');
+            } else if (thumbnailUrl.includes(':8000/storage/')) {
+                thumbnailUrl = thumbnailUrl.replace(/https?:\/\/[^\/]+:8000/, beBase.replace(/\/+$/, ''));
+            }
+        }
+        const hasPhotoClass = thumbnailUrl ? 'has-photo' : '';
+        const photoImgHtml = thumbnailUrl 
+            ? `<img src="${thumbnailUrl}" alt="Foto ${faskesName}" class="facility-thumb-photo" loading="lazy" onerror="this.parentElement.classList.remove('has-photo'); this.remove();">` 
+            : '';
+
         // GENERASI URL MAPS SEARCH DINAMIS (LAT & LNG)
         let mapUrl = faskes.link_maps && faskes.link_maps !== '#' ? faskes.link_maps : '';
         if (!mapUrl) {
@@ -263,8 +278,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         card.innerHTML = `
             <div class="d-flex gap-3 align-items-start">
-                <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key}">
+                <div class="facility-thumb-wrap flex-shrink-0 faskes-avatar-map faskes-avatar-${typeSlug} faskes-visual-${visual.key} ${hasPhotoClass}">
                     <i class="bi ${typeIcon} text-white fs-4"></i>
+                    ${photoImgHtml}
                 </div>
                 <div class="facility-info-wrap flex-grow-1 min-w-0">
                     <h6 class="facility-name fw-bold mb-1 text-dark text-truncate" title="${faskesName}">${faskesName}</h6>

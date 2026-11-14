@@ -99,6 +99,7 @@ class DiscussionController extends Controller
                     $gambar = $item['gambar_diskusi'] ?? $item['image_path'] ?? $item['image'] ?? null;
                     $id_user = $item['id_user'] ?? $item['user_id'] ?? null;
                     $authorEmail = $item['author_email'] ?? $item['email_user'] ?? $item['email'] ?? null;
+                    $authorName = $item['author_name'] ?? $item['nama_user'] ?? null;
 
                     // Resolusi avatar penulis diskusi
                     $authorAvatar = null;
@@ -129,6 +130,9 @@ class DiscussionController extends Controller
                         
                         'id_user' => $id_user,
                         'user_id' => $id_user,
+
+                        'author_name' => $authorName,
+                        'nama_user' => $authorName,
                         
                         'author_avatar' => $authorAvatar,
                     ]);
@@ -151,30 +155,32 @@ class DiscussionController extends Controller
                 $nearbyRes = Http::timeout(5)->acceptJson()->get("{$backendUrl}/api/forum/diskusi-terdekat", array_filter($nearbyParams));
                 if ($nearbyRes->successful()) {
                     $rawNearby = $nearbyRes->json('data') ?? [];
-                    if (!empty($rawNearby)) {
-                        $discussions = collect($rawNearby)->map(function ($item) {
-                            $item = (array) $item;
-                            $f = $item['faskes'] ?? [];
-                            return [
-                                'id_diskusi' => $item['id_diskusi'] ?? 0,
-                                'id' => $item['id_diskusi'] ?? 0,
-                                'judul_diskusi' => $item['judul_diskusi'] ?? '',
-                                'isi_diskusi' => $item['isi_diskusi'] ?? '',
-                                'kategori' => $f['nama_faskes'] ?? 'Faskes Terdekat',
-                                'comments_count' => (int) ($item['comments_count'] ?? 0),
-                                'likes_count' => (int) ($item['likes_count'] ?? 0),
-                                'mentioned_faskes' => $f,
-                                'author_name' => $item['author_name'] ?? 'Pengguna MediGO',
-                                'created_at' => $item['created_at'] ?? now()->toIso8601String(),
-                            ];
-                        })->all();
-
-                        $pagination = [
-                            'current_page' => 1,
-                            'last_page' => 1,
-                            'total' => count($discussions),
+                    $discussions = collect($rawNearby)->map(function ($item) {
+                        $item = (array) $item;
+                        $f = $item['faskes'] ?? [];
+                        $authorName = !empty($item['author_name']) ? $item['author_name'] : (!empty($item['nama_user']) ? $item['nama_user'] : 'Pengguna');
+                        return [
+                            'id_diskusi' => $item['id_diskusi'] ?? 0,
+                            'id' => $item['id_diskusi'] ?? 0,
+                            'judul_diskusi' => $item['judul_diskusi'] ?? '',
+                            'isi_diskusi' => $item['isi_diskusi'] ?? '',
+                            'kategori' => !empty($item['kategori']) ? $item['kategori'] : ($item['category'] ?? 'Umum'),
+                            'category' => !empty($item['kategori']) ? $item['kategori'] : ($item['category'] ?? 'Umum'),
+                            'comments_count' => (int) ($item['comments_count'] ?? 0),
+                            'likes_count' => (int) ($item['likes_count'] ?? 0),
+                            'mentioned_faskes' => $f,
+                            'author_name' => $authorName,
+                            'nama_user' => $authorName,
+                            'author_avatar' => $item['author_avatar'] ?? null,
+                            'created_at' => $item['created_at'] ?? now()->toIso8601String(),
                         ];
-                    }
+                    })->all();
+
+                    $pagination = [
+                        'current_page' => 1,
+                        'last_page' => 1,
+                        'total' => count($discussions),
+                    ];
                 }
             } catch (\Exception $e) {
                 Log::warning('Nearby discussions fetch failed in index: ' . $e->getMessage());

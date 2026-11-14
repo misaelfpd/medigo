@@ -1,4 +1,4 @@
-@props(['faskesList'])
+@props(['faskesList', 'errorMessage' => null])
 
 <!-- Mobile Bottom Sheet / Draggable Expandable Cards Drawer -->
 <div class="mobile-bottom-sheet d-lg-none" id="mobileBottomSheet">
@@ -21,6 +21,14 @@
         </button>
     </div>
 
+    @if(!empty($errorMessage))
+        <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2 py-2 px-3 small rounded-3 m-3 mb-1 shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0 fs-6"></i>
+            <div class="flex-grow-1" style="font-size: 0.75rem;">{{ $errorMessage }}</div>
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- Mobile Cards Loading Spinner (Active by Default) -->
     <div class="text-center py-4" id="mobileCardsLoadingState">
         <div class="spinner-border spinner-border-sm text-medigo-primary mb-1" role="status" style="width: 1.6rem; height: 1.6rem;"></div>
@@ -32,7 +40,7 @@
         <div class="mb-2">
             <i class="bi bi-geo-alt-slash text-muted" style="font-size: 1.8rem;"></i>
         </div>
-        <h6 class="fw-bold text-dark mb-1" style="font-size: 0.88rem;">Tidak ada rumah sakit terdekat dalam radius Anda</h6>
+        <h6 class="fw-bold text-dark mb-1" style="font-size: 0.88rem;">Tidak ada fasilitas kesehatan terdekat dalam radius Anda</h6>
         <p class="text-muted mb-3" style="font-size: 0.74rem;">Coba perbesar jangkauan radius atau ubah filter faskes.</p>
         <button type="button" class="btn btn-sm btn-medigo-primary rounded-pill px-3 py-1 fw-semibold" id="btnMobileExpandRadius" style="font-size: 0.75rem;">
             <i class="bi bi-arrows-angle-expand me-1"></i> Perbesar Radius ke 10 Km

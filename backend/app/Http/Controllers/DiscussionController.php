@@ -41,13 +41,17 @@ class DiscussionController extends Controller
 
         // 2. Cek apakah ada request filter kategori
         if ($request->has('category') && ! empty($request->query('category'))) {
-            $cat = $request->query('category');
+            $cat = trim($request->query('category'));
             if ($cat === 'BPJS') {
                 $query->whereIn('diskusi.kategori', ['BPJS', 'BPJS & Asuransi', 'Tanya BPJS']);
-            } elseif ($cat === 'Rekomendasi RS') {
+            } elseif ($cat === 'Rekomendasi RS' || $cat === 'Rekomendasi') {
                 $query->whereIn('diskusi.kategori', ['Rekomendasi RS', 'Rekomendasi', 'Rekomendasi Faskes']);
             } elseif ($cat === 'Tips Kesehatan') {
-                $query->whereIn('diskusi.kategori', ['Tips Kesehatan', 'Tips & Informasi']);
+                $query->whereIn('diskusi.kategori', ['Tips Kesehatan', 'Tips & Informasi', 'Gaya Hidup & Nutrisi']);
+            } elseif ($cat === 'Umum') {
+                $query->whereIn('diskusi.kategori', ['Umum', 'Kesehatan Umum']);
+            } elseif ($cat === 'Ulasan Rumah Sakit') {
+                $query->whereIn('diskusi.kategori', ['Ulasan Rumah Sakit', 'Ulasan RS', 'Review RS', 'Review Faskes']);
             } else {
                 $query->where('diskusi.kategori', $cat);
             }

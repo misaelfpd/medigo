@@ -106,12 +106,24 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-image: linear-gradient(rgba(248, 250, 252, 0.74), rgba(248, 250, 252, 0.78)), var(--hero-bg);
-    background-size: cover;
-    background-position: center;
+    background: radial-gradient(120% 90% at 50% -10%, rgba(30, 93, 199, 0.08) 0%, rgba(248, 250, 252, 0) 65%),
+                radial-gradient(80% 60% at 10% 90%, rgba(13, 148, 136, 0.06) 0%, rgba(248, 250, 252, 0) 70%),
+                radial-gradient(80% 60% at 90% 90%, rgba(30, 93, 199, 0.06) 0%, rgba(248, 250, 252, 0) 70%),
+                #f8fafc;
     text-align: center;
     padding: 48px 16px 72px;
     box-sizing: border-box;
+    overflow: hidden;
+}
+
+.mg-landing-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 .mg-landing-hero__inner {
@@ -120,6 +132,22 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.mg-landing-hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .mg-landing-hero__title {
@@ -136,7 +164,35 @@
     font-size: clamp(0.95rem, 1.6vw, 1.15rem);
     line-height: 1.65;
     max-width: 620px;
-    margin: 0 auto 32px;
+    margin: 0 auto 28px;
+}
+
+.mg-landing-hero__search {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+}
+
+.mg-landing-hero__search .input-group {
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mg-landing-hero__search .input-group:focus-within {
+    border-color: var(--mg-primary, #002b5e);
+    box-shadow: 0 4px 24px rgba(var(--mg-primary-rgb, 0, 43, 94), 0.16);
+}
+
+.mg-landing-hero__search input {
+    font-size: 0.92rem;
+    color: #1e293b;
+}
+
+.mg-landing-hero__search input::placeholder {
+    color: #94a3b8;
+    font-size: 0.88rem;
 }
 
 .mg-landing-hero__actions {
@@ -144,31 +200,59 @@
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .mg-landing-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    min-width: 175px;
-    padding: 13px 28px;
-    border-radius: 8px;
+    gap: 8px;
+    min-width: 150px;
+    padding: 11px 22px;
+    border-radius: 9999px;
     background: var(--mg-primary, #002b5e);
     color: #fff;
     font-weight: 600;
-    font-size: 0.98rem;
+    font-size: 0.92rem;
     text-decoration: none;
-    box-shadow: 0 4px 14px rgba(var(--mg-primary-rgb, 0, 43, 94), 0.28);
-    transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 3px 10px rgba(var(--mg-primary-rgb, 0, 43, 94), 0.25);
+    transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .mg-landing-btn:hover {
     background: var(--mg-primary-hover, #001f44);
     color: #fff;
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(var(--mg-primary-rgb, 0, 43, 94), 0.35);
+    box-shadow: 0 6px 18px rgba(var(--mg-primary-rgb, 0, 43, 94), 0.32);
+}
+
+.mg-landing-btn--outline {
+    background: #ffffff;
+    color: var(--mg-primary, #002b5e);
+    border: 1.5px solid #cbd5e1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.mg-landing-btn--outline:hover {
+    background: #f8fafc;
+    color: var(--mg-primary-hover, #001f44);
+    border-color: var(--mg-primary, #002b5e);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.mg-landing-hero__maps-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px dashed #cbd5e1;
+    color: #475569;
+    font-size: 0.8rem;
+    margin-top: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 /* Indikator scroll ke bawah */

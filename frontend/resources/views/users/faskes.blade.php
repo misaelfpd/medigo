@@ -15,7 +15,7 @@
                     <input type="text" 
                            name="q" 
                            class="form-control border-0 shadow-none ps-1 bg-transparent" 
-                           placeholder="Cari RS, klinik, atau spesialis di Jabodetabek..." 
+                           placeholder="Cari faskes, klinik, atau spesialis di Jabodetabek..." 
                            autocomplete="off"
                            style="font-size: 0.88rem;">
                     <a href="{{ route('search.index') }}" class="btn btn-outline-secondary rounded-pill px-2 py-1 me-1 fw-medium d-inline-flex align-items-center gap-1 border-0" title="Buka Filter Lengkap" style="font-size: 0.82rem; color: #475569;">
@@ -54,7 +54,7 @@
                                     <i class="bi bi-sliders2 fs-7"></i> <span class="d-none d-sm-inline">Filter</span>
                                 </a>
                                 <button type="submit" class="btn btn-medigo-primary px-3 px-sm-4 py-2 rounded-pill fw-semibold text-white shadow-xs">
-                                    Cari RS
+                                    Cari
                                 </button>
                             </div>
                         </form>

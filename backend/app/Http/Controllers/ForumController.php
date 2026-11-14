@@ -170,6 +170,11 @@ class ForumController extends Controller
         $items = $results->map(fn ($d) => [
             'id_diskusi' => (int) $d->id_diskusi,
             'judul_diskusi' => $d->judul_diskusi,
+            'isi_diskusi' => $d->isi_diskusi ?? '',
+            'kategori' => $d->kategori ?? 'Umum',
+            'created_at' => $d->created_at ?? null,
+            'author_name' => $d->author_name ?? 'Pengguna MediGO',
+            'author_avatar' => $d->author_avatar ?? null,
             'comments_count' => (int) $d->comments_count,
             'likes_count' => (int) $d->likes_count,
             'faskes' => [
@@ -198,10 +203,23 @@ class ForumController extends Controller
 
         $query = DB::table('diskusi')
             ->join('faskes', 'faskes.id_faskes', '=', 'diskusi.id_faskes_mention')
+            ->leftJoin('user', 'user.id_user', '=', 'diskusi.id_user')
             ->where('diskusi.status_diskusi', 'active')
             ->whereNotNull('faskes.latitude')
             ->whereNotNull('faskes.longitude')
-            ->select('diskusi.id_diskusi', 'diskusi.judul_diskusi', 'faskes.id_faskes', 'faskes.nama_faskes', 'faskes.jenis_faskes')
+            ->select(
+                'diskusi.id_diskusi',
+                'diskusi.judul_diskusi',
+                'diskusi.isi_diskusi',
+                'diskusi.kategori',
+                'diskusi.created_at',
+                'diskusi.gambar_diskusi',
+                'user.nama_user as author_name',
+                'user.avatar as author_avatar',
+                'faskes.id_faskes',
+                'faskes.nama_faskes',
+                'faskes.jenis_faskes'
+            )
             ->selectRaw("{$distance} AS distance_km")
             ->selectRaw('(SELECT COUNT(*) FROM like_diskusi WHERE like_diskusi.id_diskusi = diskusi.id_diskusi) AS likes_count')
             ->selectRaw('(SELECT COUNT(*) FROM tanggapan_diskusi WHERE tanggapan_diskusi.id_diskusi = diskusi.id_diskusi) AS comments_count');

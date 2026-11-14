@@ -19,7 +19,9 @@
    - [Langkah 2: Setup Frontend](#2-setup-frontend-medigofrontend)
 5. [Kredensial Akun Default](#-kredensial-akun-default-demo--testing)
 6. [Struktur Endpoint & Port Default](#-struktur-endpoint--port-default)
-7. [Troubleshooting](#-troubleshooting)
+7. [Tim Pengembang](#-tim-pengembang)
+8. [Troubleshooting](#-troubleshooting)
+9. [Lisensi](#-lisensi)
 
 ---
 
@@ -108,12 +110,16 @@ DB_DATABASE=medigo_db
 DB_USERNAME=root
 DB_PASSWORD=
 
-# Opsional: Kunci API Gemini AI untuk fitur MediBot
+# Konfigurasi Gemini AI untuk fitur MediBot
 GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-1.5-flash
+GEMINI_TIMEOUT=30
 ```
 
 > [!NOTE]
-> Buat database baru bernama `medigo_db` di MySQL Anda (misal via HeidiSQL, phpMyAdmin, atau MySQL CLI: `CREATE DATABASE medigo_db;`).
+> - Buat database baru bernama `medigo_db` di MySQL Anda (misal via HeidiSQL, phpMyAdmin, atau MySQL CLI: `CREATE DATABASE medigo_db;`).
+> - `GEMINI_MODEL`: Model Gemini yang digunakan untuk chatbot MediBot (rekomendasi: `gemini-1.5-flash` atau `gemini-1.5-pro`).
+> - `GEMINI_TIMEOUT`: Batas waktu maksimal permintaan ke Google Gemini API dalam detik (default: `30`).
 
 Lanjutkan perintah berikut:
 ```bash
@@ -191,14 +197,12 @@ Frontend MediGO kini siap dibuka di browser: `http://127.0.0.1:8000`
 
 ## 👥 Kredensial Akun Default (Demo & Testing)
 
-Database seeder telah menyiapkan akun demo dengan berbagai peran (*role*):
+Database seeder telah menyiapkan akun demo untuk pengujian sistem:
 
 | Role | Nama Pengguna | Email Login | Password | Akses & Fitur |
 | :--- | :--- | :--- | :--- | :--- |
 | **Admin** | Admin MediGO | `admin@medigo.id` | `password` | Panel Manajemen Admin (`/admin/dashboard`), Kelola Faskes, Spesialisasi, Fasilitas Penunjang, Moderasi Laporan Forum |
-| **Super Admin** | Super Admin MediGO | `admin@medigo.test` | `password` | Hak akses penuh admin sistem |
-| **Dokter / Medis** | dr. Sarah Faradilla, Sp.A | `dr.sarah@medigo.id` | `password` | Buat diskusi, berikan opini medis terverifikasi, rating & ulasan |
-| **User Komunitas** | Dimas Pratama | `dimas.pratama@gmail.com` | `password` | Tanya faskes, komentar forum, simpan faskes favorit (bookmark), rating & ulasan |
+| **User** | Dimas Pratama | `dimas.pratama@gmail.com` | `password` | Eksplorasi direktori, rating & ulasan faskes, simpan bookmark, buat topik diskusi, komentar forum, konsultasi MediBot |
 
 ---
 
@@ -211,6 +215,16 @@ Database seeder telah menyiapkan akun demo dengan berbagai peran (*role*):
 | **Halaman Peta Faskes** | `http://127.0.0.1:8000/map` | Peta interaktif Leaflet se-Jabodetabek |
 | **Halaman Forum** | `http://127.0.0.1:8000/discussions` | Forum diskusi dengan lazy loading |
 | **Dashboard Admin** | `http://127.0.0.1:8000/admin/dashboard` | Area khusus akun role Admin |
+
+---
+
+## 👨‍💻 Tim Pengembang
+
+Proyek MediGO dikembangkan oleh:
+- **Muhammad Prima Yudhistira** — Project Manager, Front-End Developer
+- **Raden Mas Galih Pradityo** — Back-End Developer
+- **Misael Feodora Pranata Dauhan** — UI/UX Developer
+- **Osanna Patricia Limbong** — Data Analyst, Quality Assurance
 
 ---
 
@@ -234,4 +248,4 @@ Database seeder telah menyiapkan akun demo dengan berbagai peran (*role*):
 ---
 
 ## 📄 Lisensi
-Proyek MediGO dilisensikan di bawah [MIT License](LICENSE).
+kata ael nama timnya ini aja

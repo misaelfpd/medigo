@@ -70,6 +70,16 @@ class ChatWebController extends Controller
 
             if ($response->successful()) {
                 $chatHistory = $response->json('messages') ?? [];
+                foreach ($chatHistory as &$chat) {
+                    if (!empty($chat['faskes']) && is_array($chat['faskes'])) {
+                        foreach ($chat['faskes'] as &$item) {
+                            $thumb = $item['thumbnail_url'] ?? $item['foto'] ?? null;
+                            $item['thumbnail_url'] = \App\Support\FaskesVisual::normalizeStorageUrl($thumb);
+                        }
+                        unset($item);
+                    }
+                }
+                unset($chat);
             }
         } catch (\Exception $e) {
             Log::info('Failed fetching chat history: ' . $e->getMessage());
@@ -131,6 +141,15 @@ class ChatWebController extends Controller
             'guest_id' => $guestId,
         ]);
 
-        return response()->json($response->json(), $response->status());
+        $responseData = $response->json();
+        if (isset($responseData['faskes']) && is_array($responseData['faskes'])) {
+            foreach ($responseData['faskes'] as &$item) {
+                $thumb = $item['thumbnail_url'] ?? $item['foto'] ?? null;
+                $item['thumbnail_url'] = \App\Support\FaskesVisual::normalizeStorageUrl($thumb);
+            }
+            unset($item);
+        }
+
+        return response()->json($responseData, $response->status());
     }
 }

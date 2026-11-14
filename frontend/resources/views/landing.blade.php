@@ -12,7 +12,7 @@
 
 @php
     $features = [
-        ['icon' => 'bi-geo-alt', 'tone' => 'blue', 'title' => 'Pencarian Real-Time', 'text' => 'Deteksi radius faskes terdekat dengan rute tercepat yang presisi.'],
+        ['icon' => 'bi-geo-alt', 'tone' => 'blue', 'title' => 'Navigasi Langsung Google Maps', 'text' => 'Deteksi radius faskes terdekat dengan rute perjalanan tercepat yang otomatis terhubung dan diarahkan ke Google Maps secara presisi.'],
         ['icon' => 'bi-shield-check', 'tone' => 'green', 'title' => 'BPJS & Asuransi', 'text' => 'Informasi lengkap faskes rujukan BPJS Kesehatan Kelas 1, 2, 3 hingga Non BPJS.'],
         ['icon' => 'bi-stars', 'tone' => 'purple', 'title' => 'Asisten AI Medis Cerdas', 'text' => 'Konsultasi awal berbasis AI yang menganalisis gejala Anda dan merekomendasikan poli yang tepat.'],
         ['icon' => 'bi-chat-square-text', 'tone' => 'orange', 'title' => 'Forum Diskusi & Komunitas', 'text' => 'Berbagi pengalaman faskes, tips kesehatan terpercaya, dan tanya jawab langsung dengan sesama pengguna.'],
@@ -78,9 +78,9 @@
     ];
 
     $steps = [
-        ['title' => 'Tentukan Lokasi & Gejala', 'text' => 'Masukkan lokasi anda atau gunakan fitur Tanya AI untuk panduan awal indikasi keluhan kesehatan.'],
+        ['title' => 'Tentukan Lokasi & Gejala', 'text' => 'Masukkan lokasi Anda atau gunakan fitur Tanya AI untuk panduan awal indikasi keluhan kesehatan.'],
         ['title' => 'Pilih Rumah Sakit / Klinik', 'text' => 'Bandingkan jarak, ketersediaan dokter, fasilitas rawat, penerimaan BPJS, dan ulasan pasien terverifikasi.'],
-        ['title' => 'Navigasi Langsung', 'text' => 'Dapatkan rute langsung dan panduan arah via GPS tercepat menuju lokasi fasilitas kesehatan tujuan Anda.'],
+        ['title' => 'Navigasi via Google Maps', 'text' => 'Dapatkan rute perjalanan langsung yang otomatis terhubung dan diarahkan ke Google Maps untuk navigasi GPS tercepat.'],
     ];
 @endphp
 
@@ -94,27 +94,62 @@
 
             <div class="mg-landing-topbar__actions">
                 <a href="{{ route('faskes.index') }}" class="mg-landing-topbar__btn" id="mgLandingNavFaskesBtn">
-                    <span>Lihat Faskes</span>
-                    <i class="bi bi-hospital"></i>
+                    <span>Cari Faskes</span>
                 </a>
             </div>
         </div>
     </header>
 
     {{-- Hero: Layar Penuh (100dvh) --}}
-    <section class="mg-landing-hero" id="landingHero" style="--hero-bg: url('{{ asset('images/reception.jpg') }}');">
+    <section class="mg-landing-hero" id="landingHero">
         <div class="container mg-landing-hero__inner">
+            {{-- Badge Pill --}}
+            <div class="mg-landing-hero__badge mb-3">
+                <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                <span>Direktori & Navigasi Faskes Jabodetabek</span>
+            </div>
+
             <h1 class="mg-landing-hero__title">Temukan Layanan Kesehatan Terdekat</h1>
             <p class="mg-landing-hero__subtitle">
-                Temukan rumah sakit dan klinik terbaik di dekat Anda dengan cepat. Akses layanan kesehatan yang dapat diandalkan saat Anda sangat membutuhkannya.
+                Temukan rumah sakit, klinik, dan puskesmas terbaik di dekat Anda dengan cepat. Navigasi rute langsung terhubung ke Google Maps untuk perjalanan medis yang aman dan akurat.
             </p>
-            <div class="mg-landing-hero__actions" id="landingHeroActions">
+
+            {{-- Kotak Pencarian Cepat di Hero --}}
+            <div class="mg-landing-hero__search mb-4">
+                <form action="{{ route('search.index') }}" method="GET" class="m-0">
+                    <div class="input-group d-flex align-items-center rounded-pill border bg-white p-1-5 shadow-sm">
+                        <span class="input-group-text bg-transparent border-0 ps-3 pe-2 text-muted">
+                            <i class="bi bi-search text-medigo-primary fs-6"></i>
+                        </span>
+                        <input type="text"
+                               name="q"
+                               class="form-control border-0 shadow-none ps-1 bg-transparent"
+                               placeholder="Cari nama faskes, klinik, spesialis di Jabodetabek..."
+                               autocomplete="off">
+                        <button type="submit" class="btn btn-medigo-primary rounded-pill px-3 px-sm-4 py-2 fw-semibold text-white shadow-xs me-1">
+                            <span>Cari</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Tombol Aksi Cepat --}}
+            <div class="mg-landing-hero__actions mb-3" id="landingHeroActions">
                 <a href="{{ route('faskes.index') }}" class="mg-landing-btn">
-                    <span>Cari RS</span> <i class="bi bi-hospital"></i>
+                    <span>Daftar Faskes</span>
                 </a>
-                <a href="{{ route('chat') }}" class="mg-landing-btn">
-                    <span>Tanya AI</span> <i class="bi bi-stars"></i>
+                <a href="{{ route('map.index') }}" class="mg-landing-btn mg-landing-btn--outline">
+                    <span>Peta Faskes</span>
                 </a>
+                <a href="{{ route('chat') }}" class="mg-landing-btn mg-landing-btn--outline">
+                    <span>Tanya MediBot</span>
+                </a>
+            </div>
+
+            {{-- Penjelasan Terhubung ke Google Maps --}}
+            <div class="mg-landing-hero__maps-notice">
+                <i class="bi bi-google text-primary me-1"></i>
+                <span>Rute dan penunjuk arah langsung diarahkan ke <strong>Google Maps</strong></span>
             </div>
         </div>
 

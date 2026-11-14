@@ -125,6 +125,27 @@ PROMPT;
             ->limit(self::HISTORY_LIMIT)
             ->get(['id', 'role', 'message', 'faskes', 'created_at']);
 
+        // Lengkapi thumbnail_url untuk riwayat faskes lama jika belum terisi
+        $messages->transform(function ($msg) {
+            if (! empty($msg->faskes) && is_array($msg->faskes)) {
+                $faskesIds = collect($msg->faskes)->pluck('id_faskes')->filter()->all();
+                if (! empty($faskesIds)) {
+                    $thumbnails = FotoFaskesController::thumbnailUrls($faskesIds);
+                    $faskesList = $msg->faskes;
+                    foreach ($faskesList as &$item) {
+                        $id = $item['id_faskes'] ?? $item['id'] ?? null;
+                        if ($id && empty($item['thumbnail_url']) && isset($thumbnails[$id])) {
+                            $item['thumbnail_url'] = $thumbnails[$id];
+                        }
+                    }
+                    unset($item);
+                    $msg->faskes = $faskesList;
+                }
+            }
+
+            return $msg;
+        });
+
         return response()->json([
             'messages' => $messages,
         ]);
@@ -595,16 +616,19 @@ PROMPT;
                 ->values();
         }
 
+        $faskesIds = $results->pluck('id_faskes')->all();
+        $thumbnails = FotoFaskesController::thumbnailUrls($faskesIds);
+
         // Daftar spesialisasi tiap faskes, supaya AI bisa menyebut dokter spesialis yang tersedia
         $spesialisasiByFaskes = DB::table('spesialisasi_faskes')
             ->join('spesialisasi', 'spesialisasi_faskes.id_spesialisasi', '=', 'spesialisasi.id_spesialisasi')
-            ->whereIn('spesialisasi_faskes.id_faskes', $results->pluck('id_faskes')->all())
+            ->whereIn('spesialisasi_faskes.id_faskes', $faskesIds)
             ->orderBy('spesialisasi.nama_spesialisasi')
             ->get(['spesialisasi_faskes.id_faskes', 'spesialisasi.nama_spesialisasi'])
             ->groupBy('id_faskes');
 
-        // Format setiap item agar menyertakan link maps & alamat yang rapi
-        return $results->map(function ($faskes) use ($spesialisasiByFaskes) {
+        // Format setiap item agar menyertakan link maps, thumbnail_url & alamat yang rapi
+        return $results->map(function ($faskes) use ($spesialisasiByFaskes, $thumbnails) {
             $formattedAddress = $this->formatAddress(
                 $faskes->alamat_faskes,
                 $faskes->kota_kabupaten,
@@ -613,6 +637,8 @@ PROMPT;
 
             // Set properti tambahan atau timpa link_maps dengan fungsi BerandaController
             $faskes->alamat_faskes = $formattedAddress;
+            $faskes->thumbnail_url = $thumbnails[$faskes->id_faskes] ?? null;
+            $faskes->foto = $faskes->thumbnail_url;
             $faskes->link_maps = $this->getGoogleMapsUrl(
                 $faskes->nama_faskes,
                 $faskes->latitude ?? null,

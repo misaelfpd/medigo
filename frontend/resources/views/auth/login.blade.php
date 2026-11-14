@@ -96,8 +96,8 @@
                 </div>
               </div>
 
-              <!-- Ingat Saya & Lupa Kata Sandi -->
-              <div class="mb-3 mt-1 d-flex justify-content-between align-items-center">
+              <!-- Ingat Saya -->
+              <div class="mb-3 mt-1 d-flex align-items-center">
                 <div class="form-check mb-0">
                   <input class="form-check-input" type="checkbox" name="remember" value="1" id="remember"
                     {{ old('remember') ? 'checked' : '' }}>
@@ -105,11 +105,6 @@
                     Ingat saya 
                   </label>
                 </div>
-                <a href="#" class="text-dark text-decoration-none fw-bold"
-                  style="font-size: 0.75rem;"
-                  data-info-toast="Untuk mengatur ulang kata sandi, silakan hubungi administrator MediGO.">
-                  Lupa Kata Sandi?
-                </a>
               </div>
 
               <!-- Submit Button -->

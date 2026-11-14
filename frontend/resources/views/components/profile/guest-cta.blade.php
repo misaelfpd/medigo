@@ -19,7 +19,7 @@
                 <i class="bi bi-box-arrow-in-right"></i>
                 <span>Masuk Sekarang</span>
             </a>
-            <a href="{{ route('register') }}" class="btn btn-outline-medigo-primary rounded-pill px-4 py-2-5 fw-semibold w-100 w-sm-auto d-inline-flex align-items-center justify-content-center gap-2">
+            <a href="{{ route('register') }}" class="btn btn-medigo-primary rounded-pill px-4 py-2-5 fw-bold w-100 w-sm-auto shadow-xs text-white d-inline-flex align-items-center justify-content-center gap-2">
                 <i class="bi bi-person-plus"></i>
                 <span>Daftar Akun</span>
             </a>

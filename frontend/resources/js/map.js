@@ -936,7 +936,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         } catch (err) {
             console.warn(
-                "Live nearby faskes fetch error, using local fallback:",
+                "Live nearby faskes fetch error:",
                 err,
             );
         } finally {

@@ -52,7 +52,7 @@ class MapController extends Controller
                 return 'Laboratorium';
             }
 
-            return 'Rumah Sakit';
+            return $jenisFaskes ?: 'Fasilitas Kesehatan';
         }
 
         $jenisLower = strtolower($jenis);
@@ -119,36 +119,30 @@ class MapController extends Controller
         return "https://www.google.com/maps/search/?api=1&query={$encodedName}";
     }
 
-    private function getFacilityPhoto($typeSlug, $id = 0)
-    {
-        if ($typeSlug === 'hospital') {
-            return ($id % 2 === 0) ? 'images/hospital_waterfront.jpg' : 'images/hospital.jpg';
-        } elseif ($typeSlug === 'puskesmas') {
-            return 'images/hospital.jpg';
-        }
-        return 'images/clinic.jpg';
-    }
-
     public function index(Request $request)
     {
         $rawBackendUrl = config('services.medigo.url', env('MEDIGO_BE', 'http://127.0.0.1:8005'));
         $backendUrl = rtrim(str_replace('localhost', '127.0.0.1', $rawBackendUrl), '/');
         $faskesList = [];
+        $errorMessage = null;
 
         try {
-            $userLat = $request->input('lat', -6.2088);
-            $userLng = $request->input('lng', 106.8220);
-
-            // Fetch faskes that have coordinates from the backend API, sorted by distance from user position (limit 30)
-            $response = Http::timeout(8)->get("{$backendUrl}/api/faskes", [
+            $queryParams = [
                 'with_coords' => 1,
-                'lat' => $userLat,
-                'lng' => $userLng,
-                'limit' => 30,
+                'limit' => 50,
                 'search' => $request->input('search'),
                 'bpjs' => $request->input('bpjs'),
                 'jenis' => $request->input('jenis'),
-            ]);
+            ];
+
+            // Hanya sertakan koordinat jika dikirimkan oleh browser/client (tanpa hardcode lokasi default)
+            if ($request->filled('lat') && $request->filled('lng')) {
+                $queryParams['lat'] = (float) $request->input('lat');
+                $queryParams['lng'] = (float) $request->input('lng');
+            }
+
+            // Fetch faskes that have coordinates from the backend API
+            $response = Http::timeout(8)->get("{$backendUrl}/api/faskes", array_filter($queryParams, fn($v) => !is_null($v) && $v !== ''));
 
             if ($response->successful()) {
                 $body = $response->json();
@@ -158,12 +152,11 @@ class MapController extends Controller
                     $lat = !empty($item['latitude']) ? (float)$item['latitude'] : null;
                     $lng = !empty($item['longitude']) ? (float)$item['longitude'] : null;
 
-                    // Ensure item has valid coordinates for map placement
+                    // Pastikan item memiliki koordinat valid untuk penempatan pin di peta
                     if ($lat === null || $lng === null) {
                         continue;
                     }
 
-                    // UPDATE: BE menggunakan jenis_faskes, bukan tipe
                     $typeSlug = $item['type_slug'] ?? $this->getTypeSlug($item['jenis_faskes'] ?? $item['tipe'] ?? '');
                     $rating = (!empty($item['avg_rating']) && (float)$item['avg_rating'] > 0) 
                         ? number_format((float)$item['avg_rating'], 1) 
@@ -192,6 +185,8 @@ class MapController extends Controller
                         ? $item['link_maps']
                         : $this->getGoogleMapsUrl($formattedName, $lat, $lng, $kota, $rawAlamat);
 
+                    $photo = \App\Support\FaskesVisual::normalizeStorageUrl($item['thumbnail_url'] ?? null);
+
                     $faskesList[] = [
                         'id' => $item['id_faskes'] ?? $item['id'],
                         'name' => $formattedName,
@@ -201,24 +196,27 @@ class MapController extends Controller
                         'rating' => $rating,
                         'total_reviews' => $reviewsCount,
                         'hospital_class' => $item['kelas'] ?? $item['hospital_class'] ?? null,
-                        'thumbnail_url' => \App\Support\FaskesVisual::normalizeStorageUrl($item['thumbnail_url'] ?? null),
+                        'thumbnail_url' => $photo,
                         'bpjs_support' => (bool) ($item['_support_bpjs'] ?? $item['is_support_bpjs'] ?? $item['bpjs_support'] ?? false),
-                        'distance' => isset($item['distance_km']) ? number_format($item['distance_km'], 1) . ' km' : null,
+                        'distance' => isset($item['distance_km']) ? number_format((float)$item['distance_km'], 1) . ' km' : null,
                         'phone' => !empty($item['kontak']) ? $item['kontak'] : (!empty($item['telp_faskes']) ? $item['telp_faskes'] : null),
                         'lat' => $lat,
                         'lng' => $lng,
-                        'foto' => $this->getFacilityPhoto($typeSlug, $item['id_faskes'] ?? $item['id']),
+                        'foto' => $photo,
                         'navigasi_url' => $navUrl,
                         'detail_url' => url('/faskes/' . ($item['id_faskes'] ?? $item['id'])),
                     ];
                 }
+            } else {
+                $errorMessage = 'Gagal memuat data faskes dari server (Status ' . $response->status() . '). Silakan coba beberapa saat lagi.';
+                Log::warning('MapController: Backend API returned status ' . $response->status());
             }
         } catch (\Exception $e) {
+            $errorMessage = 'Tidak dapat terhubung ke server faskes. Silakan periksa koneksi atau coba beberapa saat lagi.';
             Log::warning('Failed to fetch map faskes from backend API: ' . $e->getMessage());
         }
 
-        // Return whatever facilities were retrieved (or empty if offline)
-        return view('users.map', compact('faskesList'));
+        return view('users.map', compact('faskesList', 'errorMessage'));
     }
 }
 

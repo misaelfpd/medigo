@@ -43,7 +43,7 @@
                             <button type="submit" 
                                     id="btnSubmitSearch" 
                                     class="btn btn-medigo-primary px-3 px-md-4 py-1.5 rounded-pill fw-semibold text-white shadow-xs me-1">
-                                Cari RS
+                                Cari
                             </button>
                         </div>
                     </form>

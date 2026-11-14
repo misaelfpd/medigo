@@ -779,12 +779,28 @@ body {
 }
 
 .facility-thumb-wrap {
-    width: 48px;
-    height: 48px;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    min-height: 64px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.facility-thumb-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.facility-thumb-wrap.has-photo > i {
+    display: none !important;
 }
 
 .faskes-avatar-hospital {
@@ -1628,7 +1644,8 @@ body {
     }
 
     .map-view-section {
-        height: calc(100vh - 65px - 62px);
+        height: calc(100dvh - 62px);
+        height: calc(100vh - 62px);
         min-height: auto;
         overflow: hidden;
         position: relative;
