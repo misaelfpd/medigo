@@ -31,11 +31,10 @@
 - **Peta Interaktif (Map View)**: Integrasi peta Leaflet & OpenStreetMap dengan pelacakan lokasi pengguna, pin marker faskes, radius filter terdekat, dan navigasi langsung ke rute faskes.
 - **Forum Komunitas Kesehatan**:
   - Berbagi ulasan pengalaman faskes, tips kesehatan, dan tanya-jawab BPJS.
-  - Fitur **Lazy Loading** agar daftar diskusi dimuat bertahap dan cepat.
-  - Filter kategori via dropdown di mobile, serta filter cepat diskusi **Sedang Tren** dan **Faskes Terdekat**.
+  - Filter kategori serta diskusi **Sedang Tren** dan **Faskes Terdekat**.
   - Pelaporan diskusi (*reporting system*) untuk keamanan komunitas.
 - **MediBot (Asisten AI Kesehatan)**: Konsultasi kesehatan interaktif berbasis Gemini AI untuk rekomendasi penanganan pertama dan rujukan faskes yang tepat.
-- **Bookmark & Review Faskes**: Simpan faskes favorit dan berikan rating bintang beserta ulasan terperinci.
+- **Rating & Ulasan Faskes**: Berikan rating bintang beserta ulasan terperinci pada fasilitas kesehatan yang dikunjungi.
 - **Panel Admin Lengkap**:
   - Manajemen Fasilitas Kesehatan (CRUD, sinkronisasi koordinat peta, foto galeri).
   - Manajemen Spesialisasi Dokter (CRUD).
@@ -60,7 +59,7 @@ medigo/
 │   ├── app/Http/Controllers/ # Client Controller (konsumsi backend API)
 │   ├── resources/
 │   │   ├── css/              # Modular CSS per halaman & design tokens
-│   │   ├── js/               # Modular JavaScript (Map, Lazy load forum, Beranda)
+│   │   ├── js/               # Modular JavaScript (Peta, Forum, Beranda)
 │   │   └── views/            # Blade templates (beranda, map, faskes, forum, admin)
 │   └── routes/web.php        # Routing halaman web pengguna & admin
 ```
@@ -202,7 +201,7 @@ Database seeder telah menyiapkan akun demo untuk pengujian sistem:
 | Role | Nama Pengguna | Email Login | Password | Akses & Fitur |
 | :--- | :--- | :--- | :--- | :--- |
 | **Admin** | Admin MediGO | `admin@medigo.id` | `password` | Panel Manajemen Admin (`/admin/dashboard`), Kelola Faskes, Spesialisasi, Fasilitas Penunjang, Moderasi Laporan Forum |
-| **User** | Dimas Pratama | `dimas.pratama@gmail.com` | `password` | Eksplorasi direktori, rating & ulasan faskes, simpan bookmark, buat topik diskusi, komentar forum, konsultasi MediBot |
+| **User** | Dimas Pratama | `dimas.pratama@gmail.com` | `password` | Eksplorasi direktori, rating & ulasan faskes, buat topik diskusi, komentar forum, konsultasi MediBot |
 
 ---
 
@@ -213,7 +212,7 @@ Database seeder telah menyiapkan akun demo untuk pengujian sistem:
 | **Frontend Web** | `http://127.0.0.1:8000` | Antarmuka pengguna MediGO |
 | **Backend REST API** | `http://127.0.0.1:8005/api` | API penyedia data faskes, autentikasi, & AI |
 | **Halaman Peta Faskes** | `http://127.0.0.1:8000/map` | Peta interaktif Leaflet se-Jabodetabek |
-| **Halaman Forum** | `http://127.0.0.1:8000/discussions` | Forum diskusi dengan lazy loading |
+| **Halaman Forum** | `http://127.0.0.1:8000/discussions` | Forum diskusi komunitas faskes & kesehatan |
 | **Dashboard Admin** | `http://127.0.0.1:8000/admin/dashboard` | Area khusus akun role Admin |
 
 ---

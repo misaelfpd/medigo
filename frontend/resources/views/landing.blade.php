@@ -101,55 +101,19 @@
     </header>
 
     {{-- Hero: Layar Penuh (100dvh) --}}
-    <section class="mg-landing-hero" id="landingHero">
+    <section class="mg-landing-hero" id="landingHero" style="--hero-bg: url('{{ asset('images/reception.jpg') }}');">
         <div class="container mg-landing-hero__inner">
-            {{-- Badge Pill --}}
-            <div class="mg-landing-hero__badge mb-3">
-                <i class="bi bi-geo-alt-fill text-danger me-1"></i>
-                <span>Direktori & Navigasi Faskes Jabodetabek</span>
-            </div>
-
             <h1 class="mg-landing-hero__title">Temukan Layanan Kesehatan Terdekat</h1>
             <p class="mg-landing-hero__subtitle">
-                Temukan rumah sakit, klinik, dan puskesmas terbaik di dekat Anda dengan cepat. Navigasi rute langsung terhubung ke Google Maps untuk perjalanan medis yang aman dan akurat.
+                Temukan rumah sakit dan klinik terbaik di dekat Anda dengan cepat. Akses layanan kesehatan yang dapat diandalkan saat Anda sangat membutuhkannya.
             </p>
-
-            {{-- Kotak Pencarian Cepat di Hero --}}
-            <div class="mg-landing-hero__search mb-4">
-                <form action="{{ route('search.index') }}" method="GET" class="m-0">
-                    <div class="input-group d-flex align-items-center rounded-pill border bg-white p-1-5 shadow-sm">
-                        <span class="input-group-text bg-transparent border-0 ps-3 pe-2 text-muted">
-                            <i class="bi bi-search text-medigo-primary fs-6"></i>
-                        </span>
-                        <input type="text"
-                               name="q"
-                               class="form-control border-0 shadow-none ps-1 bg-transparent"
-                               placeholder="Cari nama faskes, klinik, spesialis di Jabodetabek..."
-                               autocomplete="off">
-                        <button type="submit" class="btn btn-medigo-primary rounded-pill px-3 px-sm-4 py-2 fw-semibold text-white shadow-xs me-1">
-                            <span>Cari</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            {{-- Tombol Aksi Cepat --}}
-            <div class="mg-landing-hero__actions mb-3" id="landingHeroActions">
+            <div class="mg-landing-hero__actions" id="landingHeroActions">
                 <a href="{{ route('faskes.index') }}" class="mg-landing-btn">
-                    <span>Daftar Faskes</span>
+                    <span>Cari RS</span> <i class="bi bi-hospital"></i>
                 </a>
-                <a href="{{ route('map.index') }}" class="mg-landing-btn mg-landing-btn--outline">
-                    <span>Peta Faskes</span>
+                <a href="{{ route('chat') }}" class="mg-landing-btn">
+                    <span>Tanya AI</span> <i class="bi bi-stars"></i>
                 </a>
-                <a href="{{ route('chat') }}" class="mg-landing-btn mg-landing-btn--outline">
-                    <span>Tanya MediBot</span>
-                </a>
-            </div>
-
-            {{-- Penjelasan Terhubung ke Google Maps --}}
-            <div class="mg-landing-hero__maps-notice">
-                <i class="bi bi-google text-primary me-1"></i>
-                <span>Rute dan penunjuk arah langsung diarahkan ke <strong>Google Maps</strong></span>
             </div>
         </div>
 
